@@ -1,0 +1,80 @@
+import Foundation
+
+/// Chemin distant exprimé en octets. `String` (UTF-8) et `Data` (octets bruts, pour les noms non UTF-8) l'adoptent.
+public protocol SFTPPathRepresentable: Sendable {
+    var sftpBytes: Data { get }
+}
+extension String: SFTPPathRepresentable { public var sftpBytes: Data { Data(utf8) } }
+extension Data: SFTPPathRepresentable { public var sftpBytes: Data { self } }
+
+/// Type d'un élément distant, déduit des bits de type des permissions.
+public enum SFTPFileType: Sendable, Equatable {
+    case regular, directory, symlink
+    /// Socket, périphérique, FIFO…
+    case other
+    /// Le serveur n'a pas fourni de permissions.
+    case unknown
+}
+
+/// Attributs SFTP v3 (tous optionnels : le serveur n'en renseigne qu'une partie).
+public struct SFTPAttributes: Sendable, Equatable, Hashable {
+    public var size: UInt64?
+    public var uid: UInt32?
+    public var gid: UInt32?
+    /// Mode complet (bits de type inclus, ex. 0o100644).
+    public var permissions: UInt32?
+    public var accessTime: Date?
+    public var modificationTime: Date?
+
+    public init(size: UInt64? = nil, uid: UInt32? = nil, gid: UInt32? = nil, permissions: UInt32? = nil,
+                accessTime: Date? = nil, modificationTime: Date? = nil) {
+        self.size = size; self.uid = uid; self.gid = gid; self.permissions = permissions
+        self.accessTime = accessTime; self.modificationTime = modificationTime
+    }
+
+    public var type: SFTPFileType {
+        guard let p = permissions else { return .unknown }
+        switch p & 0o170000 {
+        case 0o100000: return .regular
+        case 0o040000: return .directory
+        case 0o120000: return .symlink
+        default: return .other
+        }
+    }
+    /// Bits de permission seuls (rwx, setuid…), sans le type.
+    public var permissionBits: UInt32? { permissions.map { $0 & 0o7777 } }
+}
+
+/// Entrée de listage. Choix pour les noms non UTF-8 : `nameBytes` conserve les octets exacts (réversible,
+/// utilisable comme chemin via `Data`), `name` est une version lisible où les octets invalides deviennent U+FFFD,
+/// et `nameIsValidUTF8` le signale. Aucune normalisation Unicode (NFC/NFD) n'est appliquée.
+public struct SFTPDirectoryEntry: Sendable, Equatable, Hashable {
+    public let name: String
+    public let nameBytes: Data
+    public let attributes: SFTPAttributes
+
+    public init(nameBytes: Data, attributes: SFTPAttributes) {
+        self.nameBytes = nameBytes
+        self.name = String(decoding: nameBytes, as: UTF8.self)
+        self.attributes = attributes
+    }
+    public var type: SFTPFileType { attributes.type }
+    public var nameIsValidUTF8: Bool { String(data: nameBytes, encoding: .utf8) != nil }
+}
+
+/// Progression d'un transfert. `bytesTransferred` inclut l'offset de reprise ; `totalBytes` est la taille du fichier complet si connue.
+public struct SFTPTransferProgress: Sendable, Equatable {
+    public var bytesTransferred: UInt64
+    public var totalBytes: UInt64?
+}
+
+/// Réglages du client.
+public struct SFTPClientConfiguration: Sendable, Equatable {
+    /// Délai maximal pour recevoir VERSION après INIT.
+    public var negotiationTimeout: Duration = .seconds(10)
+    /// Taille d'une requête READ/WRITE (réduite si le serveur annonce une limite plus basse).
+    public var chunkSize: Int = 32 * 1024
+    /// Nombre maximal de requêtes de transfert en vol.
+    public var window: Int = 32
+    public init() {}
+}
