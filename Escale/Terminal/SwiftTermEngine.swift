@@ -43,6 +43,13 @@ final class SwiftTermEngine: TerminalEngine {
         return TerminalSize(columns: d.cols, rows: d.rows)
     }
 
+    /// Hauteur d'une cellule (points) : la zone du moteur est dimensionnée en multiple entier pour ne rogner aucune ligne.
+    var cellHeight: CGFloat {
+        let d = terminalView.terminalDimensions
+        guard d.rows > 0 else { return 0 }
+        return terminalView.getOptimalFrameSize().height / CGFloat(d.rows)
+    }
+
     func feed(_ bytes: Data) {
         terminalView.feed(byteArray: [UInt8](bytes)[...])
     }

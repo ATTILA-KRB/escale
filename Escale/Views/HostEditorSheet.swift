@@ -62,7 +62,10 @@ struct HostEditorSheet: View {
     @State private var user = ""
     @State private var authChoice: AuthChoice = .defaults
     @State private var keyPath = ""
-    @State private var keychainAccount = ""
+    /// Identifiant de l'hôte (celui de l'hôte édité, ou un nouvel identifiant) : le compte Trousseau en dérive.
+    @State private var hostID = UUID()
+    @State private var hasStoredSecret = false
+    @State private var secretMessage: String?
     @State private var jumpHosts = ""
     @State private var tags = ""
     @State private var folderID: UUID?
@@ -90,14 +93,35 @@ struct HostEditorSheet: View {
                     Picker("Méthode", selection: $authChoice) {
                         Text("Réglages OpenSSH par défaut").tag(AuthChoice.defaults)
                         Text("Fichier de clé").tag(AuthChoice.keyFile)
-                        if host.map({ if case .keychainPassword = $0.auth { true } else { false } }) == true {
-                            Text("Mot de passe (Trousseau)").tag(AuthChoice.keychain)
-                        }
+                        Text("Mot de passe (Trousseau)").tag(AuthChoice.keychain)
                     }
                     if authChoice == .keyFile {
-                        HStack {
-                            TextField("Clé privée", text: $keyPath, prompt: Text("Chemin du fichier de clé"))
-                            Button("Choisir…") { chooseKey() }
+                        LabeledContent("Clé privée") {
+                            HStack(spacing: 8) {
+                                // Chemin long : troncature au milieu (début et nom du fichier restent lisibles), chemin complet en infobulle.
+                                Text(keyPath.isEmpty ? "Aucun fichier choisi" : keyPath)
+                                    .foregroundStyle(keyPath.isEmpty ? .secondary : .primary)
+                                    .lineLimit(1).truncationMode(.middle)
+                                    .help(keyPath.isEmpty ? "Aucun fichier choisi" : keyPath)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                                Button("Choisir…") { chooseKey() }
+                            }
+                        }
+                        Text("Si la clé est protégée par une phrase de passe, elle vous sera demandée à la connexion.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    if authChoice == .keychain {
+                        Text("Le mot de passe est demandé à la première connexion. La case « Mémoriser dans le Trousseau » l'enregistre, après une connexion réussie.")
+                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        if hasStoredSecret {
+                            HStack {
+                                Label("Un mot de passe est enregistré dans le Trousseau.", systemImage: "checkmark.seal")
+                                    .font(.caption)
+                                Spacer()
+                                Button("Oublier le mot de passe enregistré") { forgetSecret() }.controlSize(.small)
+                            }
+                        } else if let m = secretMessage {
+                            Text(m).font(.caption).foregroundStyle(.secondary)
                         }
                     }
                     if authChoice == .defaults {
@@ -142,12 +166,28 @@ struct HostEditorSheet: View {
         loaded = true
         folderID = initialFolder
         guard let h = host else { return }
+        hostID = h.id
         name = h.name; hostname = h.host; port = h.port.map(String.init) ?? ""; user = h.user ?? ""
         jumpHosts = h.jumpHosts.joined(separator: ", "); tags = h.tags.joined(separator: ", ")
         switch h.auth {
         case .openSSHDefaults: authChoice = .defaults
         case .keyFile(let p): authChoice = .keyFile; keyPath = p
-        case .keychainPassword(let a): authChoice = .keychain; keychainAccount = a
+        case .keychainPassword: authChoice = .keychain; refreshStoredSecret()
+        }
+    }
+
+    private var account: String { AuthKeychain.passwordAccount(for: hostID) }
+
+    private func refreshStoredSecret() {
+        let store = model.connections.secretStore, account = account
+        Task { hasStoredSecret = ((try? await store.secret(for: account)) ?? nil) != nil }
+    }
+
+    private func forgetSecret() {
+        let store = model.connections.secretStore, account = account
+        Task {
+            do { try await store.removeSecret(for: account); hasStoredSecret = false; secretMessage = "Mot de passe oublié." }
+            catch { secretMessage = "Suppression impossible : \(error)" }
         }
     }
 
@@ -170,9 +210,14 @@ struct HostEditorSheet: View {
         let auth: HostProfile.Auth = switch authChoice {
         case .defaults: .openSSHDefaults
         case .keyFile: .keyFile(path: keyPath.trimmingCharacters(in: .whitespaces))
-        case .keychain: .keychainPassword(account: keychainAccount)
+        case .keychain: .keychainPassword(account: account)
         }
-        var h = host ?? HostProfile(name: "", host: "")
+        var h = host ?? HostProfile(id: hostID, name: "", host: "")
+        // Méthode quittée : le mot de passe enregistré ne doit pas rester orphelin dans le Trousseau.
+        if case .keychainPassword = h.auth, authChoice != .keychain {
+            let store = model.connections.secretStore, hid = h.id
+            Task { try? await store.removeSecret(for: AuthKeychain.passwordAccount(for: hid)) }
+        }
         h.name = nameTrim.isEmpty ? hostTrim : nameTrim
         h.host = hostTrim
         h.port = Int(port.trimmingCharacters(in: .whitespaces))

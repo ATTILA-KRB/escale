@@ -1,7 +1,18 @@
 import SwiftUI
 import AppKit
+import EscaleCore
 
+/// Vrai point d'entrée. L'app est son propre `SSH_ASKPASS` : quand ssh la relance avec ESCALE_ASKPASS_SOCKET et
+/// ESCALE_ASKPASS_TOKEN, elle répond à l'invite et quitte AVANT toute initialisation AppKit/SwiftUI
+/// (ni fenêtre, ni icône de Dock). Sans ces variables, `runIfRequested()` ne fait rien et l'app démarre normalement.
 @main
+enum Launcher {
+    static func main() {
+        AskpassClient.runIfRequested()
+        EscaleApp.main()
+    }
+}
+
 struct EscaleApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model: AppModel
@@ -32,6 +43,8 @@ struct EscaleCommands: Commands {
             Button("Nouveau terminal local") { model.openLocalTab() }.keyboardShortcut("t")
             Button("Nouvel hôte…") { model.editor = .newHost(folder: nil) }.keyboardShortcut("n")
             Button("Nouveau dossier…") { model.editor = .newFolder(parent: nil) }
+            Divider()
+            Button("Importer depuis ~/.ssh/config…") { model.beginImport() }
         }
         CommandGroup(replacing: .saveItem) {
             Button("Fermer l'onglet") {

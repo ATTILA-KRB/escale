@@ -14,6 +14,12 @@ final class SSHLink {
         case failed(String)
         /// `retryIn` : secondes avant la prochaine tentative ; nil pendant une tentative.
         case reconnecting(attempt: Int, retryIn: Int?)
+        /// Une saisie est nécessaire pour rétablir la connexion (reconnexion automatique : jamais de feuille ouverte seule).
+        case authRequired
+        /// L'utilisateur a annulé une invite (ou refusé une clé d'hôte inconnue) : aucune nouvelle tentative automatique.
+        case cancelled
+        /// Clé d'hôte modifiée : refus définitif (invariant 10), jamais de dialogue de confirmation.
+        case hostKeyChanged(String)
     }
 
     private(set) var state: State = .disconnected
@@ -25,6 +31,8 @@ final class SSHLink {
 
     @ObservationIgnored let transport: OpenSSHTransport
     @ObservationIgnored unowned let manager: ConnectionManager
+    @ObservationIgnored let gate: AuthInteractionGate
+    @ObservationIgnored let profile: HostProfile
     @ObservationIgnored private var connectTask: Task<Void, Error>?
     @ObservationIgnored private var reconnectTask: Task<Bool, Never>?
     @ObservationIgnored private var graceTask: Task<Void, Never>?
@@ -35,10 +43,23 @@ final class SSHLink {
 
     init(profile: HostProfile, manager: ConnectionManager) {
         self.manager = manager
-        transport = OpenSSHTransport(profile: profile, configuration: .init(ssh: manager.sshOptions))
+        self.profile = profile
+        let gate = AuthInteractionGate(profile: profile, center: manager.dialogs)
+        self.gate = gate
+        let responder = AppAskpassResponder(
+            auth: profile.auth, hostID: profile.id, store: manager.secretStore,
+            interaction: { request in await gate.interact(request) })
+        // L'app est son propre SSH_ASKPASS (voir `Launcher` : `AskpassClient.runIfRequested()` avant tout AppKit).
+        // Délai de réponse plus long que le défaut du cœur (120 s) : l'utilisateur peut chercher un code 2FA.
+        let askpass = AskpassConfiguration(
+            executablePath: manager.askpassExecutable, responder: responder,
+            limits: AskpassServer.Limits(responseTimeout: 290))
+        transport = OpenSSHTransport(profile: profile, configuration: .init(ssh: manager.sshOptions, askpass: askpass))
     }
 
+    /// Message français d'une erreur, sans contexte d'hôte (journal de ssh pour les erreurs de transport).
     static func describe(_ error: Error) -> String {
+        if let a = error as? SSHAuthenticationError { return describe(a, host: nil, knownHostsPath: nil) }
         if let e = error as? SSHTransportError {
             switch e {
             case .masterFailed(let m), .sessionRefused(let m), .subsystemUnavailable(let m), .forwardRefused(let m): return m
@@ -48,6 +69,57 @@ final class SSHLink {
         return error.localizedDescription
     }
 
+    /// Messages distincts pour chaque `SSHAuthenticationError` (aucun secret : ceux du cœur n'en contiennent pas).
+    static func describe(_ error: SSHAuthenticationError, host: String?, knownHostsPath: String?) -> String {
+        switch error {
+        case .wrongSecret:
+            return "Secret refusé par le serveur (mot de passe, phrase de passe ou code incorrect)."
+        case .cancelled:
+            return "Authentification annulée."
+        case .hostKeyRejected:
+            return "Clé d'hôte non approuvée : connexion annulée."
+        case .timedOut:
+            return "Délai dépassé : aucune réponse à l'invite d'authentification."
+        case .hostKeyChanged:
+            let h = host.map { " de « \($0) »" } ?? ""
+            let f = knownHostsPath.map { " Fichier known_hosts concerné : \($0)." } ?? ""
+            return "La clé d'hôte\(h) a changé : connexion refusée par sécurité (serveur remplacé ou connexion interceptée).\(f)"
+        }
+    }
+
+    /// Chemin du known_hosts concerné : ligne « Offending … key in <chemin>:<n> » de ssh, sinon l'option, sinon le défaut.
+    private func knownHostsPath() async -> String {
+        let journal = await transport.masterJournal()
+        if let re = try? NSRegularExpression(pattern: #"[Oo]ffending \S+ key in (\S+?):\d+"#),
+           let m = re.firstMatch(in: journal, range: NSRange(journal.startIndex..., in: journal)),
+           let r = Range(m.range(at: 1), in: journal) { return String(journal[r]) }
+        return manager.sshOptions.userKnownHostsFile ?? "~/.ssh/known_hosts"
+    }
+
+    /// Traduit une erreur de connexion, enregistre `lastError` et fixe l'état dédié.
+    private func recordFailure(_ error: Error) async {
+        if let a = error as? SSHAuthenticationError {
+            switch a {
+            case .hostKeyChanged:
+                let msg = Self.describe(a, host: profile.host, knownHostsPath: await knownHostsPath())
+                lastError = msg; state = .hostKeyChanged(msg)
+            case .cancelled, .hostKeyRejected:
+                lastError = Self.describe(a, host: nil, knownHostsPath: nil); state = .cancelled
+            case .wrongSecret, .timedOut:
+                lastError = Self.describe(a, host: nil, knownHostsPath: nil); state = .failed(lastError ?? "")
+            }
+        } else {
+            lastError = Self.describe(error)
+            state = .failed(lastError ?? "")
+        }
+    }
+
+    /// Message à afficher pour une erreur levée par `ensureConnected()` (état déjà enregistré).
+    func message(for error: Error) -> String {
+        if error is SSHAuthenticationError, let m = lastError { return m }
+        return Self.describe(error)
+    }
+
     // MARK: Connexion initiale
 
     /// Garantit un maître vivant : connecte si besoin (une seule tentative partagée), ou attend une reconnexion en cours.
@@ -55,7 +127,7 @@ final class SSHLink {
         if case .connected = state { return }
         if reconnectTask != nil {
             if await waitReconnect() { return }
-            throw SSHTransportError.masterFailed("reconnexion abandonnée")
+            throw SSHTransportError.masterFailed(lastError ?? "reconnexion abandonnée")
         }
         if let t = connectTask { return try await t.value }
         state = .connecting
@@ -69,10 +141,7 @@ final class SSHLink {
             state = .connected
         } catch {
             connectTask = nil
-            if cancelRequested { state = .disconnected } else {
-                lastError = Self.describe(error)
-                state = .failed(lastError ?? "")
-            }
+            if cancelRequested { state = .disconnected } else { await recordFailure(error) }
             throw error
         }
     }
@@ -97,6 +166,9 @@ final class SSHLink {
     /// « Reconnecter maintenant » : coupe l'attente courante.
     func retryNow() { skipWait = true }
 
+    /// Reconnexion automatique : sans feuille. Un secret mémorisé est réutilisé par le responder ; toute autre
+    /// invite met fin à la boucle (état « authentification requise »). Une annulation, un secret refusé, un délai ou
+    /// une clé d'hôte modifiée mettent aussi fin à la boucle : jamais de nouvelle tentative automatique.
     private func reconnectLoop() async -> Bool {
         var attempt = 1
         while !Task.isCancelled {
@@ -114,14 +186,31 @@ final class SSHLink {
             if Task.isCancelled { break }
             state = .reconnecting(attempt: attempt, retryIn: nil)
             connectAttempts += 1
+            gate.resetNeedsInput()
+            gate.unattended = true
             do {
                 try await transport.connect()
+                gate.unattended = false
                 if Task.isCancelled { break }
                 state = .connected
                 lastError = nil
                 reconnectTask = nil
                 return true
             } catch {
+                gate.unattended = false
+                if Task.isCancelled { break }
+                await transport.disconnect()
+                if gate.needsInput {
+                    lastError = Self.authRequiredMessage
+                    state = .authRequired
+                    reconnectTask = nil
+                    return false
+                }
+                if error is SSHAuthenticationError {
+                    await recordFailure(error)
+                    reconnectTask = nil
+                    return false
+                }
                 lastError = Self.describe(error)
                 attempt += 1
             }
@@ -131,6 +220,8 @@ final class SSHLink {
         reconnectTask = nil
         return false
     }
+
+    static let authRequiredMessage = "Authentification requise"
 
     // MARK: Rattachement des onglets
 
@@ -156,6 +247,7 @@ final class SSHLink {
         reconnectTask?.cancel()
         connectTask?.cancel()
         state = .disconnected
+        manager.dialogs.cancelAll(forHost: profile.id)
         await transport.disconnect()
         if let t = reconnectTask { _ = await t.value }
     }
@@ -182,7 +274,10 @@ final class HostConnection {
         if let r = states.first(where: { if case .reconnecting = $0 { true } else { false } }) { return r }
         if states.contains(.connecting) { return .connecting }
         if states.contains(.connected) { return .connected }
+        if states.contains(.authRequired) { return .authRequired }
+        if let h = states.first(where: { if case .hostKeyChanged = $0 { true } else { false } }) { return h }
         if let f = states.first(where: { if case .failed = $0 { true } else { false } }) { return f }
+        if states.contains(.cancelled) { return .cancelled }
         return .disconnected
     }
 
@@ -205,7 +300,13 @@ final class HostConnection {
 @Observable
 final class ConnectionManager {
     private(set) var connections: [UUID: HostConnection] = [:]
-    @ObservationIgnored let sshOptions: OpenSSHOptions
+    /// Options ssh communes (les liens créés ensuite les copient ; les tests les ajustent avant de créer un lien).
+    @ObservationIgnored var sshOptions: OpenSSHOptions
+    /// Magasin des secrets (Keychain) et exécutable qui sert de `SSH_ASKPASS` (l'app elle-même).
+    @ObservationIgnored let secretStore: any SecretStore
+    @ObservationIgnored let askpassExecutable: String
+    /// File des dialogues d'authentification (un seul affiché à la fois).
+    let dialogs = AuthDialogCenter()
     /// Attentes entre tentatives de reconnexion (la dernière valeur se répète).
     @ObservationIgnored var reconnectDelays: [Double] = [1, 2, 5, 10, 30]
     /// Délai de grâce avant déconnexion quand le dernier onglet d'un hôte se ferme.
@@ -215,7 +316,12 @@ final class ConnectionManager {
     @ObservationIgnored var shellsStarted = 0
     @ObservationIgnored var shellsEnded = 0
 
-    init(sshOptions: OpenSSHOptions) { self.sshOptions = sshOptions }
+    init(sshOptions: OpenSSHOptions, secretStore: any SecretStore = AuthKeychain.makeStore(service: nil),
+         askpassExecutable: String = Bundle.main.executablePath ?? CommandLine.arguments[0]) {
+        self.sshOptions = sshOptions
+        self.secretStore = secretStore
+        self.askpassExecutable = askpassExecutable
+    }
 
     func connection(for profile: HostProfile) -> HostConnection {
         if let c = connections[profile.id] {

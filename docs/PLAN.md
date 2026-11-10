@@ -185,3 +185,19 @@ import ssh_config, askpass et ses dialogues. Non teste : connexion par mot de pa
 raccourcis clavier reels, glisser-deposer des onglets, interactions de la barre laterale, mode clair.
 Defauts visuels connus : bandeau de reconnexion qui recouvre les premieres lignes, premiere ligne du terminal rognee
 sous la barre d'onglets, chemin de cle tronque dans la feuille d'edition.
+
+### Vague 3 : fin de M1 (2026-11-11)
+
+Fait et verifie (recettes ssh 65, auth 99, panes 138 verifications ; coeur 137 tests) :
+- App branchee sur `FileHostRepository`, `HostSearch` (surlignage), import ssh_config (feuille, lecture seule).
+- Authentification interactive : l'app est son propre SSH_ASKPASS (`AskpassClient.runIfRequested()` en tete de main),
+  file de dialogues (mot de passe, phrase de passe, code, cle d'hote inconnue), memorisation Trousseau apres succes,
+  cle d'hote modifiee = echec dedie sans dialogue, annulation sans nouvelle tentative.
+- Panneaux scindes (`PaneLayout`, un `PaneHostView` pour tous les moteurs), sessions comptees par panneau,
+  reconnexion par panneau, bandeau hors de la grille.
+
+Non teste : mot de passe reellement accepte et 2FA reelle (a essayer sur un vrai serveur), evenements clavier et souris
+reels (raccourcis, glisser des separateurs, clics, survol), mode clair, VoiceOver, IME (spike S3 toujours du).
+Dettes : `PaneMenu` installe le menu Terminal par code avec un minuteur (a migrer dans les commandes SwiftUI de
+`EscaleApp`) ; texte du bandeau tronque dans un panneau etroit ; en-tete du dialogue de cle d'hote desaligne ;
+captures de `selftest-ssh.sh` parfois perimees apres reconnexion (le texte du tampon, lui, est verifie).

@@ -23,6 +23,17 @@ struct MainWindowView: View {
             case .renameFolder(let f): FolderSheet(model: model, folder: f, parent: f.parentID)
             }
         }
+        .sheet(item: $model.importer) { importer in
+            ImportSheet(model: model, importer: importer)
+        }
+        // Une seule feuille à la fois : une demande d'authentification attend que l'éditeur, l'import ou la
+        // confirmation de suppression soit fermé (la demande reste en tête de file, rien n'est perdu).
+        .sheet(item: Binding(
+            get: { otherSheetOpen ? nil : model.connections.dialogs.current },
+            set: { _ in } // fermée uniquement par ses boutons (`AuthDialogCenter.resolve`)
+        )) { dialog in
+            AuthDialogView(dialog: dialog, center: model.connections.dialogs)
+        }
         .confirmationDialog(deletionTitle, isPresented: Binding(
             get: { model.pendingDeletion != nil }, set: { if !$0 { model.pendingDeletion = nil } }),
             titleVisibility: .visible, presenting: model.pendingDeletion
@@ -41,6 +52,10 @@ struct MainWindowView: View {
             }
         }
         .background(WindowAccessor { model.mainWindow = $0 })
+    }
+
+    private var otherSheetOpen: Bool {
+        model.editor != nil || model.importer != nil || model.pendingDeletion != nil
     }
 
     private var subtitle: String {

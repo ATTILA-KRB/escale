@@ -15,11 +15,12 @@ struct SidebarView: View {
             }
             Section("Hôtes") {
                 if searching {
-                    let found = model.library.search(model.searchText)
+                    // Résultats à plat, classés par pertinence (recherche floue du cœur), correspondances surlignées.
+                    let found = model.library.searchResults(model.searchText)
                     if found.isEmpty {
                         Text("Aucun résultat").foregroundStyle(.secondary)
                     }
-                    ForEach(found) { HostRow(model: model, host: $0).tag($0.id) }
+                    ForEach(found, id: \.host.id) { HostRow(model: model, host: $0.host, result: $0).tag($0.host.id) }
                 } else if model.library.tree.isEmpty {
                     Text("Aucun hôte enregistré").foregroundStyle(.secondary)
                 } else {
@@ -38,11 +39,14 @@ struct SidebarView: View {
                 else if let h = model.library.host(id) { model.connect(h) }
             }
         }
+        .safeAreaInset(edge: .top, spacing: 0) { LibraryProblemBanner(library: model.library) }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             HStack {
                 Menu {
                     Button("Nouvel hôte…") { model.editor = .newHost(folder: selectedFolder) }
                     Button("Nouveau dossier…") { model.editor = .newFolder(parent: selectedFolder) }
+                    Divider()
+                    Button("Importer depuis ~/.ssh/config…") { model.beginImport(destinationFolder: selectedFolder) }
                 } label: {
                     Image(systemName: "plus")
                 }
@@ -68,6 +72,7 @@ struct SidebarView: View {
         if ids.isEmpty {
             Button("Nouvel hôte…") { model.editor = .newHost(folder: nil) }
             Button("Nouveau dossier…") { model.editor = .newFolder(parent: nil) }
+            Button("Importer depuis ~/.ssh/config…") { model.beginImport() }
         } else if ids == [AppModel.localTerminalID] {
             Button("Ouvrir un terminal local") { model.openLocalTab() }
         } else if ids.count == 1, let id = ids.first, let host = model.library.host(id) {
@@ -128,17 +133,51 @@ private struct TreeRows: View {
     }
 }
 
+/// Texte avec les plages d'une recherche surlignées (plages exprimées dans `text`).
+private func highlighted(_ text: String, _ result: HostSearchResult?, _ field: HostSearchField) -> AttributedString {
+    var out = AttributedString(text)
+    guard let result else { return out }
+    for m in result.matches where m.field == field {
+        for r in m.ranges {
+            guard let ar = Range<AttributedString.Index>(r, in: out) else { continue }
+            out[ar].backgroundColor = Color.yellow.opacity(0.4)
+            out[ar].font = .body.bold()
+        }
+    }
+    return out
+}
+
 private struct HostRow: View {
     let model: AppModel
     let host: HostProfile
+    var result: HostSearchResult?
+
+    private var subtitle: AttributedString {
+        var s = AttributedString(host.user.map { "\($0)@" } ?? "")
+        s.append(highlighted(host.host, result, .host))
+        return s
+    }
+
+    /// Étiquettes ayant correspondu (sinon une correspondance sur une étiquette resterait invisible).
+    private var matchedTags: [AttributedString] {
+        guard let result else { return [] }
+        return result.matches.compactMap { m in
+            if case .tag(let i) = m.field, host.tags.indices.contains(i) { return highlighted("#" + host.tags[i], result, m.field) }
+            return nil
+        }
+    }
 
     var body: some View {
         let state = model.connections.state(of: host.id)
         HStack(spacing: 8) {
             Image(systemName: "server.rack").foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 1) {
-                Text(host.name).lineLimit(1)
-                Text(host.target).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                Text(highlighted(host.name, result, .name)).lineLimit(1)
+                Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                if !matchedTags.isEmpty {
+                    Text(matchedTags.reduce(AttributedString()) { $0 + $1 + AttributedString(" ") })
+                        .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
             }
             Spacer(minLength: 4)
             ConnectionDot(state: state)
@@ -159,6 +198,9 @@ struct ConnectionDot: View {
         case .connected: "connecté"
         case .failed(let m): "échec : \(m)"
         case .reconnecting: "reconnexion en cours"
+        case .authRequired: "authentification requise"
+        case .cancelled: "authentification annulée"
+        case .hostKeyChanged: "clé d'hôte modifiée : connexion refusée"
         }
     }
 
@@ -170,8 +212,41 @@ struct ConnectionDot: View {
             Circle().fill(.orange).frame(width: 8, height: 8).help(Self.label(state))
         case .connected:
             Circle().fill(.green).frame(width: 8, height: 8).help("Connecté")
-        case .failed:
+        case .failed, .hostKeyChanged:
             Circle().fill(.red).frame(width: 8, height: 8).help(Self.label(state))
+        case .authRequired, .cancelled:
+            Circle().fill(.orange).frame(width: 8, height: 8).help(Self.label(state))
         }
+    }
+}
+
+/// Bandeau en tête de barre latérale : bibliothèque illisible (rien n'est écrit) ou échec de sauvegarde.
+struct LibraryProblemBanner: View {
+    let library: LibraryStore
+
+    var body: some View {
+        if let problem = library.loadProblem {
+            banner(problem, symbol: "exclamationmark.triangle.fill") {
+                Button("Repartir d'une bibliothèque vide") { library.startFresh() }
+                Button("Continuer sans enregistrer") { library.dismissLoadProblem() }
+            }
+        } else if let error = library.lastError {
+            banner(error, symbol: "exclamationmark.triangle.fill") {
+                Button("Fermer") { library.dismissError() }
+            }
+        }
+    }
+
+    private func banner<A: View>(_ text: String, symbol: String, @ViewBuilder actions: () -> A) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label { Text(text).fixedSize(horizontal: false, vertical: true) } icon: { Image(systemName: symbol).foregroundStyle(.orange) }
+                .font(.caption)
+            HStack { actions() }.controlSize(.small)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.orange.opacity(0.12))
+        .overlay(alignment: .bottom) { Divider() }
+        .accessibilityElement(children: .contain)
     }
 }

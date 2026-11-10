@@ -12,7 +12,7 @@ struct TabBarView: View {
         let ws = model.workspace
         HStack(spacing: 2) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 2) {
+                HStack(spacing: 4) {
                     ForEach(ws.tabs) { tab in
                         TabItem(tab: tab, isActive: tab.id == ws.activeID, isHovered: hovered == tab.id,
                                 select: { ws.select(tab.id) }, close: { model.close(tab) })
@@ -50,6 +50,7 @@ struct TabBarView: View {
 }
 
 private struct TabItem: View {
+    static let width: CGFloat = 164
     let tab: TerminalTab
     let isActive: Bool
     let isHovered: Bool
@@ -58,18 +59,26 @@ private struct TabItem: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            indicator
+            indicator.frame(width: 12)
             Text(tab.displayTitle).lineLimit(1).truncationMode(.middle).font(.callout)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if tab.panes.count > 1 {
+                Text("\(tab.panes.count)").font(.caption2).foregroundStyle(.secondary)
+                    .accessibilityLabel("\(tab.panes.count) panneaux")
+            }
+            // Espace réservé identique sur tous les onglets ; visible au survol seulement.
             Button(action: close) {
                 Image(systemName: "xmark").font(.system(size: 9, weight: .semibold))
+                    .frame(width: 16, height: 16).contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
-            .opacity(isActive || isHovered ? 1 : 0)
-            .help("Fermer l'onglet (⌘W)")
+            .opacity(isHovered ? 1 : 0)
+            .allowsHitTesting(isHovered)
+            .help("Fermer l'onglet")
             .accessibilityLabel("Fermer \(tab.displayTitle)")
         }
-        .padding(.horizontal, 10).padding(.vertical, 4)
-        .frame(minWidth: 90, maxWidth: 220)
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .frame(width: Self.width)
         .background(isActive ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.clear), in: RoundedRectangle(cornerRadius: 6))
         .contentShape(RoundedRectangle(cornerRadius: 6))
         .onTapGesture(perform: select)

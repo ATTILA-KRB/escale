@@ -9,8 +9,9 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 
 ## Commandes
 - `scripts/test.sh` : tests du coeur + build de l'app. A lancer avant tout commit.
-- `scripts/selftest-ssh.sh` : recette de l'app contre un sshd local (ouvre une fenetre, sans prendre le focus).
-  Resultats dans `$OUT` (result.json + captures).
+- `scripts/selftest-ssh.sh`, `selftest-auth.sh`, `selftest-panes.sh` : recettes de l'app contre un sshd local
+  (ouvrent une fenetre, sans prendre le focus). Resultats dans `$OUT` (result.json + captures).
+  A lancer apres tout changement dans `Escale/`.
 
 ## Invariants
 1. Aucun type SwiftTerm hors de `Escale/Terminal/` : tout passe par `TerminalEngine`.

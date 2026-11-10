@@ -43,6 +43,8 @@ final class AppModel {
     var editor: EditorRequest?
     var pendingDeletion: DeletionRequest?
     var collapsedFolders: Set<UUID> = []
+    /// Feuille d'import ssh_config ouverte (nil : aucune).
+    var importer: ImportModel?
 
     @ObservationIgnored weak var mainWindow: NSWindow?
     @ObservationIgnored private var started = false
@@ -50,14 +52,15 @@ final class AppModel {
 
     init(options: LaunchOptions) {
         self.options = options
-        let url = options.libraryPath.map { URL(fileURLWithPath: $0) } ?? ProvisionalJSONHostRepository.defaultURL
-        library = LibraryStore(repository: ProvisionalJSONHostRepository(url: url))
+        let url = options.libraryPath.map { URL(fileURLWithPath: $0) } ?? LibraryStore.defaultURL
+        library = LibraryStore(repository: FileHostRepository(url: url))
         var ssh = OpenSSHOptions(
             configFile: options.sshConfig, userKnownHostsFile: options.knownHosts,
             strictHostKeyChecking: options.knownHosts != nil ? .yes : nil, extraOptions: options.sshOptions)
-        // Auth par clés/agent uniquement pour l'instant : BatchMode (jamais d'invite) est le défaut du cœur.
+        // BatchMode reste le défaut du cœur ; le transport le désactive tout seul quand askpass est configuré
+        // (toujours le cas ici : `ConnectionManager` branche l'app comme son propre SSH_ASKPASS).
         ssh.batchMode = true
-        connections = ConnectionManager(sshOptions: ssh)
+        connections = ConnectionManager(sshOptions: ssh, secretStore: AuthKeychain.makeStore(service: options.keychainService))
     }
 
     /// Environnement du fils : celui de l'app + TERM/COLORTERM (+ LANG UTF-8 si absent, cas Finder).
@@ -87,7 +90,21 @@ final class AppModel {
         guard !started else { return }
         started = true
         await library.load()
-        if let dir = options.selftestSSHDirectory {
+        if let dir = options.selftestPanesDirectory {
+            let runner = PanesSelfTest(directory: dir, model: self)
+            Task { @MainActor in
+                let ok = await runner.run()
+                await self.shutdown()
+                exit(ok ? 0 : 1)
+            }
+        } else if let dir = options.selftestAuthDirectory {
+            let runner = AuthSelfTest(directory: dir, model: self)
+            Task { @MainActor in
+                let ok = await runner.run()
+                await self.shutdown()
+                exit(ok ? 0 : 1)
+            }
+        } else if let dir = options.selftestSSHDirectory {
             let runner = SSHSelfTest(directory: dir, model: self)
             Task { @MainActor in
                 let ok = await runner.run()
@@ -134,10 +151,13 @@ final class AppModel {
         return tab
     }
 
-    func start(_ tab: TerminalTab) {
-        tab.startTask?.cancel()
-        tab.status = .connecting
-        tab.startTask = Task { await self.run(tab) }
+    /// Démarre (ou relance) le shell de chaque panneau de l'onglet.
+    func start(_ tab: TerminalTab) { for p in tab.panes { start(p) } }
+
+    func start(_ pane: Pane) {
+        pane.startTask?.cancel()
+        pane.status = .connecting
+        pane.startTask = Task { await self.run(pane) }
     }
 
     /// Fermeture d'un onglet : tue le pty (le gestionnaire de fin appelle `shellSessionDidEnd()` une fois)
@@ -145,13 +165,42 @@ final class AppModel {
     func close(_ tab: TerminalTab) {
         guard !tab.isClosing else { return }
         tab.isClosing = true
-        tab.startTask?.cancel()
         workspace.remove(tab)
-        tab.session.kill()
-        if let link = tab.link { tab.link = nil; link.release() }
+        for p in tab.panes { teardown(p) }
     }
 
-    func closeActiveTab() { if let t = workspace.activeTab { close(t) } }
+    /// Arrête un panneau : tâche de démarrage, pty (le gestionnaire de fin compte le shell) et lien maître.
+    private func teardown(_ pane: Pane) {
+        pane.isClosing = true
+        pane.startTask?.cancel()
+        pane.session.kill()
+        if let link = pane.link { pane.link = nil; link.release() }
+    }
+
+    /// Cmd-W : ferme le panneau actif, puis l'onglet quand il n'en reste plus.
+    func closeActiveTab() { closeActivePane() }
+
+    func closeActivePane() { if let t = workspace.activeTab { closePane(t.activePane, in: t) } }
+
+    /// Ferme un panneau (le frère reprend la place) ; le dernier panneau ferme l'onglet.
+    func closePane(_ pane: Pane, in tab: TerminalTab) {
+        guard !pane.isClosing else { return }
+        if tab.removePane(pane.id) { teardown(pane) } else { close(tab) }
+    }
+
+    func closePane(_ pane: Pane) {
+        if let t = workspace.tabs.first(where: { $0.pane(pane.id) != nil }) { closePane(pane, in: t) }
+    }
+
+    /// Scinde le panneau actif : le nouveau panneau ouvre un shell sur le même hôte (même maître, sans nouvelle
+    /// authentification) ou un terminal local si l'origine est locale.
+    @discardableResult
+    func splitActivePane(_ axis: PaneAxis) -> Pane? {
+        guard let t = workspace.activeTab, !t.isClosing else { return nil }
+        let p = t.splitActive(axis)
+        start(p)
+        return p
+    }
 
     func disconnect(_ host: HostProfile) {
         for t in workspace.tabs(forHost: host.id) { close(t) }
@@ -161,11 +210,24 @@ final class AppModel {
     func deleteHost(_ host: HostProfile) {
         disconnect(host)
         library.deleteHost(host.id)
+        // Le secret Trousseau d'un hôte supprimé ne doit pas lui survivre (invariant 7).
+        let store = connections.secretStore
+        Task { _ = await AuthKeychain.forgetAll(hostID: host.id, store: store) }
+    }
+
+    // MARK: Import ssh_config
+
+    /// Ouvre la feuille d'import (source : `--ssh-config-import-source` sinon ~/.ssh/config, lu en lecture seule).
+    func beginImport(destinationFolder: UUID? = nil) {
+        let source = options.sshConfigImportSource.map { URL(fileURLWithPath: $0) } ?? ImportModel.defaultSource
+        let m = ImportModel(library: library, source: source)
+        m.folderID = destinationFolder
+        importer = m
     }
 
     // MARK: Cycle de vie d'un shell
 
-    private func run(_ tab: TerminalTab) async {
+    private func run(_ tab: Pane) async {
         switch tab.kind {
         case .local(let command):
             launchLocal(tab, command: command)
@@ -177,7 +239,7 @@ final class AppModel {
         }
     }
 
-    private func launchLocal(_ tab: TerminalTab, command: [String]?) {
+    private func launchLocal(_ tab: Pane, command: [String]?) {
         let (exe, args): (String, [String])
         if let cmd = command { (exe, args) = (Self.resolve(cmd[0]), Array(cmd.dropFirst())) } else {
             (exe, args) = (ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh", ["-l"])
@@ -197,7 +259,7 @@ final class AppModel {
     }
 
     /// Connexion (si besoin) puis shell distant dans un pty ; reprend en boucle si le maître meurt entre-temps.
-    private func launchRemote(_ tab: TerminalTab, link: SSHLink) async {
+    private func launchRemote(_ tab: Pane, link: SSHLink) async {
         var attempts = 0
         while !tab.isClosing, !Task.isCancelled {
             do {
@@ -233,14 +295,14 @@ final class AppModel {
                 _ = await link.waitReconnect()
             } catch {
                 if tab.isClosing || Task.isCancelled { return }
-                tab.status = .failed(SSHLink.describe(error))
+                tab.status = .failed(link.message(for: error))
                 return
             }
         }
     }
 
     /// Fin d'un shell distant (appelée une fois par processus).
-    private func remoteShellEnded(_ tab: TerminalTab, link: SSHLink, status: PTYExitStatus) async {
+    private func remoteShellEnded(_ tab: Pane, link: SSHLink, status: PTYExitStatus) async {
         await link.transport.shellSessionDidEnd()
         connections.shellsEnded += 1
         if tab.isClosing || isShuttingDown { return }
@@ -252,14 +314,15 @@ final class AppModel {
         link.handleConnectionLost()
         let ok = await link.waitReconnect()
         if tab.isClosing || isShuttingDown { return }
-        guard ok else { tab.status = .failed("reconnexion abandonnée"); return }
+        // « Authentification requise », secret refusé, annulation, clé d'hôte modifiée : message du lien, bouton « Réessayer ».
+        guard ok else { tab.status = .failed(link.lastError ?? "reconnexion abandonnée"); return }
         let stamp = Date.now.formatted(.iso8601.year().month().day().dateSeparator(.dash).time(includingFractionalSeconds: false).timeSeparator(.colon).dateTimeSeparator(.space))
         tab.session.appendSeparator("Connexion rétablie le \(stamp)")
         await launchRemote(tab, link: link)
     }
 
     /// « Reconnecter maintenant » (bandeau) ou « Réessayer » (échec).
-    func retry(_ tab: TerminalTab) {
+    func retry(_ tab: Pane) {
         switch tab.status {
         case .reconnecting: tab.link?.retryNow()
         case .failed, .ended: start(tab)
@@ -272,7 +335,7 @@ final class AppModel {
     /// Tue tous les pty et déconnecte tous les maîtres (aucun ssh résiduel).
     func shutdown() async {
         isShuttingDown = true
-        for t in workspace.tabs { t.isClosing = true; t.startTask?.cancel(); t.session.kill() }
+        for t in workspace.tabs { t.isClosing = true; for p in t.panes { p.isClosing = true; p.startTask?.cancel(); p.session.kill() } }
         await connections.shutdownAll()
         // Laisse les gestionnaires de fin de pty compter leurs shells.
         for _ in 0..<40 where connections.shellsEnded < connections.shellsStarted {

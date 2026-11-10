@@ -2,7 +2,7 @@ import Foundation
 
 /// Arguments de lancement (pour les tests et le débogage) :
 /// - `--command <exécutable> [args...]` : tout ce qui suit est la commande d'un onglet local ;
-/// - `--library <fichier.json>` : bibliothèque d'hôtes (sinon Application Support/Escale/hosts.json) ;
+/// - `--library <fichier.json>` : bibliothèque d'hôtes (sinon Application Support/Escale/library.json) ;
 /// - `--ssh-option Clé=Valeur` (répétable), `--ssh-config <fichier>`, `--known-hosts <fichier>` ;
 /// - `--selftest <dossier>` (scénario local) et `--selftest-ssh <dossier>` (scénario SSH).
 struct LaunchOptions: Equatable {
@@ -13,8 +13,16 @@ struct LaunchOptions: Equatable {
     var sshConfig: String?
     var knownHosts: String?
     var sshOptions: [String] = []
+    /// `--selftest-auth <dossier>` : scénario d'authentification (askpass, dialogues, import, recherche).
+    var selftestAuthDirectory: String?
+    /// `--selftest-panes <dossier>` : scénario des panneaux scindés.
+    var selftestPanesDirectory: String?
+    /// `--ssh-config-import-source <fichier>` : source de l'import à la place de ~/.ssh/config (tests).
+    var sshConfigImportSource: String?
+    /// `--keychain-service <nom>` : service Keychain (tests : service unique, jamais celui de l'utilisateur).
+    var keychainService: String?
 
-    var isSelfTest: Bool { selftestDirectory != nil || selftestSSHDirectory != nil }
+    var isSelfTest: Bool { selftestDirectory != nil || selftestSSHDirectory != nil || selftestAuthDirectory != nil || selftestPanesDirectory != nil }
 
     static func parse(_ args: [String]) -> LaunchOptions {
         var o = LaunchOptions()
@@ -32,6 +40,10 @@ struct LaunchOptions: Equatable {
                 return o
             case "--selftest": o.selftestDirectory = value()
             case "--selftest-ssh": o.selftestSSHDirectory = value()
+            case "--selftest-auth": o.selftestAuthDirectory = value()
+            case "--selftest-panes": o.selftestPanesDirectory = value()
+            case "--ssh-config-import-source": o.sshConfigImportSource = value()
+            case "--keychain-service": o.keychainService = value()
             case "--library": o.libraryPath = value()
             case "--ssh-config": o.sshConfig = value()
             case "--known-hosts": o.knownHosts = value()

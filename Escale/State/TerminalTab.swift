@@ -2,55 +2,76 @@ import Foundation
 import Observation
 import EscaleCore
 
-/// Un onglet : un moteur de terminal (via `session`) + le processus pty courant.
+/// Un onglet : un arbre de panneaux (`PaneLayout`) dont chaque feuille est un `Pane`
+/// (moteur de terminal + shell). Les propriétés `session`, `status`, `link`… reflètent le panneau actif
+/// (ou le pire état), si bien qu'un onglet à un seul panneau se comporte comme avant.
 @MainActor
 @Observable
 final class TerminalTab: Identifiable {
-    enum Kind: Equatable {
-        case local(command: [String]?)
-        case host(HostProfile)
-    }
-    enum Status: Equatable {
-        case connecting
-        case running
-        case reconnecting
-        case ended(PTYExitStatus)
-        case failed(String)
-    }
+    typealias Kind = Pane.Kind
+    typealias Status = Pane.Status
 
     let id = UUID()
-    let kind: Kind
     let baseTitle: String
-    let session: TerminalSession
-    var status: Status = .connecting
-    /// Connexion maître qui porte ce shell (onglets SSH uniquement).
-    var link: SSHLink?
+    private(set) var layout: PaneLayout
+    private var panesByID: [UUID: Pane]
     var isClosing = false
-    /// Époque de la connexion au lancement du shell courant (voir `SSHLink.epoch`).
-    @ObservationIgnored var launchEpoch = 0
-    @ObservationIgnored var startTask: Task<Void, Never>?
+    /// Dernière taille de la zone des panneaux (renseignée par la vue) : sert à la navigation directionnelle
+    /// et aux bornes de redimensionnement.
+    @ObservationIgnored var viewSize = CGSize(width: 1000, height: 600)
 
     init(kind: Kind, baseTitle: String, session: TerminalSession = TerminalSession()) {
-        self.kind = kind; self.baseTitle = baseTitle; self.session = session
+        let p = Pane(kind: kind, baseTitle: baseTitle, session: session)
+        self.baseTitle = baseTitle
+        panesByID = [p.id: p]
+        layout = PaneLayout(first: p.id)
     }
 
-    var hostID: UUID? { if case .host(let h) = kind { h.id } else { nil } }
-    var isRemote: Bool { hostID != nil }
-    var displayTitle: String { session.title.isEmpty ? baseTitle : session.title }
+    private var bounds: CGRect { CGRect(origin: .zero, size: viewSize) }
 
-    /// Message du bandeau non modal ; nil quand l'onglet fonctionne normalement.
-    var bannerMessage: String? {
-        switch status {
-        case .running: return nil
-        case .connecting: return "Connexion à \(baseTitle)…"
-        case .failed(let m): return "Échec de la connexion : \(m)"
-        case .ended: return session.statusText
-        case .reconnecting:
-            if case .reconnecting(let attempt, let retryIn)? = link?.state {
-                if let s = retryIn { return "Connexion perdue — nouvelle tentative dans \(s) s" }
-                return "Connexion perdue — reconnexion en cours (tentative \(attempt))…"
-            }
-            return "Connexion perdue — reconnexion…"
-        }
+    // MARK: Panneaux
+
+    /// Panneaux dans l'ordre de l'arbre (gauche→droite, haut→bas).
+    var panes: [Pane] { layout.leafIDs.compactMap { panesByID[$0] } }
+    var activePane: Pane { panesByID[layout.active] ?? panes[0] }
+    func pane(_ id: UUID) -> Pane? { panesByID[id] }
+
+    // MARK: Reflet du panneau actif / de l'ensemble
+
+    var kind: Kind { activePane.kind }
+    var session: TerminalSession { activePane.session }
+    var link: SSHLink? { activePane.link }
+    var hostID: UUID? { activePane.hostID }
+    var isRemote: Bool { activePane.isRemote }
+    var displayTitle: String { activePane.displayTitle }
+    var bannerMessage: String? { activePane.bannerMessage }
+    /// Pire état parmi les panneaux (échec > reconnexion > connexion > terminé > actif).
+    var status: Status {
+        panes.max { $0.status.severity < $1.status.severity }?.status ?? .running
     }
+
+    // MARK: Opérations (le cycle de vie des shells est dans `AppModel`)
+
+    /// Crée un panneau voisin du panneau actif (même hôte / même commande) ; il devient actif.
+    func splitActive(_ axis: PaneAxis) -> Pane {
+        let src = activePane
+        let p = Pane(kind: src.kind, baseTitle: src.baseTitle)
+        panesByID[p.id] = p
+        layout.split(src.id, axis: axis, newID: p.id)
+        return p
+    }
+
+    /// Retire un panneau de l'arbre ; faux s'il était le dernier (l'onglet doit alors être fermé).
+    func removePane(_ id: UUID) -> Bool {
+        guard layout.remove(id) else { return false }
+        panesByID[id] = nil
+        return true
+    }
+
+    func setActive(_ id: UUID) { if layout.contains(id), layout.active != id { layout.active = id } }
+    func focusNext() { layout.focusNext() }
+    func focusPrevious() { layout.focusPrevious() }
+    @discardableResult func focus(_ dir: PaneDirection) -> Bool { layout.focus(dir, in: bounds) }
+    func equalize() { layout.equalize() }
+    @discardableResult func setRatio(_ splitID: UUID, _ ratio: Double) -> Bool { layout.setRatio(splitID, ratio, in: bounds) }
 }
