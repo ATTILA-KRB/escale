@@ -21,13 +21,15 @@ public struct HostProfile: Codable, Hashable, Identifiable, Sendable {
     /// Bastions traversés dans l'ordre (ProxyJump), au format `user@host:port`.
     public var jumpHosts: [String]
     public var tags: [String]
+    /// Dossier de la bibliothèque qui contient cet hôte (`nil` = racine).
+    public var folderID: UUID?
 
     public init(
         id: UUID = UUID(), name: String, host: String, port: Int? = nil, user: String? = nil,
-        auth: Auth = .openSSHDefaults, jumpHosts: [String] = [], tags: [String] = []
+        auth: Auth = .openSSHDefaults, jumpHosts: [String] = [], tags: [String] = [], folderID: UUID? = nil
     ) {
         self.id = id; self.name = name; self.host = host; self.port = port; self.user = user
-        self.auth = auth; self.jumpHosts = jumpHosts; self.tags = tags
+        self.auth = auth; self.jumpHosts = jumpHosts; self.tags = tags; self.folderID = folderID
     }
 
     /// Cible passée à ssh (`user@host` ou `host`).
