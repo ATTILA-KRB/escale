@@ -147,3 +147,25 @@ Décisions qui en découlent :
 4. OSC 52 : lecture du presse-papiers refusée par défaut.
 5. Captures de test : `screencapture -l <windowID>` (cacheDisplay sort noir avec Metal).
 6. Spike S3 à prévoir avant M1 : IME réel (CJK, touches mortes AZERTY) et accessibilité.
+
+## 9. Avancement (2026-11-10)
+
+Depot `~/Documents/Escale`, nom retenu : Escale. `scripts/test.sh` = tests du coeur + build de l'app.
+
+Fait et verifie (58 tests, dont 16 contre un sshd local non privilegie) :
+- M0 socle : XcodeGen, EscaleCore, contrats `SSHTransport`, `ByteChannel`, `TerminalEngine`.
+- `SFTPClient` (v3, transferts en flux, reprise, annulation, extensions posix-rename et limits).
+- `OpenSSHTransport` (maitre ControlMaster, canal SFTP, tunnels L/R/D verifies par sonde, plafond de sessions).
+- `PTYProcess` (forkpty : `posix_spawn` + SETSID n'acquiert pas le terminal de controle sous Darwin).
+- `SwiftTermEngine` + fenetre terminal unique, auto-test `--selftest <dossier>` (13 verifications, captures).
+- Test d'assemblage : shell interactif dans un pty + SFTP sur une seule authentification.
+
+Reste pour M1 : modele de sessions persistant, barre laterale, onglets, panneaux, askpass/Keychain (mot de passe, 2FA),
+reconnexion, branchement de `OpenSSHTransport` dans l'app (aujourd'hui la fenetre lance un shell local ou `--command`).
+
+Dettes connues :
+- SFTP : pas de delai par requete apres negociation ; reprise sans verification du contenu ; fenetre fixe (32 x 32 Kio)
+  non ajustee a la latence ; rien de mesure sur un lien reel.
+- PTY : un fd ouvert par un autre thread entre l'inventaire et le fork peut fuir vers le fils.
+- Terminal : IME et accessibilite non verifies (spike S3) ; politique OSC 52 codee mais non testee.
+- Compteur de sessions shell : decremente a la main (`shellSessionDidEnd`), a lier a la fin du pty.
