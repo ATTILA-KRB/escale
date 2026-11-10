@@ -169,3 +169,19 @@ Dettes connues :
 - PTY : un fd ouvert par un autre thread entre l'inventaire et le fork peut fuir vers le fils.
 - Terminal : IME et accessibilite non verifies (spike S3) ; politique OSC 52 codee mais non testee.
 - Compteur de sessions shell : decremente a la main (`shellSessionDidEnd`), a lier a la fin du pty.
+
+### Vague 2 (2026-11-10, suite)
+
+Fait et verifie (137 tests du coeur, recette `selftest-ssh.sh` a 65 verifications) :
+- Coeur `Library/` : `FileHostRepository` (JSON versionne, 0600, fichier corrompu mis de cote), operations de
+  bibliotheque, `SSHConfigImporter` (lecture seule, hote = alias), `HostSearch`.
+- Coeur `Secrets/` : `KeychainSecretStore`, `AskpassServer`/`AskpassClient` (socket Unix, jeton, meme uid),
+  `StoredSecretResponder`, option `askpass` d'`OpenSSHTransport`. Phrase de passe et cle d'hote testees de bout en bout.
+- App : barre laterale, onglets, plusieurs onglets par connexion, terminal local, reconnexion qui garde l'ecran,
+  second maitre au-dela de 9 sessions.
+
+Pas encore branche dans l'app : `FileHostRepository` et `HostSearch` (l'app a un depot et un filtre provisoires),
+import ssh_config, askpass et ses dialogues. Non teste : connexion par mot de passe reussie et 2FA (sshd local sans PAM),
+raccourcis clavier reels, glisser-deposer des onglets, interactions de la barre laterale, mode clair.
+Defauts visuels connus : bandeau de reconnexion qui recouvre les premieres lignes, premiere ligne du terminal rognee
+sous la barre d'onglets, chemin de cle tronque dans la feuille d'edition.

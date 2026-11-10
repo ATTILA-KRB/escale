@@ -8,13 +8,15 @@ import EscaleCore
 @MainActor
 final class SelfTest {
     let dir: String
-    let engine: SwiftTermEngine
-    let session: TerminalSession
+    let model: AppModel
+    let tab: TerminalTab
+    var session: TerminalSession { tab.session }
+    var engine: SwiftTermEngine { tab.session.engine }
     private var checks: [(String, Bool, String)] = []
     private var shots: [String] = []
 
-    init(directory: String, engine: SwiftTermEngine, session: TerminalSession) {
-        dir = directory; self.engine = engine; self.session = session
+    init(directory: String, model: AppModel, tab: TerminalTab) {
+        dir = directory; self.model = model; self.tab = tab
     }
 
     private var text: String { engine.text(includingScrollback: true) }
@@ -49,11 +51,13 @@ final class SelfTest {
         // Fenêtre
         let hasWindow = await wait(10) { engine.view.window != nil }
         check("fenetre_creee", hasWindow)
+        check("fenetre_principale_connue", await wait(5) { model.mainWindow != nil })
         guard hasWindow, let win = engine.view.window else { return finish() }
         win.orderFrontRegardless() // visible sans activer l'app ni voler le focus clavier
         check("metal_actif_ou_repli", true, "metal=\(engine.isUsingMetal)")
 
-        // 0. Shell prêt
+        // 0. Shell prêt (le pty est lancé de façon asynchrone par le modèle)
+        _ = await wait(10) { tab.status == .running }
         type("PROMPT='$ '; clear\r")
         check("shell_pret", await waitText("$ "))
 

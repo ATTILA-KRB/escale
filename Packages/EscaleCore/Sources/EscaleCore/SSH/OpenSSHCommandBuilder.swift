@@ -28,7 +28,7 @@ public enum OpenSSHCommandBuilderError: Error, Equatable, Sendable, CustomString
 /// Réglages de la ligne de commande ssh, indépendants de l'hôte visé.
 public struct OpenSSHOptions: Sendable, Equatable {
     public enum StrictHostKeyChecking: String, Sendable, Equatable {
-        case yes, no
+        case yes, no, ask
         case acceptNew = "accept-new"
     }
 

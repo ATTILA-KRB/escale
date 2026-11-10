@@ -10,6 +10,9 @@ final class LocalSSHD: @unchecked Sendable {
         var maxSessions = 10
         /// Nombre de clés autorisées à se connecter (la clé « mauvaise » n'est jamais autorisée).
         var extra: [String] = []
+        /// Active `PasswordAuthentication` : ssh pose alors l'invite de mot de passe (askpass), mais sans PAM (non privilégié)
+        /// sshd ne peut JAMAIS valider un mot de passe : l'authentification échoue toujours.
+        var passwordAuthentication = false
     }
 
     struct StartError: Error, CustomStringConvertible {
@@ -35,6 +38,28 @@ final class LocalSSHD: @unchecked Sendable {
     var clientKey: String { "\(directory)/client" }
     /// Clé valide côté client mais absente de authorized_keys (échec d'authentification).
     var wrongKey: String { "\(directory)/wrong" }
+    /// Clé autorisée mais protégée par la phrase de passe `LocalSSHD.passphrase` (ssh la demande via askpass).
+    var passphraseKey: String { "\(directory)/ppkey" }
+    static let passphrase = "escale-test-passphrase"
+    /// Clé publique d'hôte (`ssh-ed25519 AAAA…`) du sshd de test.
+    func hostPublicKeyFields() throws -> String {
+        try String(contentsOfFile: "\(directory)/hostkey.pub", encoding: .utf8).split(separator: " ").prefix(2).joined(separator: " ")
+    }
+    /// Crée un known_hosts de test : vide, ou avec une AUTRE clé d'hôte pour ce sshd (clé « modifiée »).
+    func makeKnownHosts(named name: String, withChangedHostKey: Bool = false) throws -> String {
+        let path = "\(directory)/\(name)"
+        var content = ""
+        if withChangedHostKey {
+            let other = "\(directory)/otherhost"
+            if !FileManager.default.fileExists(atPath: other) {
+                try Self.run(Self.keygenPath, ["-q", "-t", "ed25519", "-N", "", "-C", "escale-other", "-f", other])
+            }
+            let fields = try String(contentsOfFile: other + ".pub", encoding: .utf8).split(separator: " ").prefix(2).joined(separator: " ")
+            content = "[127.0.0.1]:\(port) \(fields)\n"
+        }
+        try content.write(toFile: path, atomically: true, encoding: .utf8)
+        return path
+    }
     var knownHosts: String { "\(directory)/known_hosts" }
     var logPath: String { "\(directory)/sshd.log" }
     private var process: Process?
@@ -65,7 +90,11 @@ final class LocalSSHD: @unchecked Sendable {
         for name in ["hostkey", "client", "wrong"] where !fm.fileExists(atPath: "\(directory)/\(name)") {
             try Self.run(Self.keygenPath, ["-q", "-t", "ed25519", "-N", "", "-C", "escale-test", "-f", "\(directory)/\(name)"])
         }
+        if !fm.fileExists(atPath: passphraseKey) {
+            try Self.run(Self.keygenPath, ["-q", "-t", "ed25519", "-N", Self.passphrase, "-C", "escale-test-pp", "-f", passphraseKey])
+        }
         let pub = try String(contentsOfFile: "\(directory)/client.pub", encoding: .utf8)
+            + String(contentsOfFile: "\(directory)/ppkey.pub", encoding: .utf8)
         try pub.write(toFile: "\(directory)/authorized_keys", atomically: true, encoding: .utf8)
         try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: "\(directory)/authorized_keys")
         // Les tests ignorent known_hosts de l'utilisateur : on enregistre la clé d'hôte du sshd de test.
@@ -79,7 +108,7 @@ final class LocalSSHD: @unchecked Sendable {
         HostKey \(directory)/hostkey
         PidFile \(directory)/sshd.pid
         UsePAM no
-        PasswordAuthentication no
+        PasswordAuthentication \(options.passwordAuthentication ? "yes" : "no")
         KbdInteractiveAuthentication no
         PubkeyAuthentication yes
         AuthorizedKeysFile \(directory)/authorized_keys

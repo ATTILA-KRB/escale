@@ -7,6 +7,9 @@ let package = Package(
     products: [.library(name: "EscaleCore", targets: ["EscaleCore"])],
     targets: [
         .target(name: "EscaleCore"),
-        .testTarget(name: "EscaleCoreTests", dependencies: ["EscaleCore"]),
+        // SSH_ASKPASS minimal : un main de 3 lignes, toute la logique est dans EscaleCore (AskpassClient).
+        .executableTarget(name: "escale-askpass", dependencies: ["EscaleCore"]),
+        // Les tests d'intégration lancent le vrai exécutable askpass via ssh.
+        .testTarget(name: "EscaleCoreTests", dependencies: ["EscaleCore", "escale-askpass"]),
     ]
 )

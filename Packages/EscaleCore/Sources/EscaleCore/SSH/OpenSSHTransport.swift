@@ -19,16 +19,19 @@ public actor OpenSSHTransport: SSHTransport {
         public var forwardProbeTimeout: TimeInterval
         /// Délai d'attente de la confirmation d'ouverture d'une session par le maître.
         public var sessionOpenTimeout: TimeInterval
+        /// Authentification interactive (mot de passe, phrase de passe, 2FA, clé d'hôte) via askpass. nil : `BatchMode`, comme avant.
+        public var askpass: AskpassConfiguration?
 
         public init(
             ssh: OpenSSHOptions = OpenSSHOptions(), controlPath: String? = nil, socketDirectory: String? = nil,
             masterReadyTimeout: TimeInterval = 20, maxSessions: Int = 10, probeForwards: Bool = true,
-            forwardProbeTimeout: TimeInterval = 1.0, sessionOpenTimeout: TimeInterval = 5
+            forwardProbeTimeout: TimeInterval = 1.0, sessionOpenTimeout: TimeInterval = 5,
+            askpass: AskpassConfiguration? = nil
         ) {
             self.ssh = ssh; self.controlPath = controlPath; self.socketDirectory = socketDirectory
             self.masterReadyTimeout = masterReadyTimeout; self.maxSessions = maxSessions
             self.probeForwards = probeForwards; self.forwardProbeTimeout = forwardProbeTimeout
-            self.sessionOpenTimeout = sessionOpenTimeout
+            self.sessionOpenTimeout = sessionOpenTimeout; self.askpass = askpass
         }
     }
 
@@ -44,6 +47,7 @@ public actor OpenSSHTransport: SSHTransport {
     private var channels: [UUID: OpenSSHProcessChannel] = [:]
     private var shellSessions = 0
     private var tunnels: Set<TunnelSpec> = []
+    private var askpassServer: AskpassServer?
 
     public init(profile: HostProfile, configuration: Configuration = Configuration()) {
         self.profile = profile
@@ -63,6 +67,9 @@ public actor OpenSSHTransport: SSHTransport {
 
     /// Tunnels actuellement actifs et vérifiés.
     public var activeTunnels: Set<TunnelSpec> { tunnels }
+
+    /// Socket du serveur askpass tant que la connexion vit (nil sans askpass, ou déconnecté).
+    public var askpassSocketPath: String? { get async { await askpassServer?.socketPath } }
 
     /// Journal (stderr) du maître : messages ssh, refus de forwarding (`open failed: …`), etc.
     public func masterJournal() -> String {
@@ -85,7 +92,54 @@ public actor OpenSSHTransport: SSHTransport {
     }
 
     private func performConnect() async throws {
-        let builder = try makeBuilder()
+        guard let ask = configuration.askpass else {
+            try await launchMaster(builder: try makeBuilder(), server: nil)
+            return
+        }
+        // Un serveur (et un jeton) neufs par connexion maître ; il vit jusqu'à `disconnect()`.
+        if let old = askpassServer { await old.stop(); askpassServer = nil }
+        let server = AskpassServer(responder: ask.responder, limits: ask.limits, socketDirectory: ask.socketDirectory)
+        do { _ = try await server.start() } catch { throw SSHTransportError.masterFailed("serveur askpass indisponible : \(error)") }
+        askpassServer = server
+        do {
+            var options = configuration.ssh
+            options.batchMode = false   // sinon ssh n'appelle jamais askpass
+            for (k, v) in try await server.environment(askpassExecutable: ask.executablePath) { options.environment[k] = v }
+            let p = try preparePaths()
+            let builder: OpenSSHCommandBuilder
+            do { builder = try OpenSSHCommandBuilder(profile: profile, controlPath: p.socket, options: options) }
+            catch { throw SSHTransportError.masterFailed("paramètres invalides : \(error)") }
+            try await launchMaster(builder: builder, server: server)
+            await ask.responder.authenticationSucceeded()
+        } catch {
+            let mapped = await mapAuthenticationFailure(error, server: server)
+            await server.stop()
+            askpassServer = nil
+            await ask.responder.authenticationFailed()
+            throw mapped
+        }
+    }
+
+    /// Type l'échec d'un maître authentifié par askpass : annulation, clé d'hôte, secret refusé, délai.
+    private func mapAuthenticationFailure(_ error: Error, server: AskpassServer) async -> Error {
+        guard case SSHTransportError.masterFailed(let message) = error else { return error }
+        let outcome = await server.outcome
+        let journal = masterJournal()
+        let lower = journal.lowercased()
+        // ssh n'appelle pas askpass pour une clé modifiée : seul son journal le dit.
+        if outcome.hostKeyChanged || lower.contains("remote host identification has changed")
+            || (lower.contains("host key for") && lower.contains("has changed")) {
+            let line = OpenSSHJournal.meaningfulLines(journal).last { $0.lowercased().contains("has changed") }
+            return SSHAuthenticationError.hostKeyChanged(line ?? message)
+        }
+        if outcome.timedOut { return SSHAuthenticationError.timedOut }
+        if outcome.hostKeyRejected { return SSHAuthenticationError.hostKeyRejected }
+        if outcome.cancelled { return SSHAuthenticationError.cancelled }
+        if outcome.secretProvided && message.contains("Permission denied") { return SSHAuthenticationError.wrongSecret(message) }
+        return error
+    }
+
+    private func launchMaster(builder: OpenSSHCommandBuilder, server: AskpassServer?) async throws {
         let p = try preparePaths()
         if let old = master { await terminate(old) ; master = nil }
 
@@ -114,8 +168,12 @@ public actor OpenSSHTransport: SSHTransport {
         try? logHandle.close()
         master = process
 
-        let deadline = Date().addingTimeInterval(configuration.masterReadyTimeout)
+        var deadline = Date().addingTimeInterval(configuration.masterReadyTimeout)
         while Date() < deadline {
+            // L'attente d'une saisie utilisateur ne consomme pas le délai de connexion.
+            if let server, await server.pendingPromptCount > 0 {
+                deadline = Date().addingTimeInterval(configuration.masterReadyTimeout)
+            }
             if !process.isRunning {
                 let journal = masterJournal()
                 let msg = OpenSSHJournal.lastError(journal) ?? "ssh a quitté avec le code \(process.terminationStatus)"
@@ -149,6 +207,7 @@ public actor OpenSSHTransport: SSHTransport {
             await terminate(m)
             master = nil
         }
+        if let server = askpassServer { await server.stop(); askpassServer = nil }
         if let p = paths {
             try? FileManager.default.removeItem(atPath: p.socket)
             try? FileManager.default.removeItem(atPath: p.log)

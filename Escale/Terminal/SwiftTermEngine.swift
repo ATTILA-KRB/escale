@@ -79,6 +79,9 @@ final class SwiftTermEngine: TerminalEngine {
     /// Donne le focus clavier à la vue du terminal.
     func focus() { terminalView.window?.makeFirstResponder(terminalView) }
 
+    /// Vrai si la vue du terminal est le premier répondeur de sa fenêtre (vérifié par l'auto-test).
+    var hasKeyboardFocus: Bool { terminalView.window?.firstResponder === terminalView }
+
     // MARK: - Pont vers TerminalViewDelegate (SwiftTerm)
 
     private final class Bridge: TerminalViewDelegate {

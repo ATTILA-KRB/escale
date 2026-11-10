@@ -9,6 +9,8 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 
 ## Commandes
 - `scripts/test.sh` : tests du coeur + build de l'app. A lancer avant tout commit.
+- `scripts/selftest-ssh.sh` : recette de l'app contre un sshd local (ouvre une fenetre, sans prendre le focus).
+  Resultats dans `$OUT` (result.json + captures).
 
 ## Invariants
 1. Aucun type SwiftTerm hors de `Escale/Terminal/` : tout passe par `TerminalEngine`.
@@ -20,6 +22,10 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 6. Chemin de socket de controle court (limite ~104 octets).
 7. Aucun secret dans les modeles ni sur disque : references Keychain uniquement.
 8. Ne jamais ecrire dans `~/.ssh`.
+9. Ne jamais tuer des processus ssh par motif large (`pkill -f "ssh -M"`) : viser un pid ou un chemin propre a la
+   session. Un motif large coupe les connexions d'une app en service et fait echouer les tests lances en parallele.
+10. Une cle d'hote modifiee est toujours refusee, jamais proposee a l'utilisateur comme simple confirmation.
+11. Un secret n'est memorise dans le Keychain qu'apres une connexion reussie ; jamais dans un journal ni un message d'erreur.
 
 ## Conventions
 - Swift 6, concurrence stricte. Commentaires en francais. Sujets de commit sans accents.

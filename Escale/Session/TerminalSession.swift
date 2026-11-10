@@ -2,68 +2,86 @@ import Foundation
 import Observation
 import EscaleCore
 
-/// Relie un moteur de terminal (`any TerminalEngine`) à un `PTYProcess` :
-/// sortie pty → `feed`, saisie → `write`, redimensionnement → `resize`,
-/// fin du processus → état observable. Ne connaît aucun type SwiftTerm.
+/// Un moteur de terminal (donc un écran et son scrollback) qui survit à plusieurs processus pty
+/// successifs : reconnexion SSH, relance d'un shell. Relie le moteur au processus COURANT :
+/// sortie pty → `feed`, saisie → `write`, redimensionnement → `resize`.
+/// Ne connaît aucun type SwiftTerm (le moteur est celui de `Escale/Terminal/`).
 @MainActor
 @Observable
 final class TerminalSession: TerminalEngineDelegate {
     enum State: Equatable {
+        case idle
         case running
         case finished(PTYExitStatus)
     }
 
-    private(set) var state: State = .running
-    private(set) var title: String
+    private(set) var state: State = .idle
+    /// Titre annoncé par le programme (OSC 0/2) ; vide tant qu'aucun n'a été reçu.
+    private(set) var title: String = ""
     private(set) var workingDirectory: URL?
 
-    @ObservationIgnored let engine: any TerminalEngine
-    @ObservationIgnored let process: PTYProcess
-    @ObservationIgnored private var pumpTask: Task<Void, Never>?
+    @ObservationIgnored let engine: SwiftTermEngine
+    @ObservationIgnored private var process: PTYProcess?
+    @ObservationIgnored private var generation = 0
 
-    init(engine: any TerminalEngine, process: PTYProcess, title: String = "Escale") {
+    init(engine: SwiftTermEngine = SwiftTermEngine()) {
         self.engine = engine
-        self.process = process
-        self.title = title
         engine.delegate = self
-        // Alignement immédiat si le moteur a déjà une taille différente de celle du pty.
-        let s = engine.size
-        process.resize(columns: s.columns, rows: s.rows)
-        pumpTask = Task { [weak self] in
-            for await chunk in process.output {
-                guard let self else { return }
-                self.engine.feed(chunk)
-            }
-            let status = await process.waitForExit()
-            self?.state = .finished(status)
-        }
     }
 
     var statusText: String? {
         guard case .finished(let st) = state else { return nil }
         switch st {
-        case .exited(let c): return "Terminé, code \(c)"
-        case .signaled(let s): return "Terminé, signal \(s)"
+        case .exited(let c): return "Session terminée (code \(c))"
+        case .signaled(let s): return "Session terminée (signal \(s))"
         }
     }
 
-    func terminate() { process.terminate() }
-    func kill() { process.kill() }
-
-    /// Lance `executable` dans un pty dimensionné d'après le moteur.
-    static func launch(engine: any TerminalEngine, executable: String, arguments: [String],
-                       environment: [String: String], currentDirectory: String? = nil) throws -> TerminalSession {
+    /// Branche un nouveau processus sur le moteur (l'écran existant est conservé).
+    /// `onExit` est appelé exactement une fois, à la fin de CE processus, même si la session a disparu.
+    func attach(_ p: PTYProcess, onExit: @escaping @MainActor (PTYExitStatus) -> Void) {
+        generation += 1
+        let gen = generation
+        process = p
+        state = .running
         let s = engine.size
-        let p = try PTYProcess(executable: executable, arguments: arguments, environment: environment,
-                               columns: s.columns, rows: s.rows, currentDirectory: currentDirectory)
-        return TerminalSession(engine: engine, process: p, title: (executable as NSString).lastPathComponent)
+        p.resize(columns: s.columns, rows: s.rows)
+        Task { @MainActor [weak self] in
+            for await chunk in p.output {
+                guard let self, self.generation == gen else { continue }
+                self.engine.feed(chunk)
+            }
+            let status = await p.waitForExit()
+            if let self, self.generation == gen {
+                self.state = .finished(status)
+                self.process = nil
+            }
+            onExit(status)
+        }
     }
+
+    /// Écrit du texte directement dans l'écran (séparateurs, messages), sans passer par le pty.
+    func appendNotice(_ text: String) {
+        engine.feed(Data(("\r\n\u{1b}[2m" + text + "\u{1b}[0m\r\n").utf8))
+    }
+
+    /// Ligne de séparation sur toute la largeur de l'écran, texte centré (« ──── texte ──── »).
+    func appendSeparator(_ label: String) {
+        let width = max(engine.size.columns, label.count + 6)
+        let side = (width - label.count - 2) / 2
+        let bar = String(repeating: "─", count: max(side, 2))
+        appendNotice("\(bar) \(label) \(bar)")
+    }
+
+    func kill() { process?.kill() }
 
     // MARK: TerminalEngineDelegate
 
-    func terminal(_ engine: any TerminalEngine, didProduceInput bytes: Data) { process.write(bytes) }
+    func terminal(_ engine: any TerminalEngine, didProduceInput bytes: Data) {
+        if state == .running { process?.write(bytes) }
+    }
     func terminal(_ engine: any TerminalEngine, didResize size: TerminalSize) {
-        process.resize(columns: size.columns, rows: size.rows)
+        process?.resize(columns: size.columns, rows: size.rows)
     }
     func terminal(_ engine: any TerminalEngine, didChangeTitle title: String) { self.title = title }
     func terminal(_ engine: any TerminalEngine, didChangeWorkingDirectory url: URL) { workingDirectory = url }
