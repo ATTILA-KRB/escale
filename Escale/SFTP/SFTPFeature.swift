@@ -177,8 +177,12 @@ struct SFTPScene: ViewModifier {
         @Bindable var feature = model.sftp
         content
             .inspector(isPresented: $feature.isVisible) {
-                SFTPBrowserView(feature: feature)
-                    .inspectorColumnWidth(min: 300, ideal: 380, max: 640)
+                // SwiftUI construit le contenu d'un inspecteur même replié : sans cette garde, le `.task` du
+                // navigateur ouvrirait un canal SFTP (une session du maître) dès qu'un onglet SSH devient actif.
+                if feature.isVisible {
+                    SFTPBrowserView(feature: feature)
+                        .inspectorColumnWidth(min: 300, ideal: 380, max: 640)
+                }
             }
     }
 }

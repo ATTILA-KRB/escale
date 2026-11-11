@@ -62,7 +62,7 @@ public actor OpenSSHTransport: SSHTransport {
     public var controlSocketPath: String? { paths?.socket }
 
     /// Nombre de sessions ouvertes sur ce maître par ce transport (canaux SFTP + shells déclarés).
-    public var sessionCount: Int { channels.count + shellSessions }
+    public var sessionCount: Int { channels.count + shellSessions + execSessions }
 
     /// PID du processus maître (nil si non connecté).
     public var masterProcessIdentifier: Int32? { master.flatMap { $0.isRunning ? $0.processIdentifier : nil } }

@@ -73,6 +73,7 @@ enum SFTPMessages {
             case .localIO(let m): return m
             case .invalidResumeOffset(let m): return m
             case .cancelled: return "Annulé."
+            case .requestTimeout(let s): return "Le serveur SFTP n'a pas répondu en \(Int(s.rounded())) s."
             }
         }
         if let t = error as? SSHTransportError {

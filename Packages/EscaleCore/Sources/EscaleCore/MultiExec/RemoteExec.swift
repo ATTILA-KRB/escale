@@ -38,7 +38,8 @@ extension OpenSSHCommandBuilder {
     /// Commande distante NON interactive sur le maître : pas de pty (`-T`), stdin fermé (`-n`), jamais d'invite.
     /// Invariant 2 : le préfixe secondaire porte `ControlMaster=no` et `ProxyCommand=/usr/bin/false`.
     /// `remoteCommand` est UNE chaîne interprétée par le shell distant, comme le veut ssh.
-    public func execArguments(remoteCommand: String) -> [String] {
+    /// Distincte de `execArguments` (applications X11) : BatchMode, journal réduit, jamais de redirection X11.
+    public func batchExecArguments(remoteCommand: String) -> [String] {
         secondaryPrefix() + ["-T", "-n", "-o", "BatchMode=yes", "-o", "LogLevel=ERROR"] + targetOptions()
             + ["--", profile.target, remoteCommand]
     }
@@ -55,7 +56,7 @@ extension OpenSSHTransport {
         _ remoteCommand: String, timeout: TimeInterval = 60, maxOutputBytes: Int = 64 * 1024
     ) async throws -> RemoteExecResult {
         guard await isAlive() else { throw SSHTransportError.notConnected }
-        guard sessionCount + execSessions < configuration.maxSessions else {
+        guard sessionCount < configuration.maxSessions else {
             throw SSHTransportError.sessionRefused("plafond local de \(configuration.maxSessions) sessions atteint")
         }
         let builder = try makeBuilder()
@@ -63,7 +64,7 @@ extension OpenSSHTransport {
         defer { execSessions -= 1 }
         let started = Date()
         var r = await BoundedProcessRunner.run(
-            executable: configuration.ssh.sshPath, arguments: builder.execArguments(remoteCommand: remoteCommand),
+            executable: configuration.ssh.sshPath, arguments: builder.batchExecArguments(remoteCommand: remoteCommand),
             environment: configuration.ssh.environment.merging(builder.environment) { _, n in n },
             timeout: timeout, maxOutputBytes: max(0, maxOutputBytes))
         r.duration = Date().timeIntervalSince(started)

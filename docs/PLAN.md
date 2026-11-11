@@ -98,21 +98,6 @@ Conséquence : distribution directe (DMG + Sparkle), pas de Mac App Store. À co
 | M4 distribution | signature, notarisation, DMG, Sparkle | installation propre sur un Mac vierge |
 | M5 V1.1 | macros, imports, X11 via XQuartz | `xeyes` affiché en un clic |
 
-### M5 imports (sessions MobaXterm, PuTTY, CSV)
-
-Cœur `Packages/EscaleCore/Sources/EscaleCore/Import/` : protocole `SessionImporter` (lecture seule, `parse(data:)` / `parse(fileAt:)`),
-`MobaXtermImporter` (`.mxtsessions` ou `MobaXterm.ini`, Windows-1252, dossiers `SubRep`, passerelles → `jumpHosts`, X11),
-`PuTTYRegImporter` (export `.reg` UTF-16LE, `PortForwardings` → `TunnelSpec`, `X11Forward`, `/` dans le nom → dossiers),
-`CSVSessionImporter` (`name,host,port,user,folder,tags`, séparateur `,` `;` ou tab), `SessionImportMerge` (dédoublonnage host+port+user,
-dossiers recréés sous le dossier cible, dossier existant réutilisé sans tenir compte de la casse). Formats MobaXterm et PuTTY
-documentés en commentaire de tête avec leurs sources publiques.
-- Jamais de secret : mots de passe (champ MobaXterm, `[Passwords]`, `ProxyPassword`, colonne CSV `password`) ignorés et comptés (« n mots de passe non importés »).
-- Clés `.ppk` ou chemins Windows : non reprises, avertissement avec le chemin d'origine (OpenSSH ne lit pas le .ppk).
-- Non importés : sessions non SSH (Telnet, RDP, VNC, FTP, série…), tunnels MobaXterm (hors ligne de session), commandes de connexion.
-- App `Escale/Import/` : Fichier › Importer › MobaXterm / PuTTY / CSV (`NSOpenPanel`), feuille d'aperçu (cases, doublons grisés, avertissements,
-  dossier cible, « garder les dossiers d'origine »). L'import `~/.ssh/config` reste celui d'`ImportSheet`/`ImportModel`.
-- Recette : `scripts/selftest-import.sh` (bibliothèque temporaire `--library`, fixtures `scripts/fixtures/import/` converties en cp1252 / UTF-16LE), `result.json`.
-
 ## 6. Risques
 
 - Marché saturé : sans angle différenciant net (X11 soigné, import MobaXterm, qualité du SFTP latéral), valeur commerciale faible.
@@ -320,3 +305,37 @@ Code dans `Escale/SFTP/` ; cœur SFTP inchangé (API publique `SFTPClient`, `ope
   (`kill -9`) puis réouverture du canal, absence de processus ssh résiduel.
 - **Limites** : pas de reprise de transfert dans l'UI, pas de tri par colonne, pas de glisser distant → distant, pas de
   téléversement de la sélection du Finder via menu « Services ».
+
+### M5 imports (sessions MobaXterm, PuTTY, CSV)
+
+Cœur `Packages/EscaleCore/Sources/EscaleCore/Import/` : protocole `SessionImporter` (lecture seule, `parse(data:)` / `parse(fileAt:)`),
+`MobaXtermImporter` (`.mxtsessions` ou `MobaXterm.ini`, Windows-1252, dossiers `SubRep`, passerelles → `jumpHosts`, X11),
+`PuTTYRegImporter` (export `.reg` UTF-16LE, `PortForwardings` → `TunnelSpec`, `X11Forward`, `/` dans le nom → dossiers),
+`CSVSessionImporter` (`name,host,port,user,folder,tags`, séparateur `,` `;` ou tab), `SessionImportMerge` (dédoublonnage host+port+user,
+dossiers recréés sous le dossier cible, dossier existant réutilisé sans tenir compte de la casse). Formats MobaXterm et PuTTY
+documentés en commentaire de tête avec leurs sources publiques.
+- Jamais de secret : mots de passe (champ MobaXterm, `[Passwords]`, `ProxyPassword`, colonne CSV `password`) ignorés et comptés (« n mots de passe non importés »).
+- Clés `.ppk` ou chemins Windows : non reprises, avertissement avec le chemin d'origine (OpenSSH ne lit pas le .ppk).
+- Non importés : sessions non SSH (Telnet, RDP, VNC, FTP, série…), tunnels MobaXterm (hors ligne de session), commandes de connexion.
+- App `Escale/Import/` : Fichier › Importer › MobaXterm / PuTTY / CSV (`NSOpenPanel`), feuille d'aperçu (cases, doublons grisés, avertissements,
+  dossier cible, « garder les dossiers d'origine »). L'import `~/.ssh/config` reste celui d'`ImportSheet`/`ImportModel`.
+- Recette : `scripts/selftest-import.sh` (bibliothèque temporaire `--library`, fixtures `scripts/fixtures/import/` converties en cp1252 / UTF-16LE), `result.json`.
+
+### Integration M2-M5 (2026-11-11)
+
+Sept branches fusionnees dans `main` (squelette `AppFeature` pose avant, un worktree par flux). Corrections d'integration :
+- double `execArguments` (X11 vs multi-execution) : celui de la multi-execution devient `batchExecArguments` ;
+  `sessionCount` inclut desormais les sessions exec (le plafond de 10 vaut pour tous les clients).
+- `SFTPError.requestTimeout` (coeur) traduit dans `SFTPMessages`.
+- inspecteur SFTP : SwiftUI construisait le navigateur meme replie et son `.task` ouvrait un canal SFTP des qu'un
+  onglet SSH etait actif (recettes ssh/panes : `sessionCount` +1). Vue gardee derriere `if isVisible`.
+Verifie sur `main` : `scripts/test.sh` vert (218 tests coeur + build), recettes ssh 65, auth, panes 138, sftp 78,
+tunnels 31, multiexec 64, macros 62, import 28 controles : toutes `ok`.
+
+Restes (non verifiables ici ou hors perimetre) :
+- Mac vierge : telechargement reel (quarantaine), Gatekeeper, mise a jour Sparkle complete. Domaine et `ESCALE_FEED_URL` a decider.
+- XQuartz : `xeyes` en un clic a valider apres installation (sudo). Mode X11 non fiable avec vrai cookie xauth non teste.
+- Gestes reels non pilotes : glisser-deposer Finder, clics menus, IME/VoiceOver (spike S3), lien distant a vraie latence.
+- SFTP UI : un transfert reessaye repart de zero (brancher la reprise verifiee du coeur) ; pas de tri par colonne.
+- Tunnels : IPv6, `-R 0`, modification d'un tunnel actif. Multi-exec : Echap ne sort pas de la diffusion (diffuse).
+- Icone de l'app absente. Dettes M1 inchangees (PaneMenu, troncatures, OSC 52).
