@@ -15,11 +15,35 @@ public enum GroupExecTemplate {
         return "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
+    /// Valeurs des variables d'un hôte.
+    public static func values(for host: HostProfile) -> [String: String] {
+        ["host": host.host, "user": host.user ?? "", "name": host.name]
+    }
+
     /// Remplace les variables connues ; les accolades inconnues sont laissées intactes (`${HOME}`, `{1..3}`…).
     public static func expand(_ command: String, host: HostProfile) -> String {
-        let values = ["host": host.host, "user": host.user ?? "", "name": host.name]
-        var out = command
-        for (k, v) in values { out = out.replacingOccurrences(of: "{\(k)}", with: shellQuote(v)) }
+        expand(command, values: values(for: host))
+    }
+
+    /// Même substitution avec des valeurs fournies (terminal local, tests). Un seul passage : une valeur qui
+    /// contient elle-même `{user}` n'est jamais re-développée. Pas d'échappement `{{` : une accolade
+    /// littérale s'écrit déjà telle quelle, seules `{host}`, `{user}` et `{name}` exactes sont remplacées.
+    public static func expand(_ command: String, values: [String: String]) -> String {
+        guard command.contains("{") else { return command }
+        var out = ""
+        var i = command.startIndex
+        while i < command.endIndex {
+            if command[i] == "{", let close = command[i...].firstIndex(of: "}") {
+                let key = String(command[command.index(after: i)..<close])
+                if variables.contains(key), let v = values[key] {
+                    out += shellQuote(v)
+                    i = command.index(after: close)
+                    continue
+                }
+            }
+            out.append(command[i])
+            i = command.index(after: i)
+        }
         return out
     }
 

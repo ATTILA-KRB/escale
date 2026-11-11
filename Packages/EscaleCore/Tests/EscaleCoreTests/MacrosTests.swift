@@ -184,3 +184,45 @@ struct MacroRepositoryTests {
         #expect(u.path == "/x/Escale/macros.json")
     }
 }
+
+@Suite("Macros : variables {host}/{user}/{name}")
+struct MacroVariablesTests {
+    private let host = HostProfile(name: "web 1", host: "10.0.0.1", user: "bob")
+
+    @Test func substitutionParHote() {
+        let m = Macro(name: "m", steps: [.text("ssh {user}@{host}\necho {name}\n"), .wait(milliseconds: 5), .key(.tab)])
+        let a = MacroPlayback.actions(for: m, values: MacroPlayback.values(for: host))
+        #expect(a == [.send(Data("ssh bob@10.0.0.1\recho 'web 1'\r".utf8)), .wait(milliseconds: 5), .send(Data([0x09]))])
+    }
+
+    @Test func terminalLocal() {
+        let v = MacroPlayback.localValues(user: "rayan")
+        #expect(v == ["host": "localhost", "user": "rayan", "name": "Terminal local"])
+        #expect(MacroPlayback.values(for: nil)["host"] == "localhost")
+        let m = Macro(name: "m", steps: [.text("echo {name} {host} {user}")])
+        #expect(MacroPlayback.actions(for: m, values: v) == [.send(Data("echo 'Terminal local' localhost rayan".utf8))])
+    }
+
+    @Test func macroSansVariableIdentique() {
+        let none = Macro(name: "n", steps: [.text("echo ${HOME} {1..3} {x} a } { b\n")])
+        #expect(MacroPlayback.actions(for: none, values: MacroPlayback.values(for: host)) == MacroPlayback.actions(for: none))
+        // Pas d'échappement `{{` : l'accolade initiale reste, `{host}` est remplacé.
+        let m = Macro(name: "m", steps: [.text("{{host}")])
+        #expect(MacroPlayback.actions(for: m, values: MacroPlayback.values(for: host)) == [.send(Data("{10.0.0.1".utf8))])
+    }
+
+    @Test func injectionEtUnSeulPassage() {
+        let evil = HostProfile(name: "{user}'; touch x #", host: "h", user: "u")
+        let expected = "'{user}'\\''; touch x #'"
+        #expect(GroupExecTemplate.expand("{name}", host: evil) == expected)
+        let m = Macro(name: "m", steps: [.text("{name}")])
+        #expect(MacroPlayback.actions(for: m, values: MacroPlayback.values(for: evil)) == [.send(Data(expected.utf8))])
+    }
+
+    @Test func lectureAvecValeurs() async {
+        let log = Log()
+        let m = Macro(name: "m", steps: [.text("echo {host}\n")])
+        let n = await MacroPlayback.play(m, values: MacroPlayback.values(for: host), send: { log.add(String(decoding: $0, as: UTF8.self)) }, sleep: { _ in })
+        #expect(n == 1 && log.lines == ["echo 10.0.0.1\r"])
+    }
+}

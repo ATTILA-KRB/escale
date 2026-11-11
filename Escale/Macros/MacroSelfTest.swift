@@ -65,6 +65,7 @@ struct MacroSelfTest {
         check("hotes_x11_declares", !hostA.x11Forwarding && hostX.x11Forwarding && hostY.x11Forwarding)
 
         await macrosScenario(f, hostA: hostA, win: win)
+        await macroVariablesScenario(f, hostA: hostA)
         if let hostS = hosts.first(where: { $0.name == "Hôte S" }) { await startupCommandScenario(hostS) } else { check("hote_s_declare", false) }
         // Serveur intégré d'abord : les scénarios suivants remplacent la détection par des serveurs simulés.
         if let hostE = hosts.first(where: { $0.name == "Hôte E" }) { await embeddedX11Scenario(f, host: hostE) }
@@ -181,6 +182,37 @@ struct MacroSelfTest {
         check("onglet_ferme", await wait(10) { model.workspace.tabs.isEmpty })
         check("ptys_termines_a_la_fermeture", await wait(10) { p1.session.state != .running && p2.session.state != .running }, "\(p1.session.state) \(p2.session.state) \(model.connections.shellsStarted)/\(model.connections.shellsEnded)")
         check("shells_comptes_apres_fermeture_onglet", await wait(10) { model.connections.shellsEnded == model.connections.shellsStarted }, "\(model.connections.shellsStarted)/\(model.connections.shellsEnded)")
+    }
+
+    // MARK: Variables {host}/{user}/{name}
+
+    /// Lecture d'une macro avec variables : hôte du panneau SSH, terminal local, macro sans variable inchangée.
+    private func macroVariablesScenario(_ f: MacroFeature, hostA: HostProfile) async {
+        let tab = model.newTab(hostA)
+        let p = tab.panes[0]
+        check("vars_panneau_ssh_pret", await wait(25) { p.status == .running }, "\(p.status)")
+        check("vars_valeurs_du_panneau_ssh", f.variables(for: p) == ["host": hostA.host, "user": hostA.user ?? "", "name": hostA.name], "\(f.variables(for: p))")
+        let macro = Macro(name: "Variables", steps: [.text("echo VAR-{name}-{host}-{user}-$((6*7))\n"), .wait(milliseconds: 100), .text("echo LIT-{x}-${HOME:+ok}-{y}\n")])
+        _ = await f.play(macro)?.value
+        let expected = "VAR-\(hostA.name)-\(hostA.host)-\(hostA.user ?? "")-42"
+        check("vars_substituees_cote_distant", await wait(10) { text(p).contains(expected) }, tail(text(p)))
+        // La ligne saisie contient les valeurs échappées pour le shell (nom avec accent : entre apostrophes).
+        check("vars_ligne_saisie_echappee", text(p).contains("echo VAR-'\(hostA.name)'-\(hostA.host)"), tail(text(p)))
+        check("vars_accolades_inconnues_intactes", await wait(10) { text(p).contains("LIT-{x}-ok-{y}") }, tail(text(p)))
+        model.close(tab)
+        _ = await wait(10) { model.workspace.tabs.isEmpty }
+
+        // Terminal local : localhost, utilisateur courant, « Terminal local ».
+        let local = model.openLocalTab()
+        let lp = local.panes[0]
+        check("vars_terminal_local_pret", await wait(15) { lp.status == .running }, "\(lp.status)")
+        check("vars_valeurs_terminal_local", f.variables(for: lp) == ["host": "localhost", "user": NSUserName(), "name": "Terminal local"], "\(f.variables(for: lp))")
+        let m2 = Macro(name: "Local", steps: [.text("echo LOC-{name}-{host}-{user}-$((7*6))\n")])
+        _ = await f.play(m2)?.value
+        let expLocal = "LOC-Terminal local-localhost-\(NSUserName())-42"
+        check("vars_local_substituees", await wait(10) { text(lp).contains(expLocal) }, tail(text(lp)))
+        model.close(local)
+        _ = await wait(10) { model.workspace.tabs.isEmpty }
     }
 
     // MARK: X11
