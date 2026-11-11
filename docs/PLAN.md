@@ -98,6 +98,21 @@ Conséquence : distribution directe (DMG + Sparkle), pas de Mac App Store. À co
 | M4 distribution | signature, notarisation, DMG, Sparkle | installation propre sur un Mac vierge |
 | M5 V1.1 | macros, imports, X11 via XQuartz | `xeyes` affiché en un clic |
 
+### M5 imports (sessions MobaXterm, PuTTY, CSV)
+
+Cœur `Packages/EscaleCore/Sources/EscaleCore/Import/` : protocole `SessionImporter` (lecture seule, `parse(data:)` / `parse(fileAt:)`),
+`MobaXtermImporter` (`.mxtsessions` ou `MobaXterm.ini`, Windows-1252, dossiers `SubRep`, passerelles → `jumpHosts`, X11),
+`PuTTYRegImporter` (export `.reg` UTF-16LE, `PortForwardings` → `TunnelSpec`, `X11Forward`, `/` dans le nom → dossiers),
+`CSVSessionImporter` (`name,host,port,user,folder,tags`, séparateur `,` `;` ou tab), `SessionImportMerge` (dédoublonnage host+port+user,
+dossiers recréés sous le dossier cible, dossier existant réutilisé sans tenir compte de la casse). Formats MobaXterm et PuTTY
+documentés en commentaire de tête avec leurs sources publiques.
+- Jamais de secret : mots de passe (champ MobaXterm, `[Passwords]`, `ProxyPassword`, colonne CSV `password`) ignorés et comptés (« n mots de passe non importés »).
+- Clés `.ppk` ou chemins Windows : non reprises, avertissement avec le chemin d'origine (OpenSSH ne lit pas le .ppk).
+- Non importés : sessions non SSH (Telnet, RDP, VNC, FTP, série…), tunnels MobaXterm (hors ligne de session), commandes de connexion.
+- App `Escale/Import/` : Fichier › Importer › MobaXterm / PuTTY / CSV (`NSOpenPanel`), feuille d'aperçu (cases, doublons grisés, avertissements,
+  dossier cible, « garder les dossiers d'origine »). L'import `~/.ssh/config` reste celui d'`ImportSheet`/`ImportModel`.
+- Recette : `scripts/selftest-import.sh` (bibliothèque temporaire `--library`, fixtures `scripts/fixtures/import/` converties en cp1252 / UTF-16LE), `result.json`.
+
 ## 6. Risques
 
 - Marché saturé : sans angle différenciant net (X11 soigné, import MobaXterm, qualité du SFTP latéral), valeur commerciale faible.

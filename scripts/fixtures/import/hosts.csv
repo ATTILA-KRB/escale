@@ -1,0 +1,7 @@
+name,host,port,user,folder,tags,password
+Web 1,web1.example.com,22,deploy,Production/Web,web;prod,"p,ass"
+Café Müller,cafe.example.com,2222,zoé,Clients/Café,"client|vip",
+,bare.example.com,,,,,
+Web 1 bis,WEB1.example.com,,deploy,Production/Web,,
+Port cassé,bad.example.com,abc,,,,
+,,,,,,

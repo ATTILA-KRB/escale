@@ -1,0 +1,19 @@
+[Bookmarks]
+SubRep=
+ImgNum=42
+Maison NAS=#109#0%nas.local%22%<default>%%0%-1%%%%%0%0%0%%%-1%0%0%0%%1080%%0%0%1%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+
+[Bookmarks_1]
+SubRep=Production
+ImgNum=41
+Web prod é €=#109#0%web1.example.com%22%deploy%s3cret%-1%-1%%bastion.example.com%2200%jump%0%0%0%_CurrentDrive_\Users\rayan\.ssh\id.ppk%%-1%0%0%0%%1080%%0%0%1%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+Web prod é € (copie)=#109#0%WEB1.example.com%22%deploy%%0%-1%%%%%0%0%0%%%-1%0%0%0%%1080%%0%0%1%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+Switch coeur=#98#1%10.0.0.1%23%%%2%%%%%0%0%%1080%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+
+[Bookmarks_2]
+SubRep=Production\Base de données
+ImgNum=41
+DB réplica=#109#0%10.0.0.5%2222%postgres%%0%0%%%%%0%0%0%/Users/rayan/.ssh/id_ed25519%%-1%0%0%0%%1080%%0%0%1%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+
+[Passwords]
+rayan@web1.example.com=AbCdEf0123encrypted
