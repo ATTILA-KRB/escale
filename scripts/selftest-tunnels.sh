@@ -1,6 +1,6 @@
 #!/bin/bash
 # Recette des tunnels : sshd local non privilégié + serveur HTTP local + scénario --selftest-tunnels piloté en interne.
-# L, D, R et autoStart vérifiés par curl, IPv6 (::1), -R 0 (port attribué), modification à chaud d'un tunnel actif
+# L, D, R et autoStart vérifiés par curl, IPv6 (::1 et zone fe80::1%lo0), -R 0 (port attribué), modification à chaud d'un tunnel actif
 # (succès, puis échec avec rétablissement de l'ancien), coupure du maître, rétablissement automatique.
 # Sortie : code de l'app ; résultats dans $OUT (result.json + PNG). Ne touche jamais à ~/.ssh.
 set -euo pipefail
@@ -102,10 +102,10 @@ for _ in $(seq 1 50); do
 done
 
 # --- bibliothèque JSON : « Hôte A » porte 4 tunnels (L, D, R, L autoStart), « Hôte B » aucun
-PL="$(freeport)"; PD="$(freeport)"; PR="$(freeport)"; PA="$(freeport)"; P6="$(freeport)"; PE="$(freeport)"
-python3 - "$WORK/library.json" "$PORT" "$D/client" "$(id -un)" "$HTTP_PORT" "$PL" "$PD" "$PR" "$PA" "$HTTP6_PORT" "$P6" "$PE" <<'PY'
+PL="$(freeport)"; PD="$(freeport)"; PR="$(freeport)"; PA="$(freeport)"; P6="$(freeport)"; PZ="$(freeport)"; PE="$(freeport)"
+python3 - "$WORK/library.json" "$PORT" "$D/client" "$(id -un)" "$HTTP_PORT" "$PL" "$PD" "$PR" "$PA" "$HTTP6_PORT" "$P6" "$PE" "$PZ" <<'PY'
 import json, sys, uuid
-path, port, key, user, http, pl, pd, pr, pa, http6, p6, pe = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4], *map(int, sys.argv[5:])
+path, port, key, user, http, pl, pd, pr, pa, http6, p6, pe, pz = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4], *map(int, sys.argv[5:])
 folder = str(uuid.uuid4()).upper()
 def tun(kind, bind, dest=0, name="", auto=False, addr="127.0.0.1", dhost="127.0.0.1"):
     return {"id": str(uuid.uuid4()).upper(), "kind": kind, "bindAddress": addr, "bindPort": bind,
@@ -117,6 +117,7 @@ def host(name, tunnels):
 a = host("Hôte A", [tun("local", pl, http, "web local"), tun("dynamic", pd, 0, "proxy SOCKS"),
                     tun("remote", pr, http, "exposition distante"), tun("local", pa, http, "auto", True),
                     tun("local", p6, http6, "ipv6 local", addr="::1", dhost="::1"),
+                    tun("local", pz, http6, "ipv6 zone", addr="fe80::1%lo0", dhost="::1"), # lien local de lo0 (macOS)
                     tun("remote", 0, http, "distant port attribué"),
                     tun("local", pe, http, "a modifier")])
 lib = {"folders": [{"id": folder, "name": "Tests locaux"}], "hosts": [a, host("Hôte B", [])]}

@@ -52,6 +52,87 @@ import Testing
         }
     }
 
+    @Test func zonesIPv6Validation() {
+        func errs(bind: String = "127.0.0.1", dest: String = "h", kind: TunnelSpec.Kind = .local) -> [String] {
+            TunnelValidation.errors(TunnelSpec(kind: kind, bindAddress: bind, bindPort: 8080, destinationHost: dest, destinationPort: 80))
+        }
+        // Écoute : zone avec ou sans crochets, interface réelle (lo0 porte fe80::1 sur macOS).
+        #expect(errs(bind: "fe80::1%lo0").isEmpty)
+        #expect(errs(bind: "[fe80::1%lo0]").isEmpty)
+        #expect(errs(bind: "fe80::1%1").isEmpty) // index numérique de lo0
+        #expect(TunnelValidation.errors(TunnelSpec(kind: .dynamic, bindAddress: "[fe80::1%lo0]", bindPort: 1080)).isEmpty)
+        // Écoute locale : interface inexistante refusée (message en français), syntaxe invalide refusée.
+        #expect(errs(bind: "fe80::1%nonexist9").first?.contains("n'existe pas sur ce Mac") == true)
+        #expect(errs(bind: "fe80::1%").first?.contains("zone IPv6 non valide") == true)
+        #expect(errs(bind: "fe80::1%en 0").first?.contains("zone IPv6 non valide") == true)
+        for bad in ["fe80::1%en0;rm", "fe80::1%-x'", "fe80::1%a%b", "fe80::1%abcdefghijklmnop", "[fe80::1%en0", "127.0.0.1%lo0", "host%lo0", "zz::1%lo0"] {
+            #expect(!errs(bind: bad).isEmpty, "écoute « \(bad) » doit être refusée")
+            #expect(!errs(dest: bad).isEmpty, "destination « \(bad) » doit être refusée")
+        }
+        // Écoute côté serveur (R) et destination : syntaxe seule, l'interface peut n'exister que là-bas.
+        #expect(errs(bind: "fe80::1%nonexist9", kind: .remote).isEmpty)
+        #expect(errs(dest: "fe80::2%nonexist9").isEmpty)
+        #expect(errs(dest: "[fe80::2%en0]").isEmpty)
+        #expect(errs(dest: "fe80::2%utun3").isEmpty && errs(dest: "fe80::2%bridge100").isEmpty && errs(dest: "fe80::2%vlan0.5").isEmpty)
+    }
+
+    @Test func zonesIPv6FormatageEtDoublons() throws {
+        let t = TunnelSpec(kind: .local, bindAddress: "fe80::1%lo0", bindPort: 8080, destinationHost: "[fe80::2%en0]", destinationPort: 80)
+        #expect(t.specArgument == "[fe80::1%lo0]:8080:[fe80::2%en0]:80")
+        #expect(TunnelSpec(kind: .dynamic, bindAddress: "[fe80::1%lo0]", bindPort: 1080).specArgument == "[fe80::1%lo0]:1080")
+        #expect(t.summary == "Local [fe80::1%lo0]:8080 → [fe80::2%en0]:80")
+        #expect(t.clientURL == "http://[fe80::1%25lo0]:8080") // RFC 6874 : « % » devient « %25 » dans une URL
+        #expect(TunnelValidation.isLoopback("fe80::1%lo0") && !TunnelValidation.isLoopback("fe80::1%en0"))
+        #expect(TunnelValidation.warnings(t).count == 0)
+        #expect(TunnelValidation.warnings(TunnelSpec(kind: .local, bindAddress: "fe80::1%en0", bindPort: 8080, destinationHost: "h", destinationPort: 1)).count == 1)
+        // Doublons et remplacement à chaud : même adresse canonique, zone comparée telle quelle.
+        let a = TunnelSpec(kind: .local, bindAddress: "fe80:0:0:0:0:0:0:1%lo0", bindPort: 8080, destinationHost: "h", destinationPort: 1)
+        let b = TunnelSpec(kind: .local, bindAddress: "[FE80::1%lo0]", bindPort: 8080, destinationHost: "h", destinationPort: 1)
+        let c = TunnelSpec(kind: .local, bindAddress: "fe80::1%lo1", bindPort: 8080, destinationHost: "h", destinationPort: 1)
+        #expect(TunnelValidation.listErrors([a, b]).count == 1)
+        #expect(TunnelValidation.listErrors([a, c]).isEmpty)
+        #expect(a.sameForwarding(as: b) && !a.sameForwarding(as: c))
+        // Contrôles du constructeur de commande ssh : la spécification passe telle quelle.
+        let builder = try? OpenSSHCommandBuilder(profile: HostProfile(name: "h", host: "h"), controlPath: "/tmp/x/m", options: .init())
+        #expect(try builder?.controlArguments(.forward(t)).contains("[fe80::1%lo0]:8080:[fe80::2%en0]:80") == true)
+    }
+
+    @Test func portLibreAvecZone() throws {
+        // Un port libre est libre sur la zone ; un écouteur réel sur fe80::1%lo0 le rend occupé.
+        let free = try LocalSSHD.freePort()
+        #expect(TunnelPortCheck.isFree(address: "fe80::1%lo0", port: free))
+        #expect(TunnelPortCheck.isFree(address: "[fe80::1%lo0]", port: free))
+        let s = socket(AF_INET6, SOCK_STREAM, 0)
+        defer { close(s) }
+        var ai: UnsafeMutablePointer<addrinfo>?
+        var hints = addrinfo(); hints.ai_family = AF_INET6; hints.ai_socktype = SOCK_STREAM
+        #expect(getaddrinfo("fe80::1%lo0", String(free), &hints, &ai) == 0)
+        defer { freeaddrinfo(ai) }
+        #expect(bind(s, ai!.pointee.ai_addr, ai!.pointee.ai_addrlen) == 0 && listen(s, 1) == 0)
+        #expect(!TunnelPortCheck.isFree(address: "fe80::1%lo0", port: free), "écouteur actif sur la zone : port occupé")
+        #expect(!TunnelPortCheck.isFree(address: "[fe80::1%lo0]", port: free))
+    }
+
+    @Test func zoneLocaleIPv6VerifieParCurl() async throws {
+        let http = try TestHTTPServer(body: "via-zone", ipv6: true)
+        defer { http.stop() }
+        try await LocalSSHD.with { d in
+            try await withController(d) { c, _ in
+                let port = try LocalSSHD.freePort()
+                let spec = TunnelSpec(kind: .local, bindAddress: "[fe80::1%lo0]", bindPort: port, destinationHost: "::1", destinationPort: http.port)
+                #expect(await c.start(spec) == .active)
+                let r = curl(["-g", "http://[fe80::1%25lo0]:\(port)/"])
+                #expect(r.status == 0 && r.output == "via-zone", "curl : \(r)")
+                #expect(await c.stop(spec.id) == .stopped)
+                #expect(await eventually { curl(["-g", "http://[fe80::1%25lo0]:\(port)/"]).status != 0 }, "le port doit être fermé")
+                // Interface inexistante : refus à la validation, jamais d'appel à ssh.
+                let ghost = TunnelSpec(kind: .local, bindAddress: "fe80::1%nonexist9", bindPort: port, destinationHost: "::1", destinationPort: http.port)
+                guard case .failed(let m) = await c.start(ghost) else { Issue.record("échec attendu"); return }
+                #expect(m.contains("n'existe pas"), "message : \(m)")
+            }
+        }
+    }
+
     @Test func argumentsIPv6AvecCrochets() throws {
         // Syntaxe vérifiée avec OpenSSH 10 : sans crochets ssh répond « Bad local forwarding specification ».
         #expect(TunnelSpec(kind: .local, bindAddress: "::1", bindPort: 8080, destinationHost: "::1", destinationPort: 80).specArgument == "[::1]:8080:[::1]:80")
