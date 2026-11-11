@@ -13,10 +13,27 @@ struct MultiExecCommands: Commands {
                 .keyboardShortcut("i", modifiers: [.command, .option])
             Button("Choisir les panneaux à diffuser…") { feature.openBroadcastSheet() }
                 .disabled(model.workspace.tabs.isEmpty)
+            // Sortie de secours : raccourci de menu, donc jamais transmis au terminal ni diffusé.
+            Button("Quitter la diffusion (jamais diffusé)") { feature.stopBroadcast() }
+                .keyboardShortcut(.escape, modifiers: [.control, .option])
+                .disabled(!feature.isBroadcasting)
             Divider()
-            Button("Exécuter une commande sur les hôtes connectés…") {
-                let hosts = model.library.library.hosts.filter { model.connections.state(of: $0.id) == .connected }
-                feature.beginGroupExec(hosts: hosts)
+            Button("Exécuter une commande sur les hôtes connectés…") { feature.beginGroupExecOnConnected() }
+                .disabled(feature.connectedHosts.isEmpty)
+            Menu("Exécuter une commande sur l'étiquette") {
+                let tags = model.library.library.tagCounts
+                if tags.isEmpty { Text("Aucune étiquette") }
+                ForEach(tags, id: \.tag) { t in
+                    Button("#\(t.tag) (\(t.count))") { feature.beginGroupExec(tag: t.tag) }
+                }
+            }
+            Menu("Exécuter une commande sur le dossier") {
+                let folders = model.library.allFolderPaths
+                if folders.isEmpty { Text("Aucun dossier") }
+                ForEach(folders, id: \.id) { f in
+                    Button(f.path) { feature.beginGroupExec(folder: f.id) }
+                        .disabled(feature.hosts(inFolder: f.id).isEmpty)
+                }
             }
         }
     }
@@ -30,6 +47,17 @@ struct MultiExecSelectionMenuItems: View {
     var body: some View {
         Button("Exécuter une commande sur \(hosts.count) hôtes…") { model.multiExec.beginGroupExec(hosts: hosts) }
             .disabled(hosts.isEmpty)
+    }
+}
+
+// MARK: - Menu contextuel d'un dossier de la barre latérale
+
+struct MultiExecFolderMenuItems: View {
+    let model: AppModel
+    let folder: HostFolder
+    var body: some View {
+        Button("Exécuter une commande sur ce dossier…") { model.multiExec.beginGroupExec(folder: folder.id) }
+            .disabled(model.multiExec.hosts(inFolder: folder.id).isEmpty)
     }
 }
 
@@ -73,6 +101,9 @@ private struct BroadcastBanner: View {
             Text("Diffusion de la saisie : ce que vous tapez est envoyé à \(feature.broadcastPaneIDs.count) panneaux")
                 .fontWeight(.semibold)
             Spacer()
+            Text("Quitter sans diffuser la touche : ⌃⌥Échap, ⌥⌘I, ou Échap Échap rapide")
+                .font(.caption)
+                .help("Le premier Échap est retenu 0,35 s pour les autres panneaux ; si un second suit, la diffusion s'arrête et aucun des deux n'est envoyé.")
             Button("Choisir…") { feature.openBroadcastSheet() }.buttonStyle(.bordered).controlSize(.small)
             Button("Arrêter (⌥⌘I)") { feature.stopBroadcast() }.buttonStyle(.bordered).controlSize(.small)
         }
@@ -142,18 +173,59 @@ private struct BroadcastSheet: View {
     }
 }
 
-/// Feuille « Exécuter une commande… ».
+/// Feuille « Exécuter une commande… » : cibles, commande commune, commande propre à chaque hôte, historique.
 private struct ExecSheet: View {
     let feature: MultiExecFeature
     @Binding var draft: MultiExecFeature.ExecDraft
+    @State private var perHost = false
+
+    private var warning: String? { feature.secretWarning(draft.command, overrides: draft.overrides) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Exécuter une commande sur \(draft.hosts.count) hôtes").font(.title3.bold())
-            Text(draft.hosts.map(\.name).joined(separator: ", ")).font(.caption).foregroundStyle(.secondary).lineLimit(3)
-            TextField("Commande", text: $draft.command, axis: .vertical)
-                .lineLimit(2...6).font(.system(.body, design: .monospaced)).textFieldStyle(.roundedBorder)
-                .accessibilityIdentifier("multiexec-command")
+            HStack {
+                Text("Exécuter une commande sur \(draft.hosts.count) hôtes").font(.title3.bold())
+                Spacer()
+                targetsMenu
+            }
+            Text("\(draft.source) : " + draft.hosts.map(\.name).joined(separator: ", "))
+                .font(.caption).foregroundStyle(.secondary).lineLimit(3)
+            HStack(alignment: .top) {
+                TextField("Commande commune", text: $draft.command, axis: .vertical)
+                    .lineLimit(2...6).font(.system(.body, design: .monospaced)).textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("multiexec-command")
+                historyMenu
+            }
+            Text("Variables : {host} (adresse), {user}, {name} (nom dans la bibliothèque), échappées pour le shell.")
+                .font(.caption).foregroundStyle(.secondary)
+            if let w = warning {
+                Label(w, systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("multiexec-secret-warning")
+            }
+            DisclosureGroup("Commande propre à chaque hôte (facultatif)", isExpanded: $perHost) {
+                ScrollView {
+                    VStack(spacing: 4) {
+                        ForEach(draft.hosts) { h in
+                            HStack {
+                                Text(h.name).frame(width: 110, alignment: .leading).lineLimit(1)
+                                TextField("(commande commune)", text: Binding(
+                                    get: { draft.overrides[h.id] ?? "" },
+                                    set: { draft.overrides[h.id] = $0 }))
+                                    .font(.system(.caption, design: .monospaced)).textFieldStyle(.roundedBorder)
+                                Button { remove(h) } label: { Image(systemName: "minus.circle") }
+                                    .buttonStyle(.borderless).help("Retirer cet hôte des cibles")
+                                    .disabled(draft.hosts.count < 2)
+                            }
+                        }
+                    }
+                }
+                .frame(maxHeight: 150)
+                if let h = draft.hosts.first, !draft.command.isEmpty || draft.overrides[h.id] != nil {
+                    Text("Aperçu pour \(h.name) : " + MultiExecFeature.resolvedCommand(common: draft.command, overrides: draft.overrides, host: h))
+                        .font(.system(.caption2, design: .monospaced)).foregroundStyle(.secondary).lineLimit(2)
+                }
+            }
             Picker("Délai maximal", selection: $draft.timeout) {
                 Text("10 s").tag(10.0); Text("30 s").tag(30.0); Text("1 min").tag(60.0); Text("5 min").tag(300.0)
             }
@@ -163,12 +235,55 @@ private struct ExecSheet: View {
             HStack {
                 Spacer()
                 Button("Annuler", role: .cancel) { feature.cancelGroupExecDraft() }.keyboardShortcut(.cancelAction)
-                Button("Exécuter") { feature.startGroupExec(command: draft.command, timeout: draft.timeout, hosts: draft.hosts) }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(draft.command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button("Exécuter") {
+                    feature.startGroupExec(command: draft.command, timeout: draft.timeout, hosts: draft.hosts, overrides: draft.overrides)
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(draft.command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
-        .padding(20).frame(width: 480)
+        .padding(20).frame(width: 560)
+    }
+
+    private func remove(_ h: HostProfile) {
+        feature.retarget(draft.hosts.filter { $0.id != h.id }, source: draft.source + " (modifiée)")
+    }
+
+    private var targetsMenu: some View {
+        Menu("Cibles") {
+            Button("Hôtes connectés") { feature.retarget(feature.connectedHosts, source: "Hôtes connectés") }
+                .disabled(feature.connectedHosts.isEmpty)
+            if let lib = feature.model?.library {
+                Menu("Dossier (récursif)") {
+                    ForEach(lib.allFolderPaths, id: \.id) { f in
+                        Button(f.path) { feature.retarget(feature.hosts(inFolder: f.id), source: "Dossier « \(f.path) »") }
+                            .disabled(feature.hosts(inFolder: f.id).isEmpty)
+                    }
+                }
+                Menu("Étiquette") {
+                    ForEach(lib.library.tagCounts, id: \.tag) { t in
+                        Button("#\(t.tag) (\(t.count))") { feature.retarget(feature.hosts(withTag: t.tag), source: "Étiquette #\(t.tag)") }
+                    }
+                }
+            }
+        }
+        .menuStyle(.borderlessButton).fixedSize()
+    }
+
+    private var historyMenu: some View {
+        Menu {
+            if feature.history.entries.isEmpty { Text("Aucune commande récente") }
+            ForEach(feature.history.entries) { e in
+                Button(e.command.replacingOccurrences(of: "\n", with: " ")) { draft.command = e.command }
+            }
+            if !feature.history.entries.isEmpty {
+                Divider()
+                Button("Effacer l'historique") { feature.clearHistory() }
+            }
+        } label: { Image(systemName: "clock.arrow.circlepath") }
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+        .help("Dernières commandes groupées (jamais celles qui contiennent un mot de passe)")
+        .accessibilityLabel("Historique")
     }
 }
 
@@ -188,6 +303,7 @@ private struct ExecResultsPanel: View {
                     .font(.caption).foregroundStyle(.secondary)
                 Button("Relancer") { feature.rerun() }.disabled(run.isRunning).controlSize(.small)
                 Button("Copier tout") { feature.copy(feature.reportText(run)) }.disabled(run.isRunning).controlSize(.small)
+                Button("Exporter…") { feature.presentExport(run) }.disabled(run.isRunning).controlSize(.small)
                 Button("Fermer") { feature.closeResults() }.disabled(run.isRunning).controlSize(.small)
             }
             .padding(.horizontal, 12).padding(.vertical, 6)

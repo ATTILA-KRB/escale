@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import Observation
+import UniformTypeIdentifiers
 import EscaleCore
 
 /// M3 : diffusion de la saisie vers plusieurs panneaux, commande lancée sur plusieurs hôtes.
@@ -15,7 +16,12 @@ final class MultiExecFeature: AppFeature {
     static let broadcastSheetID = "multiexec-broadcast"
 
     @ObservationIgnored private(set) weak var model: AppModel?
-    func attach(_ model: AppModel) { self.model = model }
+    func attach(_ model: AppModel) {
+        self.model = model
+        let libraryURL = model.options.libraryPath.map { URL(fileURLWithPath: $0) } ?? LibraryStore.defaultURL
+        historyURL = libraryURL.deletingLastPathComponent().appendingPathComponent("exec-history.json")
+        history = GroupExecHistory.load(from: historyURL!)
+    }
 
     func shutdown() async {
         stopBroadcast()
@@ -76,6 +82,8 @@ final class MultiExecFeature: AppFeature {
     }
 
     func stopBroadcast() {
+        escapeFlushTask?.cancel(); escapeFlushTask = nil; escapeSource = nil
+        escapeDetector = DoubleEscapeDetector(window: Self.escapeWindow)
         syncTimer?.invalidate(); syncTimer = nil
         broadcastScope = nil
         broadcastPaneIDs = []
@@ -124,7 +132,7 @@ final class MultiExecFeature: AppFeature {
             if p.session.inputObservers[Self.observerKey] == nil {
                 p.session.inputObservers[Self.observerKey] = { [weak self, weak p] data in
                     guard let self, let p else { return }
-                    self.replicate(data, from: p)
+                    self.handleInput(data, from: p)
                 }
             }
             if !decorated.contains(p.id) { decorate(p, on: true) }
@@ -132,6 +140,46 @@ final class MultiExecFeature: AppFeature {
         decorated = ids
         if broadcastPaneIDs != ids { broadcastPaneIDs = ids }
         if members.count < 2 { stopBroadcast() }   // plus personne à qui diffuser
+    }
+
+    // MARK: Sortie de la diffusion sans fuite de touche
+    //
+    // Deux sorties, aucune n'est jamais diffusée :
+    // - ⌃⌥Échap et ⌥⌘I : raccourcis de menu, interceptés par l'application avant d'atteindre le terminal ;
+    // - Échap Échap (deux Échap en moins de `escapeWindow`) : un Échap seul est RETENU (pas envoyé aux autres
+    //   panneaux) pendant `escapeWindow` ; s'il est suivi d'un second, la diffusion s'arrête et ni l'un ni
+    //   l'autre n'est diffusé ; sinon il est diffusé après ce court délai, avant toute autre saisie (ordre
+    //   conservé). Le panneau où l'on tape reçoit ses Échap normalement (il n'est jamais retardé) : seuls les
+    //   autres panneaux voient un Échap légèrement retardé.
+    static let escapeWindow: TimeInterval = 0.35
+    @ObservationIgnored private var escapeDetector = DoubleEscapeDetector(window: MultiExecFeature.escapeWindow)
+    @ObservationIgnored private var escapeSource: Pane?
+    @ObservationIgnored private var escapeFlushTask: Task<Void, Never>?
+    /// Nombre de sorties par double Échap depuis le lancement (tests).
+    @ObservationIgnored private(set) var escapeExits = 0
+
+    private func handleInput(_ data: Data, from source: Pane) {
+        switch escapeDetector.feed(data, now: ProcessInfo.processInfo.systemUptime) {
+        case .forward:
+            replicate(data, from: source)
+        case .hold:
+            escapeSource = source
+            escapeFlushTask?.cancel()
+            escapeFlushTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(Self.escapeWindow * 1.0e9))
+                guard !Task.isCancelled, let self, self.escapeDetector.expire(), let src = self.escapeSource else { return }
+                self.escapeSource = nil
+                self.replicate(Data([0x1b]), from: src)
+            }
+        case .flushThenForward:
+            escapeFlushTask?.cancel(); escapeFlushTask = nil
+            if let src = escapeSource { replicate(Data([0x1b]), from: src) }
+            escapeSource = nil
+            replicate(data, from: source)
+        case .exit:
+            escapeExits += 1
+            stopBroadcast()
+        }
     }
 
     /// Rejoue la saisie de `source` vers les autres panneaux du groupe (octets bruts : touches spéciales,
@@ -168,6 +216,16 @@ final class MultiExecFeature: AppFeature {
         var hosts: [HostProfile]
         var command = ""
         var timeout: Double = 30
+        /// Commande propre à un hôte (remplace la commande commune) ; absente ou vide = commune.
+        var overrides: [UUID: String] = [:]
+        /// D'où viennent les cibles (affiché dans la feuille).
+        var source = "Sélection"
+    }
+
+    /// Commande réellement envoyée à `host` : surcharge sinon commune, variables substituées.
+    static func resolvedCommand(common: String, overrides: [UUID: String], host: HostProfile) -> String {
+        let own = overrides[host.id]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return GroupExecTemplate.expand(own.isEmpty ? common : own, host: host)
     }
 
     @MainActor @Observable
@@ -177,7 +235,9 @@ final class MultiExecFeature: AppFeature {
         nonisolated let id: UUID
         var phase: Phase = .waiting
         var result: RemoteExecResult?
-        init(host: HostProfile) { self.host = host; self.id = host.id }
+        /// Commande exécutée sur cet hôte (variables substituées).
+        let command: String
+        init(host: HostProfile, command: String) { self.host = host; self.id = host.id; self.command = command }
     }
 
     @MainActor @Observable
@@ -185,11 +245,14 @@ final class MultiExecFeature: AppFeature {
         nonisolated let id = UUID()
         let command: String
         let timeout: Double
+        /// Surcharges saisies (pour « Relancer »).
+        let overrides: [UUID: String]
         var rows: [ExecRow]
         var isRunning = true
         var startedAt = Date()
-        init(command: String, timeout: Double, hosts: [HostProfile]) {
-            self.command = command; self.timeout = timeout; self.rows = hosts.map(ExecRow.init)
+        init(command: String, timeout: Double, hosts: [HostProfile], overrides: [UUID: String] = [:]) {
+            self.command = command; self.timeout = timeout; self.overrides = overrides
+            self.rows = hosts.map { ExecRow(host: $0, command: MultiExecFeature.resolvedCommand(common: command, overrides: overrides, host: $0)) }
         }
         var finishedCount: Int { rows.filter { $0.phase == .done }.count }
         var failedCount: Int { rows.filter { $0.result?.isSuccess == false }.count }
@@ -202,10 +265,51 @@ final class MultiExecFeature: AppFeature {
     static let maxOutputBytes = 64 * 1024
 
     /// Ouvre la feuille pour les hôtes donnés.
-    func beginGroupExec(hosts: [HostProfile]) {
+    func beginGroupExec(hosts: [HostProfile], source: String = "Sélection") {
         guard !hosts.isEmpty, model?.activeFeatureSheet == nil else { return }
-        execDraft = ExecDraft(hosts: hosts)
+        var d = ExecDraft(hosts: hosts)
+        d.source = source
+        execDraft = d
         model?.activeFeatureSheet = Self.execSheetID
+    }
+
+    /// Hôtes d'un dossier de la bibliothèque, sous-dossiers compris.
+    func hosts(inFolder id: UUID) -> [HostProfile] { model?.library.library.hosts(inFolder: id) ?? [] }
+    func hosts(withTag tag: String) -> [HostProfile] { model?.library.library.hosts(withTag: tag) ?? [] }
+    var connectedHosts: [HostProfile] {
+        guard let model else { return [] }
+        return model.library.library.hosts.filter { model.connections.state(of: $0.id) == .connected }
+    }
+
+    func beginGroupExec(folder id: UUID) {
+        let name = model?.library.folderPath(id) ?? "dossier"
+        beginGroupExec(hosts: hosts(inFolder: id), source: "Dossier « \(name) »")
+    }
+    func beginGroupExec(tag: String) { beginGroupExec(hosts: hosts(withTag: tag), source: "Étiquette #\(tag)") }
+    func beginGroupExecOnConnected() { beginGroupExec(hosts: connectedHosts, source: "Hôtes connectés") }
+
+    /// Remplace les cibles du brouillon (les surcharges des hôtes retirés sont oubliées).
+    func retarget(_ hosts: [HostProfile], source: String) {
+        guard var d = execDraft, !hosts.isEmpty else { return }
+        d.hosts = hosts; d.source = source
+        let ids = Set(hosts.map(\.id))
+        d.overrides = d.overrides.filter { ids.contains($0.key) }
+        execDraft = d
+    }
+
+    // MARK: Historique
+
+    private(set) var history = GroupExecHistory()
+    @ObservationIgnored private var historyURL: URL?
+
+    func clearHistory() { history.clear(); saveHistory() }
+    private func saveHistory() {
+        guard let historyURL else { return }
+        try? history.save(to: historyURL)
+    }
+    /// Avertissement affiché dans la feuille si la commande semble contenir un secret.
+    func secretWarning(_ command: String, overrides: [UUID: String] = [:]) -> String? {
+        CommandSecretCheck.warning(for: command) ?? overrides.values.lazy.compactMap { CommandSecretCheck.warning(for: $0) }.first
     }
 
     func cancelGroupExecDraft() {
@@ -216,11 +320,16 @@ final class MultiExecFeature: AppFeature {
     /// Valide la feuille et lance l'exécution. Les résultats s'affichent dans un panneau (pas une feuille :
     /// une demande d'authentification d'un hôte non connecté doit pouvoir s'afficher pendant l'exécution).
     @discardableResult
-    func startGroupExec(command: String, timeout: Double, hosts: [HostProfile]) -> ExecRun? {
+    func startGroupExec(command: String, timeout: Double, hosts: [HostProfile], overrides: [UUID: String] = [:]) -> ExecRun? {
         let cmd = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cmd.isEmpty, !hosts.isEmpty, execRun?.isRunning != true else { return nil }
         cancelGroupExecDraft()
-        let run = ExecRun(command: cmd, timeout: timeout, hosts: hosts)
+        let ids = Set(hosts.map(\.id))
+        let own = overrides.filter { ids.contains($0.key) && !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        // Historique : la commande commune seulement (jamais une commande suspecte : `record` la refuse ;
+        // les surcharges ne sont pas mémorisées, une commande par hôte suspecte bloque aussi l'enregistrement).
+        if secretWarning(cmd, overrides: own) == nil, history.record(cmd, hostCount: hosts.count, hadOverrides: !own.isEmpty) { saveHistory() }
+        let run = ExecRun(command: cmd, timeout: timeout, hosts: hosts, overrides: own)
         execRun = run
         execTask = Task { await self.perform(run) }
         return run
@@ -229,7 +338,7 @@ final class MultiExecFeature: AppFeature {
     /// « Relancer » : même commande, mêmes hôtes.
     func rerun() {
         guard let r = execRun, !r.isRunning else { return }
-        startGroupExec(command: r.command, timeout: r.timeout, hosts: r.rows.map(\.host))
+        startGroupExec(command: r.command, timeout: r.timeout, hosts: r.rows.map(\.host), overrides: r.overrides)
     }
 
     func closeResults() { if execRun?.isRunning != true { execRun = nil } }
@@ -240,7 +349,7 @@ final class MultiExecFeature: AppFeature {
     private func perform(_ run: ExecRun) async {
         let limits = GroupExecLimits(timeout: run.timeout, maxOutputBytes: Self.maxOutputBytes, maxConcurrent: 16)
         let targets = run.rows.map { row in
-            GroupExecTarget(id: row.id, name: row.host.name) { [weak self] cmd, limits in
+            GroupExecTarget(id: row.id, name: row.host.name, command: row.command) { [weak self] cmd, limits in
                 guard let self else { return RemoteExecResult(failure: "annulé") }
                 return await self.execute(on: row, command: cmd, limits: limits)
             }
@@ -280,9 +389,34 @@ final class MultiExecFeature: AppFeature {
         return result
     }
 
-    /// Texte copiable de tous les résultats.
-    func reportText(_ run: ExecRun) -> String {
-        GroupExecReport.text(command: run.command, entries: run.rows.compactMap { r in r.result.map { (r.host.name, $0) } })
+    private func reportEntries(_ run: ExecRun) -> [GroupExecReportEntry] {
+        run.rows.compactMap { r in r.result.map { GroupExecReportEntry(name: r.host.name, command: r.command, result: $0) } }
+    }
+
+    /// Texte copiable de tous les résultats (la commande propre à un hôte est rappelée quand elle diffère).
+    func reportText(_ run: ExecRun) -> String { GroupExecReport.detailedText(command: run.command, entries: reportEntries(run)) }
+    func reportCSV(_ run: ExecRun) -> String { GroupExecReport.csv(entries: reportEntries(run)) }
+
+    /// Écrit le rapport (CSV si l'extension est `.csv`, texte sinon). Les sorties distantes peuvent contenir des
+    /// données sensibles : le fichier n'est lisible que par l'utilisateur.
+    @discardableResult
+    func exportReport(_ run: ExecRun, to url: URL) -> Bool {
+        let body = url.pathExtension.lowercased() == "csv" ? reportCSV(run) : reportText(run)
+        do {
+            try Data(body.utf8).write(to: url, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+            return true
+        } catch { return false }
+    }
+
+    /// Boîte « Enregistrer sous… » du rapport.
+    func presentExport(_ run: ExecRun) {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.commaSeparatedText, .plainText]
+        panel.nameFieldStringValue = "multi-execution.csv"
+        panel.message = "Exporter le rapport (extension .csv pour un tableur, .txt pour du texte)"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if !exportReport(run, to: url) { NSSound.beep() }
     }
 
     func copy(_ text: String) {

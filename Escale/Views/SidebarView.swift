@@ -97,6 +97,7 @@ struct SidebarView: View {
             Button("Nouvel hôte ici…") { model.editor = .newHost(folder: folder.id) }
             Button("Nouveau sous-dossier…") { model.editor = .newFolder(parent: folder.id) }
             Button("Renommer…") { model.editor = .renameFolder(folder) }
+            FeatureFolderMenuItems(model: model, folder: folder)
             Divider()
             Button("Supprimer…", role: .destructive) { model.pendingDeletion = .folder(folder) }
         } else {

@@ -93,3 +93,48 @@ public enum GroupExecReport {
         return out
     }
 }
+
+/// Une ligne d'un rapport détaillé (une par hôte) : commande réellement exécutée sur cet hôte.
+public struct GroupExecReportEntry: Sendable {
+    public var name: String
+    public var command: String
+    public var result: RemoteExecResult
+    public init(name: String, command: String, result: RemoteExecResult) { self.name = name; self.command = command; self.result = result }
+}
+
+extension GroupExecReport {
+    /// Texte détaillé : la commande propre à chaque hôte est rappelée quand elle diffère de `command`.
+    public static func detailedText(command: String, entries: [GroupExecReportEntry]) -> String {
+        var out = "$ \(command)\n"
+        for e in entries {
+            let r = e.result
+            out += "\n=== \(e.name) — \(r.summary) (\(String(format: "%.1f", r.duration)) s) ===\n"
+            if e.command != command { out += "$ \(e.command)\n" }
+            if !r.stdout.isEmpty { out += r.stdout.hasSuffix("\n") ? r.stdout : r.stdout + "\n" }
+            if r.stdoutTruncated { out += "[sortie standard tronquée]\n" }
+            if !r.stderr.isEmpty { out += "--- stderr ---\n" + (r.stderr.hasSuffix("\n") ? r.stderr : r.stderr + "\n") }
+            if r.stderrTruncated { out += "[erreur standard tronquée]\n" }
+        }
+        return out
+    }
+
+    /// CSV (RFC 4180, séparateur virgule, fins de ligne CRLF) : une ligne par hôte. Les cellules qui commencent
+    /// par `= + - @` sont préfixées d'une apostrophe (injection de formule à l'ouverture dans un tableur).
+    public static func csv(entries: [GroupExecReportEntry]) -> String {
+        func cell(_ s: String) -> String {
+            var v = s
+            if let f = v.first, "=+-@\t\r".contains(f) { v = "'" + v }
+            if v.contains(where: { ",\"\n\r".contains($0) }) { v = "\"" + v.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
+            return v
+        }
+        var lines = ["hote,commande,statut,code_sortie,duree_s,delai_depasse,echec,stdout,stderr"]
+        for e in entries {
+            let r = e.result
+            lines.append([
+                e.name, e.command, r.isSuccess ? "succes" : "echec", r.exitCode.map(String.init) ?? "",
+                String(format: "%.2f", r.duration), r.timedOut ? "oui" : "non", r.failure ?? "", r.stdout, r.stderr,
+            ].map(cell).joined(separator: ","))
+        }
+        return lines.joined(separator: "\r\n") + "\r\n"
+    }
+}

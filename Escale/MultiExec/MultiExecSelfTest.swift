@@ -188,6 +188,45 @@ struct MultiExecSelfTest {
             await sleep(1.0)
             await check("apres_arret_aucun_autre_ne_recoit", [p2, p3, p4].allSatisfy { !text($0).contains("OFF-64") })
 
+            // 4b. Sortie par double Échap : jamais diffusé (groupe de deux panneaux : p1 → p2)
+            await check("echap_demarrage", feature.startBroadcast(.panes([p1.id, p2.id])))
+            let wE = feature.replicatedWrites
+            p1.session.engine.sendInput(Data([0x1b]))
+            await check("echap_seul_retenu_non_diffuse_tout_de_suite", feature.replicatedWrites == wE && feature.isBroadcasting, "\(feature.replicatedWrites - wE)")
+            await check("echap_seul_diffuse_apres_le_delai", await wait(3) { feature.replicatedWrites == wE + 1 }, "\(feature.replicatedWrites - wE)")
+            let wE2 = feature.replicatedWrites
+            p1.session.engine.sendInput(Data([0x1b]))
+            p1.session.engine.sendInput(Data("x".utf8))   // autre saisie : l'Échap retenu part d'abord, dans l'ordre
+            await check("echap_puis_saisie_ordre_conserve", feature.replicatedWrites == wE2 + 2, "\(feature.replicatedWrites - wE2)")
+            p1.session.write(Data([0x15]))
+            let wE3 = feature.replicatedWrites, exits0 = feature.escapeExits
+            p1.session.engine.sendInput(Data([0x1b]))
+            p1.session.engine.sendInput(Data([0x1b]))
+            await check("double_echap_arrete_la_diffusion", !feature.isBroadcasting && feature.escapeExits == exits0 + 1)
+            await sleep(MultiExecFeature.escapeWindow + 0.4)
+            await check("double_echap_aucune_fuite", feature.replicatedWrites == wE3, "\(feature.replicatedWrites - wE3)")
+            await check("double_echap_observateurs_retires", [p1, p2].allSatisfy { $0.session.inputObservers[MultiExecFeature.observerKey] == nil })
+            // Échap plus lent que la fenêtre : deux Échap seuls, aucune sortie
+            feature.startBroadcast(.panes([p1.id, p2.id]))
+            let wE4 = feature.replicatedWrites
+            p1.session.engine.sendInput(Data([0x1b]))
+            await sleep(MultiExecFeature.escapeWindow + 0.3)
+            p1.session.engine.sendInput(Data([0x1b]))
+            await sleep(MultiExecFeature.escapeWindow + 0.3)
+            await check("echap_lents_pas_de_sortie", feature.isBroadcasting && feature.replicatedWrites == wE4 + 2, "\(feature.replicatedWrites - wE4)")
+            feature.stopBroadcast()
+            // ⌃⌥Échap : raccourci de menu
+            feature.startBroadcast(.panes([p1.id, p2.id]))
+            _ = await wait(5) { findMenuItem("Quitter la diffusion (jamais diffusé)", in: NSApp.mainMenu) != nil }
+            if let item = findMenuItem("Quitter la diffusion (jamais diffusé)", in: NSApp.mainMenu) {
+                let m = item.keyEquivalentModifierMask
+                await check("menu_quitter_ctrl_option_echap", item.keyEquivalent == "\u{1b}" && m.contains(.control) && m.contains(.option), "\(item.keyEquivalent.unicodeScalars.map(\.value)) \(m.rawValue)")
+                _ = NSApp.mainMenu?.performKeyEquivalent(with: keyEvent("\u{1b}", [.control, .option], win))
+            } else { await check("menu_quitter_present", false) }
+            if !(await wait(3) { !feature.isBroadcasting }) { feature.stopBroadcast(); notes["quitter_par_le_menu"] = "false" } else { notes["quitter_par_le_menu"] = "true" }
+            await check("quitter_arrete_la_diffusion", !feature.isBroadcasting)
+
+            for p in [p1, p2, p3, p4] { p.session.write(Data([0x15])) }   // efface les octets parasites laissés par les Échap
             // 5. Sélection de panneaux : p3 hors groupe
             await check("demarrage_selection", feature.startBroadcast(.panes([p1.id, p2.id])))
             await check("selection_bordures", feature.hasBroadcastBorder(p1) && feature.hasBroadcastBorder(p2) && !feature.hasBroadcastBorder(p3))
@@ -276,6 +315,75 @@ struct MultiExecSelfTest {
             await check("autres_hotes_reussissent", okRow?.result?.isSuccess == true && okRow?.result?.stdout == "ok-9\n")
             notes["hote_injoignable"] = koRow?.result?.failure ?? ""
             await capture("03-resultats")
+            // 8b. Commande propre à chaque hôte + variables
+            let ownCmds = [good[1].id: "echo special-{host}-{name}"]
+            let run5 = feature.startGroupExec(command: "echo U={user} N={name} H={host}", timeout: 20, hosts: good, overrides: ownCmds)
+            await feature.waitForRun()
+            let r5 = run5?.rows ?? []
+            await check("surcharge_commande_par_hote", r5.count == 3 && r5[1].result?.stdout == "special-127.0.0.1-Hôte 2\n", r5.map { $0.result?.stdout ?? "nil" }.joined(separator: "|"))
+            await check("commune_avec_variables_pour_les_autres",
+                        r5[0].result?.stdout == "U=\(good[0].user ?? "") N=Hôte 1 H=127.0.0.1\n" && r5[2].result?.stdout == "U=\(good[2].user ?? "") N=Hôte 3 H=127.0.0.1\n",
+                        r5.map { $0.result?.stdout ?? "nil" }.joined(separator: "|"))
+            await check("lignes_gardent_la_commande_resolue", r5[1].command == "echo special-127.0.0.1-'Hôte 2'" && r5[0].command.contains("N='Hôte 1'"), r5.map(\.command).joined(separator: "|"))
+            let report5 = feature.reportText(run5!)
+            await check("rapport_rappelle_la_commande_par_hote", report5.contains("$ echo special-127.0.0.1-'Hôte 2'"))
+            feature.rerun()
+            await feature.waitForRun()
+            await check("relancer_garde_les_surcharges", feature.execRun?.rows[1].result?.stdout == "special-127.0.0.1-Hôte 2\n")
+            // Injection par le nom : le nom d'un hôte ne sort jamais de son mot
+            let evil = HostProfile(name: "x'; echo PWNED; '", host: good[0].host, port: good[0].port, user: good[0].user, auth: good[0].auth)
+            let run6 = feature.startGroupExec(command: "echo {name}", timeout: 20, hosts: [evil])
+            await feature.waitForRun()
+            await check("nom_hostile_non_interprete", run6?.rows.first?.result?.stdout == "x'; echo PWNED; '\n", run6?.rows.first?.result?.stdout ?? "nil")
+
+            // 8c. Cibles : dossier récursif, étiquette, connectés
+            let folderID = all.first(where: { $0.name == "Hôte 1" })?.folderID
+            if let folderID {
+                feature.beginGroupExec(folder: folderID)
+                await check("cible_dossier", feature.execDraft?.hosts.count == 4 && feature.execDraft?.source.contains("Tests locaux") == true, "\(feature.execDraft?.hosts.count ?? -1)")
+                feature.retarget(feature.hosts(withTag: "test"), source: "Étiquette #test")
+                await check("cible_etiquette", feature.execDraft?.hosts.count == 4 && feature.hosts(withTag: "#TEST").count == 4 && feature.hosts(withTag: "autre").isEmpty)
+                feature.cancelGroupExecDraft()
+            } else { await check("cible_dossier", false, "hôtes sans dossier") }
+            await check("cible_connectes", Set(feature.connectedHosts.map(\.id)) == Set(model.library.library.hosts.filter { model.connections.state(of: $0.id) == .connected }.map(\.id)))
+            feature.beginGroupExecOnConnected()
+            await check("cible_connectes_feuille_selon_etat", (feature.execDraft != nil) == !feature.connectedHosts.isEmpty)
+            feature.cancelGroupExecDraft()
+            // Menu contextuel de dossier : vue instanciable et condition d'activation
+            if let folderID, let folder = model.library.folder(folderID) {
+                _ = MultiExecFolderMenuItems(model: model, folder: folder)
+                await check("menu_dossier_actif", !feature.hosts(inFolder: folderID).isEmpty)
+            }
+
+            // 8d. Historique : dernières commandes, aucun secret, fichier JSON à côté de la bibliothèque
+            let historyPath = URL(fileURLWithPath: model.options.libraryPath ?? "").deletingLastPathComponent().appendingPathComponent("exec-history.json").path
+            await check("historique_memorise_les_commandes", feature.history.entries.first?.command == "echo {name}" && feature.history.entries.contains { $0.command == "exit 3" }, feature.history.entries.prefix(3).map(\.command).joined(separator: "|"))
+            let secretCmd = "echo password=hunter2"
+            await check("avertissement_secret", feature.secretWarning(secretCmd) != nil && feature.secretWarning("uptime") == nil)
+            let before = feature.history.entries.count
+            _ = feature.startGroupExec(command: secretCmd, timeout: 5, hosts: [good[0]])
+            await feature.waitForRun()
+            await check("secret_non_memorise", feature.history.entries.count == before && !feature.history.entries.contains { $0.command.contains("hunter2") })
+            let histFile = (try? String(contentsOfFile: historyPath, encoding: .utf8)) ?? ""
+            await check("fichier_historique_ecrit_sans_secret", histFile.contains("exit 3") && !histFile.contains("hunter2") && !histFile.contains("password"), historyPath)
+            for i in 0..<22 { _ = feature.startGroupExec(command: "echo h\(i)", timeout: 5, hosts: [good[0]]); await feature.waitForRun() }
+            await check("historique_vingt_max", feature.history.entries.count == 20 && feature.history.entries.first?.command == "echo h21", "\(feature.history.entries.count)")
+            let reloaded = GroupExecHistory.load(from: URL(fileURLWithPath: historyPath))
+            await check("historique_recharge_depuis_le_fichier", reloaded.entries.map(\.command) == feature.history.entries.map(\.command))
+
+            // 8e. Export du rapport
+            _ = feature.startGroupExec(command: "echo salut,\"x\"; echo e >&2", timeout: 20, hosts: Array(good.prefix(2)), overrides: [good[1].id: "exit 4"])
+            await feature.waitForRun()
+            let csvURL = URL(fileURLWithPath: "\(dir)/rapport.csv"), txtURL = URL(fileURLWithPath: "\(dir)/rapport.txt")
+            let runX = feature.execRun!
+            await check("export_csv_et_texte", feature.exportReport(runX, to: csvURL) && feature.exportReport(runX, to: txtURL))
+            let csv = (try? String(contentsOf: csvURL, encoding: .utf8)) ?? "", txt = (try? String(contentsOf: txtURL, encoding: .utf8)) ?? ""
+            let csvLines = csv.components(separatedBy: "\r\n")
+            await check("csv_entete_et_lignes", csvLines[0].hasPrefix("hote,commande,statut,code_sortie") && csvLines.count == 4 && csv.contains("\"salut,x\n\"") && csvLines[2].contains(",echec,4,"), csv)
+            await check("texte_contient_les_deux_hotes", txt.contains("=== Hôte 1 — code 0") && txt.contains("=== Hôte 2 — code 4") && txt.contains("$ exit 4"))
+            let perms = (try? FileManager.default.attributesOfItem(atPath: csvURL.path)[.posixPermissions] as? Int) ?? 0
+            await check("export_prive", perms == 0o600, String(perms, radix: 8))
+
             // Aucun exec résiduel, une seule action de session
             var execLeft = 0
             for l in model.connections.allLinks { execLeft += await l.transport.execSessionCount }
