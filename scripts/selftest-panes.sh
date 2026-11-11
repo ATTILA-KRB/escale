@@ -72,17 +72,20 @@ lib = {"folders": [{"id": folder, "name": "Tests locaux"}], "hosts": [host("Hôt
 json.dump(lib, open(path, "w"), indent=2)
 PY
 
-# --- build isolé
+# --- build isolé (ignoré si ESCALE_APP désigne une app déjà construite, ex. build Release de scripts/release.sh)
 cd "$ROOT"
-/opt/homebrew/bin/xcodegen generate --quiet
-xcodebuild -project Escale.xcodeproj -scheme Escale -configuration Debug -derivedDataPath "$DD" \
-  -skipPackagePluginValidation -skipMacroValidation build > "$WORK/build.log" 2>&1 \
-  || { tail -n 40 "$WORK/build.log"; echo "build en échec"; exit 3; }
-/opt/homebrew/bin/rg -N "BUILD (SUCCEEDED|FAILED)" "$WORK/build.log" | tail -n 1 || tail -n 3 "$WORK/build.log"
+if [ -z "${ESCALE_APP:-}" ]; then
+  /opt/homebrew/bin/xcodegen generate --quiet
+  xcodebuild -project Escale.xcodeproj -scheme Escale -configuration Debug -derivedDataPath "$DD" \
+    -skipPackagePluginValidation -skipMacroValidation build > "$WORK/build.log" 2>&1 \
+    || { tail -n 40 "$WORK/build.log"; echo "build en échec"; exit 3; }
+  /opt/homebrew/bin/rg -N "BUILD (SUCCEEDED|FAILED)" "$WORK/build.log" | tail -n 1 || tail -n 3 "$WORK/build.log"
+fi
+APP_BIN="${ESCALE_APP:-$DD/Build/Products/Debug/Escale.app}/Contents/MacOS/Escale"
 
 # --- lancement
 set +e
-ESCALE_SSHD_LOG="$D/sshd.log" "$DD/Build/Products/Debug/Escale.app/Contents/MacOS/Escale" \
+ESCALE_SSHD_LOG="$D/sshd.log" "$APP_BIN" \
   --library "$WORK/library.json" --ssh-config /dev/null --known-hosts "$D/known_hosts" \
   --ssh-option IdentityAgent=none --ssh-option GlobalKnownHostsFile=/dev/null \
   --selftest-panes "$OUT" &

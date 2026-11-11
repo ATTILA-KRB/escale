@@ -201,3 +201,17 @@ reels (raccourcis, glisser des separateurs, clics, survol), mode clair, VoiceOve
 Dettes : `PaneMenu` installe le menu Terminal par code avec un minuteur (a migrer dans les commandes SwiftUI de
 `EscaleApp`) ; texte du bandeau tronque dans un panneau etroit ; en-tete du dialogue de cle d'hote desaligne ;
 captures de `selftest-ssh.sh` parfois perimees apres reconnexion (le texte du tampon, lui, est verifie).
+
+### M4 distribution (2026-11-11)
+
+Fait et verifie (procedure : `docs/RELEASE.md`, script : `scripts/release.sh`) :
+- Release signee Developer ID (team 5FMH389VS7) + runtime durci, entitlements vides (pas de sandbox) ; version via
+  `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`. Debug reste ad hoc.
+- Sparkle 2.10.1 (SwiftPM) : `UpdateFeature`, menu « Rechercher les mises a jour... », `SUPublicEDKey` dans l'Info.plist,
+  cle privee EdDSA dans le Trousseau (compte `escale`). Desactive en selftest et si `ESCALE_FEED_URL` est vide (defaut).
+- Piege : les XPC/Updater imbriques de Sparkle ne sont pas re-signes par Xcode (notarisation refusee) : re-signature explicite dans `release.sh`.
+- Notarisation app + DMG acceptee, agrafage, `spctl` « Notarized Developer ID », appcast genere dans `dist/updates/`.
+- Installation propre approximee (DMG monte, copie en quarantaine, spctl, `--selftest-panes` sur le binaire Release).
+
+A faire : test sur un Mac vierge ; choix du domaine et publication du flux (voir RELEASE.md) ; icone d'app (aucune pour l'instant).
+
