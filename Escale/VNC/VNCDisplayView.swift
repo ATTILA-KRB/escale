@@ -9,6 +9,9 @@ final class VNCDisplayView: NSView {
     weak var session: VNCSession?
     var scaling: VNCScaling = .fit { didSet { if scaling != oldValue { needsLayout = true; enclosingScrollView?.needsLayout = true; needsDisplay = true } } }
 
+    /// Lissage demandé par l'utilisateur : force l'interpolation linéaire même en agrandissement.
+    var smoothing = false { didSet { if smoothing != oldValue { needsDisplay = true } } }
+
     private var image: CGImage?
     private var imageSize = CGSize.zero
     private var redrawScheduled = false
@@ -132,10 +135,29 @@ final class VNCDisplayView: NSView {
         // La vue est inversée (y vers le bas) : on remet l'image à l'endroit.
         ctx.translateBy(x: r.minX, y: r.maxY)
         ctx.scaleBy(x: 1, y: -1)
-        ctx.interpolationQuality = scaling == .actual ? .none : .medium
+        ctx.interpolationQuality = interpolationQuality
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: r.width, height: r.height))
         ctx.restoreGState()
         framesDrawn += 1
+    }
+
+    /// Échelle réelle en pixels de l'écran par pixel distant (Retina : `backingScaleFactor` points → pixels).
+    var devicePixelsPerRemotePixel: CGFloat {
+        let r = imageRect()
+        guard imageSize.width > 0 else { return 1 }
+        return r.width / imageSize.width * (window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 1)
+    }
+
+    /// Qualité d'interpolation : plus proche voisin à partir de ×2 ou pour une échelle entière (pixels nets, comme un
+    /// visualiseur VNC), linéaire en réduction et pour les échelles fractionnaires, linéaire partout si « Lissage ».
+    var interpolationQuality: CGInterpolationQuality {
+        Self.interpolationQuality(scale: devicePixelsPerRemotePixel, smoothing: smoothing)
+    }
+
+    nonisolated static func interpolationQuality(scale: CGFloat, smoothing: Bool) -> CGInterpolationQuality {
+        if smoothing || scale < 1 { return .high }
+        if scale >= 2 || abs(scale - scale.rounded()) < 0.001 { return .none }
+        return .high
     }
 
     // MARK: Curseur
@@ -310,11 +332,13 @@ final class VNCScrollView: NSScrollView {
 struct VNCDisplayRepresentable: NSViewRepresentable {
     let session: VNCSession
     let scaling: VNCScaling
+    let smoothing: Bool
 
     func makeNSView(context: Context) -> VNCScrollView {
         let v = VNCScrollView(frame: .zero)
         v.display.session = session
         v.display.scaling = scaling
+        v.display.smoothing = smoothing
         session.display = v.display
         return v
     }
@@ -322,6 +346,7 @@ struct VNCDisplayRepresentable: NSViewRepresentable {
     func updateNSView(_ v: VNCScrollView, context: Context) {
         v.display.session = session
         v.display.scaling = scaling
+        v.display.smoothing = smoothing
         session.display = v.display
         v.needsLayout = true
     }

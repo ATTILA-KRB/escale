@@ -10,7 +10,7 @@ struct VNCWindowView: View {
             VNCToolbar(session: session)
             Divider()
             ZStack {
-                VNCDisplayRepresentable(session: session, scaling: session.scaling)
+                VNCDisplayRepresentable(session: session, scaling: session.scaling, smoothing: session.smoothing)
                 VNCOverlay(session: session)
             }
         }
@@ -18,7 +18,7 @@ struct VNCWindowView: View {
     }
 }
 
-private struct VNCToolbar: View {
+struct VNCToolbar: View {
     @Bindable var session: VNCSession
 
     var body: some View {
@@ -29,10 +29,17 @@ private struct VNCToolbar: View {
             Button("Envoyer le presse-papiers") { session.sendClipboard() }
                 .disabled(!session.isConnected || !session.inputEnabled)
                 .help("Envoie le texte copié sur ce Mac au bureau distant (le texte copié à distance arrive ici automatiquement)")
-            Picker("Échelle", selection: $session.scaling) {
-                ForEach(VNCScaling.allCases, id: \.self) { Text($0.displayName).tag($0) }
+            // Étiquettes à la taille du reste de la barre (le libellé d'un Picker de menu reste en taille normale).
+            HStack(spacing: 4) {
+                Text("Échelle").fixedSize()
+                Picker("Échelle", selection: $session.scaling) {
+                    ForEach(VNCScaling.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                }
+                .pickerStyle(.menu).labelsHidden().fixedSize()
             }
-            .pickerStyle(.menu).fixedSize()
+            Toggle("Lissage", isOn: $session.smoothing)
+                .toggleStyle(.checkbox)
+                .help("Interpolation linéaire en agrandissement (par défaut : pixels nets à partir de ×2)")
             Toggle("Lecture seule", isOn: Binding(get: { !session.inputEnabled }, set: { session.inputEnabled = !$0 }))
                 .toggleStyle(.checkbox)
             Spacer()
@@ -51,13 +58,22 @@ private struct VNCToolbar: View {
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
         .controlSize(.small)
+        .font(.system(size: 11))
     }
 
     private var status: String {
         if let n = session.notice { return n }
         guard let info = session.serverInfo, session.isConnected else { return "" }
         let s = session.remoteSize
-        return "\(info.name) — \(Int(s.width))×\(Int(s.height))"
+        return Self.statusText(desktopName: info.name, hostName: session.host.name, size: s)
+    }
+
+    /// Le titre de la fenêtre porte le nom de l'hôte (bibliothèque) ; le nom annoncé par le serveur est libellé « Bureau »
+    /// et omis quand il est identique.
+    static func statusText(desktopName: String, hostName: String, size: CGSize) -> String {
+        let dims = "\(Int(size.width))×\(Int(size.height))"
+        let name = desktopName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty || name == hostName ? dims : "Bureau : \(name) — \(dims)"
     }
 
     private func openScreenSharing() {

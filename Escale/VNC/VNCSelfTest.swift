@@ -98,11 +98,25 @@ final class VNCSelfTest {
         check("echelle_ajuster", fit.width > 160 && abs(fit.width / fit.height - 160.0 / 96.0) < 0.01, "\(fit)")
         let mapped = display.remotePoint(from: display.viewPoint(forRemoteX: 50, y: 20))
         check("conversion_point", mapped.x == 50 && mapped.y == 20, "\(mapped)")
+        // Interpolation : plus proche voisin dès ×2 (pixels nets), linéaire en réduction / échelle fractionnaire / « Lissage ».
+        let q = VNCDisplayView.interpolationQuality(scale:smoothing:)
+        check("interpolation_regles", q(12, false) == .none && q(2, false) == .none && q(3, false) == .none && q(1, false) == .none
+              && q(1.5, false) == .high && q(0.5, false) == .high && q(12, true) == .high)
+        let scale = display.devicePixelsPerRemotePixel
+        check("interpolation_agrandissement_net", scale >= 2 && display.interpolationQuality == .none, "échelle \(scale)")
+        display.smoothing = true
+        check("interpolation_lissage", display.interpolationQuality == .high)
+        display.smoothing = false
+        let status = VNCToolbar.statusText(desktopName: "escale-test", hostName: "vnc-test", size: CGSize(width: 160, height: 96))
+        check("libelle_bureau", status == "Bureau : escale-test — 160×96" && feature.window(for: host.id)?.title == "vnc-test", "\(status) / \(feature.window(for: host.id)?.title ?? "nil")")
+        check("libelle_nom_identique_omis", VNCToolbar.statusText(desktopName: "vnc-test", hostName: "vnc-test", size: CGSize(width: 1, height: 2)) == "1×2")
         session.scaling = .actual
         display.scaling = .actual
         display.layoutSubtreeIfNeeded()
         let actual = display.imageRect()
         check("echelle_100", actual.width == 160 && actual.height == 96, "\(actual)")
+        let retina = display.window?.backingScaleFactor ?? 1
+        check("echelle_100_pixel_exact", abs(display.devicePixelsPerRemotePixel - retina) < 0.001 && display.interpolationQuality == .none, "\(display.devicePixelsPerRemotePixel)")
         session.scaling = .fit
         display.scaling = .fit
         display.layoutSubtreeIfNeeded()
@@ -194,7 +208,49 @@ final class VNCSelfTest {
         check("fermeture_fenetre", feature.window(for: host.id) == nil && feature.sessions[host.id] == nil)
         check("serveur_voit_deconnexion", await wait { serverLog().filter { $0 == "disconnect" }.count > countBefore })
         check("pas_de_secret_dans_les_logs", !serverLog().joined().contains(ProcessInfo.processInfo.environment["ESCALE_VNCTEST_PASSWORD"] ?? "\u{0}"))
+        await viaSSH(feature)
         return finish()
+    }
+
+    /// Trajet « via un hôte SSH » : tunnel -L sur le maître du « Relais SSH », connexion RFB à travers, tunnel fermé et
+    /// lien rendu à la fermeture de la fenêtre.
+    private func viaSSH(_ feature: VNCFeature) async {
+        let env = ProcessInfo.processInfo.environment
+        guard let port = env["ESCALE_VNCTEST_PORT"].flatMap(Int.init), let password = env["ESCALE_VNCTEST_PASSWORD"] else { return }
+        guard let relay = model.library.library.hosts.first(where: { $0.name == "Relais SSH" }) else {
+            check("via_ssh_hote_relais_present", false, "bibliothèque sans « Relais SSH »")
+            return
+        }
+        let conn = model.connections.connection(for: relay)
+        let host = HostProfile(name: "vnc-via-ssh", host: "127.0.0.1", port: port, connectionProtocol: .vnc,
+                               vnc: VNCSettings(viaSSHHostID: relay.id, viewOnly: false, shared: true, encoding: .auto, scaling: .fit))
+        model.library.upsert(host)
+        let authsBefore = serverLog().filter { $0 == "auth ok" }.count
+        guard let session = feature.open(host, activate: false) else { check("via_ssh_ouverture", false); return }
+        session.rememberPassword = false
+        check("via_ssh_demande_mot_de_passe", await wait(30) { session.phase == .needsCredentials }, "\(session.phase)")
+        let tunnel = session.tunnelPort
+        check("via_ssh_tunnel_ouvert_port_occupe", tunnel != nil && tunnel != port && !TunnelPortCheck.isFree(address: "127.0.0.1", port: tunnel ?? 0), "\(String(describing: tunnel))")
+        check("via_ssh_maitre_connecte", conn.state == .connected, "\(conn.state)")
+        session.submitCredentials(password: password)
+        check("via_ssh_connecte", await wait(20) { session.isConnected }, "\(session.phase)")
+        check("via_ssh_serveur_voit_auth", await wait { serverLog().filter { $0 == "auth ok" }.count > authsBefore })
+        check("via_ssh_framebuffer", await wait { session.framebuffer?.pixel(x: 10, y: 60)?.g == 200 && session.framebuffer?.pixel(x: 100, y: 60)?.r == 200 },
+              "\(String(describing: session.framebuffer?.pixel(x: 10, y: 60)))")
+        check("via_ssh_infos_serveur", session.serverInfo?.name == "escale-test" && session.serverInfo?.width == 160, "\(String(describing: session.serverInfo))")
+        let linkCount = conn.links.map(\.tabCount)
+        check("via_ssh_lien_retenu", linkCount.reduce(0, +) == 1, "\(linkCount)")
+        check("via_ssh_url_partage_ecran_via_tunnel", session.screenSharingURL?.port == tunnel, "\(String(describing: session.screenSharingURL))")
+
+        let discBefore = serverLog().filter { $0 == "disconnect" }.count
+        await feature.closeWindow(for: host.id)
+        check("via_ssh_fenetre_fermee", feature.window(for: host.id) == nil && feature.sessions[host.id] == nil)
+        check("via_ssh_serveur_voit_deconnexion", await wait { serverLog().filter { $0 == "disconnect" }.count > discBefore })
+        check("via_ssh_tunnel_ferme_port_libere", await wait(15) { TunnelPortCheck.isFree(address: "127.0.0.1", port: tunnel ?? 0) }, "\(String(describing: tunnel))")
+        check("via_ssh_lien_rendu", await wait(10) { conn.links.allSatisfy { $0.tabCount == 0 } }, "\(conn.links.map(\.tabCount))")
+        var sessions: [Int] = []
+        for l in conn.links { sessions.append(await l.transport.sessionCount) }
+        check("via_ssh_session_count_zero", sessions.allSatisfy { $0 == 0 }, "\(sessions)")
     }
 
     private func finish(_ session: VNCSession, _ host: HostProfile) -> Bool {
