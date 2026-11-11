@@ -22,6 +22,23 @@ final class SFTPTransfer: Identifiable {
     /// Débit lissé en octets par seconde (0 hors transfert).
     private(set) var speed: Double = 0
     private(set) var attempts = 0
+    /// Offset de reprise de la tentative courante (0 = départ de zéro) ; sert à afficher « repris à X % ».
+    private(set) var resumedFrom: UInt64 = 0
+    /// Reprise demandée mais refusée (début différent…) : la raison, pour l'afficher.
+    private(set) var restartReason: String?
+    /// Interrompu par une perte de lien : repart tout seul à la reconnexion.
+    private(set) var interrupted = false
+    fileprivate(set) var autoResumes = 0
+    var autoResumeCount: Int { autoResumes }
+    @ObservationIgnored private var awaitingFirstSnapshot = true
+
+    /// « repris à 42 % » (nil si la tentative est repartie de zéro).
+    var resumeText: String? {
+        guard resumedFrom > 0 else { return nil }
+        guard let t = total, t > 0 else { return "repris à \(SFTPFormat.size(resumedFrom))" }
+        let pct = min(100, Int((Double(resumedFrom) / Double(t) * 100).rounded()))
+        return "repris à \(pct) %"
+    }
 
     @ObservationIgnored fileprivate var task: Task<Void, Never>?
     @ObservationIgnored private var sampleDate = Date()
@@ -41,39 +58,37 @@ final class SFTPTransfer: Identifiable {
 
     fileprivate func begin() {
         state = .running; attempts += 1
-        bytes = 0; speed = 0; sampleBytes = 0; sampleDate = Date()
+        bytes = 0; speed = 0; resumedFrom = 0; restartReason = nil; interrupted = false
+        awaitingFirstSnapshot = true
     }
 
-    fileprivate func update(_ p: SFTPTransferProgress) {
+    /// Le cœur émet d'abord un instantané à l'offset de reprise : c'est lui qui donne « repris à X % ».
+    fileprivate func update(_ s: SFTPTransferSnapshot) {
         guard state == .running else { return }
-        bytes = p.bytesTransferred
-        if let t = p.totalBytes { total = t }
-        let now = Date(), dt = now.timeIntervalSince(sampleDate)
-        if dt >= 0.4 {
-            let instant = Double(bytes &- sampleBytes) / dt
-            speed = speed == 0 ? instant : speed * 0.6 + instant * 0.4
-            sampleDate = now; sampleBytes = bytes
+        if awaitingFirstSnapshot {
+            awaitingFirstSnapshot = false
+            if attempts > 1 { resumedFrom = s.bytesTransferred }
         }
+        bytes = s.bytesTransferred
+        if let t = s.totalBytes { total = t }
+        speed = s.bytesPerSecond
     }
+
+    fileprivate func noteOutcome(_ o: SFTPTransferOutcome) {
+        resumedFrom = o.resumedFrom
+        restartReason = o.restartReason
+        total = o.totalBytes
+    }
+
+    fileprivate func markInterrupted() { interrupted = true }
+    fileprivate func countAutoResume() { autoResumes += 1; interrupted = false }
 
     fileprivate func finish(_ s: State) {
         state = s; speed = 0
         if s == .done, let t = total { bytes = t }
     }
 
-    fileprivate func resetForRetry() { state = .queued; bytes = 0; speed = 0 }
-}
-
-/// Limite le nombre de rappels de progression transmis à l'interface (un tous les ~80 ms).
-private final class ProgressGate: @unchecked Sendable {
-    private let lock = NSLock()
-    private var last = Date.distantPast
-    func allow() -> Bool {
-        lock.lock(); defer { lock.unlock() }
-        let now = Date()
-        if now.timeIntervalSince(last) >= 0.08 { last = now; return true }
-        return false
-    }
+    fileprivate func resetForRetry() { state = .queued; bytes = 0; speed = 0; interrupted = false }
 }
 
 /// File de transferts commune à tous les hôtes : au plus `maxConcurrent` transferts simultanés,
@@ -109,42 +124,54 @@ final class SFTPTransferQueue {
     }
 
     private func run(_ t: SFTPTransfer) async {
+        let client = t.session.client
         do {
             try await perform(t)
             t.finish(.done)
         } catch {
             var cancelled = Task.isCancelled
             if case SFTPError.cancelled = error { cancelled = true }
-            if cancelled { t.finish(.cancelled) } else {
-                if SFTPMessages.isChannelLoss(error) { t.session.channelLost() }
+            if cancelled {
+                // Annulation voulue : on ne laisse pas de fichier partiel (ni local, ni distant).
+                if t.direction == .download { try? FileManager.default.removeItem(at: t.local) }
+                else if let client { await client.discardPartialUpload(at: t.remote) }
+                t.finish(.cancelled)
+            } else {
+                // Échec : les octets déjà transférés restent en place, « Réessayer » reprend après vérification.
+                if SFTPMessages.isChannelLoss(error) {
+                    t.markInterrupted()
+                    t.session.channelLost()
+                }
                 t.finish(.failed(SFTPMessages.describe(error)))
             }
-            // Le fichier partiel ne sert à rien : une nouvelle tentative repart de zéro.
-            if t.direction == .download { try? FileManager.default.removeItem(at: t.local) }
         }
         t.task = nil
         t.session.transferFinished(t)
         pump()
     }
 
+    /// Reprise vérifiée du cœur dès la deuxième tentative (« Réessayer », reprise après coupure) ; première tentative
+    /// toujours complète, pour ne jamais « reprendre » un fichier distant qu'on a choisi de remplacer.
     private func perform(_ t: SFTPTransfer) async throws {
         guard let client = t.session.client else { throw SFTPError.channelClosed("canal SFTP non ouvert") }
-        let gate = ProgressGate()
-        let progress: @Sendable (SFTPTransferProgress) -> Void = { [weak t] p in
-            guard gate.allow() || p.bytesTransferred == p.totalBytes else { return }
-            Task { @MainActor in t?.update(p) }
+        let resume = t.attempts > 1
+        let task: SFTPTransferTask = switch t.direction {
+        case .download: client.startDownload(remotePath: t.remote, to: t.local, resume: resume, verification: .default)
+        case .upload: client.startUpload(localURL: t.local, to: t.remote, resume: resume, verification: .default)
         }
-        switch t.direction {
-        case .download:
-            try await client.download(remotePath: t.remote, to: t.local, progress: progress)
-        case .upload:
-            do {
-                try await client.upload(localURL: t.local, to: t.remote, progress: progress)
-            } catch {
-                if case SFTPError.cancelled = error { try? await client.remove(t.remote) }
-                throw error
-            }
+        let pump = Task { @MainActor [weak t] in for await s in task.progress { t?.update(s) } }
+        defer { pump.cancel() }
+        let outcome = try await withTaskCancellationHandler { try await task.outcome } onCancel: { task.cancel() }
+        t.noteOutcome(outcome)
+    }
+
+    /// Le canal d'un hôte est de retour : les transferts coupés par la perte du lien repartent (cinq fois au plus).
+    func resumeInterrupted(for session: SFTPHostSession) {
+        for t in items where t.session === session && t.interrupted && t.isFinished && t.autoResumes < 5 {
+            t.countAutoResume()
+            t.resetForRetry()
         }
+        pump()
     }
 
     func cancel(_ t: SFTPTransfer) {

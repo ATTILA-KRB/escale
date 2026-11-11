@@ -50,6 +50,73 @@ enum SFTPPath {
     }
 
     static func string(_ path: Data) -> String { String(decoding: path, as: UTF8.self) }
+
+    /// Sans barre finale (sauf la racine).
+    static func normalized(_ path: Data) -> Data {
+        var p = path
+        while p.count > 1, p.last == UInt8(ascii: "/") { p.removeLast() }
+        return p
+    }
+
+    /// `path` est `ancestor` ou un de ses descendants.
+    static func isInside(_ path: Data, of ancestor: Data) -> Bool {
+        let p = normalized(path), a = normalized(ancestor)
+        if p == a { return true }
+        return p.starts(with: a + Data("/".utf8))
+    }
+}
+
+/// Colonne de tri du navigateur.
+enum SFTPSortKey: String, CaseIterable, Sendable {
+    case name, size, date
+    var label: String { switch self { case .name: "Nom"; case .size: "Taille"; case .date: "Date" } }
+}
+
+/// Tri de la liste : dossiers d'abord, puis la colonne choisie (le nom départage les égalités).
+struct SFTPSort: Equatable, Sendable {
+    var key: SFTPSortKey = .name
+    var ascending = true
+
+    private static let keyDefault = "escale.sftp.sortKey", orderDefault = "escale.sftp.sortAscending"
+
+    static var stored: SFTPSort {
+        let d = UserDefaults.standard
+        let k = d.string(forKey: keyDefault).flatMap(SFTPSortKey.init(rawValue:)) ?? .name
+        let a = d.object(forKey: orderDefault) as? Bool ?? true
+        return SFTPSort(key: k, ascending: a)
+    }
+
+    func save() {
+        UserDefaults.standard.set(key.rawValue, forKey: Self.keyDefault)
+        UserDefaults.standard.set(ascending, forKey: Self.orderDefault)
+    }
+
+    /// Un clic sur l'en-tête de la colonne courante inverse l'ordre ; sur une autre colonne, ordre naturel
+    /// (croissant pour le nom, décroissant pour la taille et la date : le plus gros / récent d'abord).
+    mutating func toggle(_ k: SFTPSortKey) {
+        if key == k { ascending.toggle() } else { key = k; ascending = (k == .name) }
+    }
+
+    func sorted(_ items: [SFTPItem]) -> [SFTPItem] {
+        items.sorted { a, b in
+            if a.isDirectory != b.isDirectory { return a.isDirectory }
+            let byName = a.name.localizedStandardCompare(b.name)
+            switch key {
+            case .name:
+                return ascending ? byName == .orderedAscending : byName == .orderedDescending
+            case .size:
+                // Les dossiers n'ont pas de taille : ils restent triés par nom.
+                if a.isDirectory { return byName == .orderedAscending }
+                let x = a.size ?? 0, y = b.size ?? 0
+                if x != y { return ascending ? x < y : x > y }
+                return byName == .orderedAscending
+            case .date:
+                let x = a.modified ?? .distantPast, y = b.modified ?? .distantPast
+                if x != y { return ascending ? x < y : x > y }
+                return byName == .orderedAscending
+            }
+        }
+    }
 }
 
 /// Textes français des erreurs SFTP / transport.

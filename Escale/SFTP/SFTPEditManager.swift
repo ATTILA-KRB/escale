@@ -96,8 +96,8 @@ final class SFTPEditManager {
         let dir = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let local = dir.appendingPathComponent(item.name)
-        let attrs = try await client.stat(item.path)
-        try await client.download(remotePath: item.path, to: local)
+        let attrs = try await client.attributes(of: item.path)
+        try await client.download(item.path, to: local)
         let e = SFTPEdit(session: session, remote: item.path, name: item.name, localURL: local)
         e.baseSize = attrs.size
         e.baseModified = attrs.modificationTime
@@ -188,7 +188,7 @@ final class SFTPEditManager {
         defer { if e.state == .uploading { e.state = .watching } }
         do {
             guard let client = e.session.client else { throw SFTPError.channelClosed("canal SFTP non ouvert") }
-            if !force, let remote = try? await client.stat(e.remote),
+            if !force, let remote = try? await client.attributes(of: e.remote),
                remote.modificationTime != e.baseModified || remote.size != e.baseSize {
                 if await resolveConflict(e) == .keepRemote {
                     e.knownStamp = stamp
@@ -196,8 +196,8 @@ final class SFTPEditManager {
                     return
                 }
             }
-            try await client.upload(localURL: e.localURL, to: e.remote)
-            let after = try? await client.stat(e.remote)
+            try await client.upload(e.localURL, to: e.remote)
+            let after = try? await client.attributes(of: e.remote)
             e.baseSize = after?.size
             e.baseModified = after?.modificationTime
             e.knownStamp = stamp

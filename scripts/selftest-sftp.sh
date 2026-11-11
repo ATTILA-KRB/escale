@@ -1,5 +1,5 @@
 #!/bin/bash
-# Recette du navigateur SFTP : sshd local non privilégié + scénario --selftest-sftp piloté en interne.
+# Recette du navigateur SFTP (SHELL_MODE=1 : serveur sans sous-système SFTP, voir selftest-sftp-shell.sh) : sshd local non privilégié + scénario --selftest-sftp piloté en interne.
 # Sortie : code de l'app ; résultats dans $OUT (result.json + PNG). Ne touche jamais à ~/.ssh.
 set -euo pipefail
 
@@ -34,6 +34,9 @@ D="$WORK/sshd"; mkdir -p "$D"; chmod 700 "$D"
 /usr/bin/ssh-keygen -q -t ed25519 -N "" -C escale-client -f "$D/client"
 cp "$D/client.pub" "$D/authorized_keys"; chmod 600 "$D/authorized_keys"
 echo "[127.0.0.1]:$PORT $(cut -d' ' -f1,2 "$D/hostkey.pub")" > "$D/known_hosts"
+# SHELL_MODE=1 : sshd sans « Subsystem sftp » (comme le serveur PROMETHEUS) → l'app doit basculer en mode shell.
+if [ "${SHELL_MODE:-}" = "1" ]; then SUBSYSTEM_LINE="# pas de Subsystem sftp"; export ESCALE_SFTP_SHELL=1
+else SUBSYSTEM_LINE="Subsystem sftp /usr/libexec/sftp-server"; fi
 cat > "$D/sshd_config" <<CONF
 Port $PORT
 ListenAddress 127.0.0.1
@@ -45,7 +48,7 @@ KbdInteractiveAuthentication no
 PubkeyAuthentication yes
 AuthorizedKeysFile $D/authorized_keys
 StrictModes no
-Subsystem sftp /usr/libexec/sftp-server
+$SUBSYSTEM_LINE
 AllowTcpForwarding yes
 MaxSessions 10
 MaxStartups 100:30:200

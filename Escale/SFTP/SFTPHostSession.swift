@@ -35,8 +35,22 @@ final class SFTPHostSession: Identifiable {
     private(set) var home: String?
     private(set) var back: [Data] = []
     private(set) var forward: [Data] = []
+    /// SFTP, ou repli sur des commandes shell quand le serveur refuse le sous-système SFTP.
+    private(set) var fsKind: RemoteFileSystemKind = .sftp
+    /// Raison du repli (bandeau « Mode shell »).
+    private(set) var shellReason: String?
+    /// Tri de la liste (persistant, commun à tous les hôtes). Les dossiers restent toujours en premier.
+    var sort: SFTPSort = SFTPSort.stored {
+        didSet {
+            guard sort != oldValue else { return }
+            sort.save()
+            items = sort.sorted(items)
+        }
+    }
+    /// Repli déjà constaté : on ne retente pas le SFTP à chaque réouverture (une session du maître de moins).
+    @ObservationIgnored private var shellForced = false
 
-    @ObservationIgnored private(set) var client: SFTPClient?
+    @ObservationIgnored private(set) var client: (any RemoteFileSystem)?
     @ObservationIgnored private(set) var link: SSHLink?
     /// Lien pris par le navigateur seul (aucun onglet de l'hôte) : relâché à la fermeture.
     @ObservationIgnored private var ownedLink: SSHLink?
@@ -57,6 +71,7 @@ final class SFTPHostSession: Identifiable {
     var canGoUp: Bool { path != Data("/".utf8) }
     var selectedItems: [SFTPItem] { items.filter { selection.contains($0.id) } }
     var isReady: Bool { state == .ready }
+    var isShellMode: Bool { fsKind == .shell }
 
     // MARK: Ouverture du canal
 
@@ -77,11 +92,14 @@ final class SFTPHostSession: Identifiable {
             let (client, link) = try await openClient()
             self.client = client
             self.link = link
+            fsKind = client.kind
             channelsOpened += 1
-            if home == nil { home = try await client.realpath(".") }
+            if home == nil { home = try await client.canonicalPath(Data(".".utf8)) }
             let target = pendingPath ?? (path == Data("/".utf8) && items.isEmpty ? Data((home ?? "/").utf8) : path)
             pendingPath = nil
             state = .ready
+            // Reprise automatique des transferts interrompus par la perte du lien.
+            feature.transfers.resumeInterrupted(for: self)
             await load(target, record: false)
         } catch {
             client = nil
@@ -91,7 +109,7 @@ final class SFTPHostSession: Identifiable {
 
     /// Choisit le lien (celui des onglets de l'hôte, sinon un lien pris pour l'occasion), attend qu'il soit connecté,
     /// puis ouvre le canal. Le transport compte la session (`sessionCount`, plafond MaxSessions : invariant 5).
-    private func openClient() async throws -> (SFTPClient, SSHLink) {
+    private func openClient() async throws -> (any RemoteFileSystem, SSHLink) {
         let model = feature.requireModel
         let conn = model.connections.connection(for: profile)
         var candidates: [SSHLink] = []
@@ -106,9 +124,10 @@ final class SFTPHostSession: Identifiable {
         for l in candidates {
             do {
                 try await l.ensureConnected()
-                let channel = try await l.transport.openSFTPChannel()
-                let c = try await SFTPClient.connect(channel: channel)
-                return (c, l)
+                let opening = try await RemoteFileSystemOpener.open(transport: l.transport, forceShell: shellForced)
+                if opening.kind == .shell { shellForced = true }
+                shellReason = opening.fallbackReason
+                return (opening.fileSystem, l)
             } catch SSHTransportError.sessionRefused(let m) {
                 lastError = SSHTransportError.sessionRefused(m) // lien plein : on essaie le suivant
             }
@@ -153,27 +172,26 @@ final class SFTPHostSession: Identifiable {
         isLoading = true
         defer { if gen == generation { isLoading = false } }
         do {
-            let entries = try await client.listDirectory(p)
+            let entries = try await client.listEntries(in: p)
             guard gen == generation else { return }
             var built: [SFTPItem] = []
             var symlinks = 0
+            // En mode shell chaque `stat` est une session exec : on n'en résout qu'un petit nombre.
+            let symlinkBudget = client.kind == .shell ? 40 : 300
             for e in entries {
                 var isDir = e.type == .directory
                 let isLink = e.type == .symlink
                 var attrs = e.attributes
                 let full = SFTPPath.join(p, e.nameBytes)
-                if isLink, symlinks < 300 {
+                if isLink, symlinks < symlinkBudget {
                     symlinks += 1
-                    if let target = try? await client.stat(full) { isDir = target.type == .directory; attrs = target }
+                    if let target = try? await client.attributes(of: full) { isDir = target.type == .directory; attrs = target }
                 }
                 built.append(SFTPItem(name: e.name, path: full, isDirectory: isDir, isSymlink: isLink,
                                       size: attrs.size, modified: attrs.modificationTime, permissions: e.attributes.permissions))
             }
             guard gen == generation else { return }
-            built.sort {
-                if $0.isDirectory != $1.isDirectory { return $0.isDirectory }
-                return $0.name.localizedStandardCompare($1.name) == .orderedAscending
-            }
+            built = sort.sorted(built)
             if record, p != path { back.append(path); forward.removeAll() }
             path = p
             items = built
@@ -202,8 +220,8 @@ final class SFTPHostSession: Identifiable {
     func navigate(toPath p: Data) async {
         guard let client else { pendingPath = p; return }
         do {
-            let real = Data(try await client.realpath(p).utf8)
-            let attrs = try await client.stat(real)
+            let real = Data(try await client.canonicalPath(p).utf8)
+            let attrs = try await client.attributes(of: real)
             guard attrs.type == .directory else { errorMessage = "« \(SFTPPath.lastComponent(real)) » n'est pas un dossier."; return }
             await load(real)
         } catch { handle(error) }
@@ -229,8 +247,12 @@ final class SFTPHostSession: Identifiable {
         if data == path { return }
         guard client != nil else { pendingPath = data; return }
         guard let client else { return }
-        if let attrs = try? await client.stat(data), attrs.type == .directory { await load(data) }
+        // Plusieurs `cd` rapprochés : seule la dernière demande compte (un `stat` plus lent ne doit pas l'écraser).
+        followToken &+= 1
+        let token = followToken
+        if let attrs = try? await client.attributes(of: data), attrs.type == .directory, token == followToken { await load(data) }
     }
+    @ObservationIgnored private var followToken = 0
 
     // MARK: Opérations
 
@@ -238,7 +260,7 @@ final class SFTPHostSession: Identifiable {
         guard let client, valid(name) else { return }
         let p = SFTPPath.join(path, name)
         do {
-            try await client.mkdir(p)
+            try await client.makeDirectory(p)
             await refresh()
             selection = [p]
         } catch { handle(error) }
@@ -248,8 +270,8 @@ final class SFTPHostSession: Identifiable {
         guard let client, valid(newName), newName != item.name else { return }
         let dest = SFTPPath.join(SFTPPath.parent(item.path), newName)
         do {
-            if (try? await client.lstat(dest)) != nil { errorMessage = "« \(newName) » existe déjà."; return }
-            try await client.rename(item.path, to: dest)
+            if (try? await client.attributes(of: dest, followLinks: false)) != nil { errorMessage = "« \(newName) » existe déjà."; return }
+            try await client.renameItem(item.path, to: dest)
             await refresh()
             selection = [dest]
         } catch { handle(error) }
@@ -258,20 +280,11 @@ final class SFTPHostSession: Identifiable {
     func delete(_ list: [SFTPItem]) async {
         guard let client else { return }
         do {
-            for it in list { try await Self.removeTree(client, it.path, isDirectory: it.isDirectory && !it.isSymlink) }
+            for it in list {
+                if it.isDirectory && !it.isSymlink { try await client.removeTree(it.path) } else { try await client.removeFile(it.path) }
+            }
             await refresh()
         } catch { handle(error); await refresh() }
-    }
-
-    private static func removeTree(_ client: SFTPClient, _ path: Data, isDirectory: Bool) async throws {
-        if isDirectory {
-            for e in try await client.listDirectory(path) {
-                try await removeTree(client, SFTPPath.join(path, e.nameBytes), isDirectory: e.type == .directory)
-            }
-            try await client.rmdir(path)
-        } else {
-            try await client.remove(path)
-        }
     }
 
     private func valid(_ name: String) -> Bool {
@@ -291,7 +304,7 @@ final class SFTPHostSession: Identifiable {
         let dir = directory ?? path
         if policy == .ask {
             var existing: [String] = []
-            for u in urls where (try? await client.lstat(SFTPPath.join(dir, u.lastPathComponent))) != nil { existing.append(u.lastPathComponent) }
+            for u in urls where (try? await client.attributes(of: SFTPPath.join(dir, u.lastPathComponent), followLinks: false)) != nil { existing.append(u.lastPathComponent) }
             if !existing.isEmpty, !(await feature.confirmReplace(existing)) { return [] }
         }
         var made: [SFTPTransfer] = []
@@ -302,7 +315,7 @@ final class SFTPHostSession: Identifiable {
         return made
     }
 
-    private func expandUpload(_ local: URL, to remote: Data, client: SFTPClient) async throws -> [SFTPTransfer] {
+    private func expandUpload(_ local: URL, to remote: Data, client: any RemoteFileSystem) async throws -> [SFTPTransfer] {
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: local.path, isDirectory: &isDir) else {
             throw SFTPError.localIO("fichier introuvable : \(local.lastPathComponent)")
@@ -310,8 +323,8 @@ final class SFTPHostSession: Identifiable {
         if !isDir.boolValue {
             return [SFTPTransfer(direction: .upload, name: local.lastPathComponent, local: local, remote: remote, session: self)]
         }
-        do { try await client.mkdir(remote) } catch {
-            guard let a = try? await client.stat(remote), a.type == .directory else { throw error }
+        do { try await client.makeDirectory(remote) } catch {
+            guard let a = try? await client.attributes(of: remote), a.type == .directory else { throw error }
         }
         var out: [SFTPTransfer] = []
         let children = try FileManager.default.contentsOfDirectory(at: local, includingPropertiesForKeys: nil)
@@ -336,16 +349,16 @@ final class SFTPHostSession: Identifiable {
         return made
     }
 
-    private func expandDownload(path: Data, isDirectory: Bool, name: String, to dest: URL, client: SFTPClient) async throws -> [SFTPTransfer] {
+    private func expandDownload(path: Data, isDirectory: Bool, name: String, to dest: URL, client: any RemoteFileSystem) async throws -> [SFTPTransfer] {
         guard isDirectory else {
             return [SFTPTransfer(direction: .download, name: name, local: dest, remote: path, session: self)]
         }
         try FileManager.default.createDirectory(at: dest, withIntermediateDirectories: true)
         var out: [SFTPTransfer] = []
-        for e in try await client.listDirectory(path) {
+        for e in try await client.listEntries(in: path) {
             var isDir = e.type == .directory
             let full = SFTPPath.join(path, e.nameBytes)
-            if e.type == .symlink, let t = try? await client.stat(full) { isDir = t.type == .directory }
+            if e.type == .symlink, let t = try? await client.attributes(of: full) { isDir = t.type == .directory }
             if e.type == .other { continue }
             out += try await expandDownload(path: full, isDirectory: isDir, name: e.name,
                                             to: dest.appendingPathComponent(e.name, isDirectory: isDir), client: client)
@@ -389,8 +402,53 @@ final class SFTPHostSession: Identifiable {
         let dir = feature.cachesRoot.appendingPathComponent("drag/\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let dest = dir.appendingPathComponent(item.name)
-        try await client.download(remotePath: item.path, to: dest)
+        try await client.download(item.path, to: dest)
         return dest
+    }
+
+    // MARK: Déplacer / copier (distant → distant)
+
+    /// Déplace (renommage) ou copie `list` dans le dossier `directory` du même hôte. Un élément déjà présent à la
+    /// destination n'est jamais écrasé (erreur affichée, les autres éléments sont traités). Renvoie le nombre traité.
+    @discardableResult
+    func move(_ list: [SFTPItem], into directory: Data, copy: Bool) async -> Int {
+        guard let client else { errorMessage = "Canal SFTP non ouvert."; return 0 }
+        var done = 0
+        var problems: [String] = []
+        for it in list {
+            let dest = SFTPPath.join(directory, it.name)
+            if SFTPPath.parent(it.path) == SFTPPath.normalized(directory) && !copy { continue } // déjà là
+            if it.path == dest || SFTPPath.isInside(directory, of: it.path) {
+                problems.append("« \(it.name) » ne peut pas être placé dans lui-même."); continue
+            }
+            do {
+                if (try? await client.attributes(of: dest, followLinks: false)) != nil {
+                    problems.append("« \(it.name) » existe déjà dans le dossier de destination."); continue
+                }
+                if copy { try await copyItem(it, to: dest, client: client) } else { try await client.renameItem(it.path, to: dest) }
+                done += 1
+            } catch {
+                if SFTPMessages.isChannelLoss(error) { channelLost(); return done }
+                problems.append("« \(it.name) » : \(SFTPMessages.describe(error))")
+            }
+        }
+        await refresh()
+        if !problems.isEmpty { errorMessage = problems.joined(separator: "\n") }
+        if done > 0 { selection = Set(list.map { SFTPPath.join(directory, $0.name) }) }
+        return done
+    }
+
+    /// Copie : `cp -a` par exec quand le serveur le permet (rapide, conserve droits et dates), sinon lecture/écriture SFTP.
+    private func copyItem(_ it: SFTPItem, to dest: Data, client: any RemoteFileSystem) async throws {
+        if client.kind == .sftp, let link {
+            do { try await ShellFileSystem(executor: link.transport).copyItem(from: it.path, to: dest); return }
+            catch {
+                // Pas de shell (ou connexion perdue) : on ne retombe sur SFTP que si rien n'a été créé.
+                if SFTPMessages.isChannelLoss(error) { throw error }
+                if (try? await client.attributes(of: dest, followLinks: false)) != nil { throw error }
+            }
+        }
+        try await client.copyItem(from: it.path, to: dest)
     }
 
     // MARK: Aides pour les tests

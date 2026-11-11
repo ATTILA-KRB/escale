@@ -3,14 +3,37 @@ import SwiftUI
 import UniformTypeIdentifiers
 import EscaleCore
 
-/// Fichier distant glissé vers le Finder : téléchargé à la demande dans un dossier temporaire.
+/// Élément(s) distant(s) glissé(s). Deux représentations : un fichier téléchargé à la demande (Finder), et un texte
+/// interne `escale-remote:` que le navigateur du même hôte reconnaît pour déplacer / copier côté serveur.
 struct RemoteDragFile: Transferable, Sendable {
-    let fetch: @Sendable () async throws -> URL
+    /// Charge utile interne (voir `SFTPDragPayload`).
+    let payload: String
+    /// Téléchargement pour le Finder ; nil pour un dossier.
+    let fetch: (@Sendable () async throws -> URL)?
 
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .data) { file in
-            SentTransferredFile(try await file.fetch(), allowAccessingOriginalFile: true)
+            guard let fetch = file.fetch else { throw SFTPError.localIO("un dossier ne se glisse pas vers le Finder") }
+            return SentTransferredFile(try await fetch(), allowAccessingOriginalFile: true)
         }
+        ProxyRepresentation(exporting: \.payload)
+    }
+}
+
+/// Charge utile d'un glisser distant → distant : identifiant de la session et chemins (base64, un par ligne).
+enum SFTPDragPayload {
+    static let prefix = "escale-remote:"
+
+    static func encode(session: UUID, paths: [Data]) -> String {
+        prefix + session.uuidString + "\n" + paths.map { $0.base64EncodedString() }.joined(separator: "\n")
+    }
+
+    static func decode(_ text: String) -> (session: UUID, paths: [Data])? {
+        guard text.hasPrefix(prefix) else { return nil }
+        let lines = text.dropFirst(prefix.count).split(separator: "\n").map(String.init)
+        guard let first = lines.first, let id = UUID(uuidString: first) else { return nil }
+        let paths = lines.dropFirst().compactMap { Data(base64Encoded: $0) }
+        return paths.isEmpty ? nil : (id, paths)
     }
 }
 
@@ -62,6 +85,20 @@ private struct SFTPSessionView: View {
                 }
                 .padding(8).background(.orange.opacity(0.12))
             }
+            if session.isShellMode, session.isReady {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "terminal").foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Mode shell (SFTP indisponible)").font(.caption.bold())
+                        if let r = session.shellReason, !r.isEmpty {
+                            Text(r).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(8).background(.blue.opacity(0.10))
+            }
+            sortBar
             Divider()
             content
         }
@@ -114,6 +151,11 @@ private struct SFTPSessionView: View {
                 .disabled(!session.isReady).help("Nouveau dossier")
             Menu {
                 Toggle("Afficher les fichiers cachés", isOn: $session.showHidden)
+                Picker("Trier par", selection: Binding(get: { session.sort.key }, set: { k in
+                    var s = session.sort; if s.key != k { s.toggle(k) }; session.sort = s
+                })) {
+                    ForEach(SFTPSortKey.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
                 Button("Envoyer des fichiers…") { chooseFilesToUpload() }
             } label: { Image(systemName: "ellipsis.circle") }
                 .menuStyle(.borderlessButton).fixedSize()
@@ -129,6 +171,31 @@ private struct SFTPSessionView: View {
             .onSubmit { Task { await session.navigate(to: pathText) } }
             .padding(.horizontal, 10).padding(.bottom, 6)
             .disabled(!session.isReady)
+    }
+
+    /// En-têtes de tri : un clic choisit la colonne, un second clic inverse l'ordre. Dossiers toujours en premier.
+    private var sortBar: some View {
+        HStack(spacing: 2) {
+            ForEach(SFTPSortKey.allCases, id: \.self) { k in
+                Button {
+                    var s = session.sort; s.toggle(k); session.sort = s
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(k.label)
+                        if session.sort.key == k {
+                            Image(systemName: session.sort.ascending ? "chevron.up" : "chevron.down").font(.system(size: 8, weight: .bold))
+                        }
+                    }
+                    .font(.caption.weight(session.sort.key == k ? .bold : .regular))
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("sftp.sort.\(k.rawValue)")
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 8).padding(.bottom, 4)
+        .foregroundStyle(.secondary)
     }
 
     private var followRow: some View {
@@ -196,8 +263,8 @@ private struct SFTPSessionView: View {
         .onDeleteCommand { deleting = session.selectedItems }
     }
 
-    @ViewBuilder private func row(_ item: SFTPItem) -> some View {
-        let r = HStack(spacing: 8) {
+    private func rowLabel(_ item: SFTPItem) -> some View {
+        HStack(spacing: 8) {
             Image(systemName: item.isDirectory ? "folder.fill" : (item.isSymlink ? "link" : "doc"))
                 .foregroundStyle(item.isDirectory ? Color.accentColor : .secondary)
                 .frame(width: 18)
@@ -209,14 +276,47 @@ private struct SFTPSessionView: View {
             Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
+    }
+
+    private func dragItem(_ item: SFTPItem) -> RemoteDragFile {
+        let paths: [Data] = draggedItems(for: item).map { $0.path }
+        let payload = SFTPDragPayload.encode(session: session.id, paths: paths)
+        if item.isDirectory { return RemoteDragFile(payload: payload, fetch: nil) }
+        let s = session
+        let fetch: @Sendable () async throws -> URL = { try await s.exportForDrag(item) }
+        return RemoteDragFile(payload: payload, fetch: fetch)
+    }
+
+    @ViewBuilder private func row(_ item: SFTPItem) -> some View {
+        let source = rowLabel(item).draggable(dragItem(item))
         if item.isDirectory {
-            r.dropDestination(for: URL.self) { urls, _ in
-                Task { await session.upload(urls, into: item.path) }
-                return true
-            }
+            source
+                .dropDestination(for: URL.self) { urls, _ in
+                    Task { await session.upload(urls, into: item.path) }
+                    return true
+                }
+                // Distant → distant : déplacer (⌥ : copier) dans ce dossier.
+                .dropDestination(for: String.self) { texts, _ in
+                    handleRemoteDrop(texts, into: item.path)
+                }
         } else {
-            r.draggable(RemoteDragFile(fetch: { [session] in try await session.exportForDrag(item) }))
+            source
         }
+    }
+
+    /// Si la ligne glissée fait partie de la sélection, toute la sélection suit.
+    private func draggedItems(for item: SFTPItem) -> [SFTPItem] {
+        session.selection.contains(item.id) ? session.selectedItems : [item]
+    }
+
+    private func handleRemoteDrop(_ texts: [String], into directory: Data) -> Bool {
+        guard let d = texts.compactMap(SFTPDragPayload.decode).first, d.session == session.id else { return false }
+        let wanted = Set(d.paths)
+        let items = session.items.filter { wanted.contains($0.id) }
+        guard !items.isEmpty else { return false }
+        let copy = NSEvent.modifierFlags.contains(.option)
+        Task { await session.move(items, into: directory, copy: copy) }
+        return true
     }
 
     @ViewBuilder private func menu(for ids: Set<Data>) -> some View {
@@ -315,12 +415,14 @@ private struct SFTPActivityView: View {
             switch t.state {
             case .running:
                 ProgressView(value: t.fraction)
-                Text("\(SFTPFormat.size(t.bytes)) sur \(SFTPFormat.size(t.total)) \(SFTPFormat.speed(t.speed))")
+                Text("\(t.resumeText.map { $0 + " · " } ?? "")\(SFTPFormat.size(t.bytes)) sur \(SFTPFormat.size(t.total)) \(SFTPFormat.speed(t.speed))")
                     .font(.caption2).foregroundStyle(.secondary)
             case .queued: Text("En attente").font(.caption2).foregroundStyle(.secondary)
-            case .failed(let m): Text(m).font(.caption2).foregroundStyle(.red)
+            case .failed(let m):
+                Text(t.interrupted ? "\(m) Reprise automatique à la reconnexion." : m).font(.caption2).foregroundStyle(.red)
             case .cancelled: Text("Annulé").font(.caption2).foregroundStyle(.secondary)
-            case .done: Text(SFTPFormat.size(t.total)).font(.caption2).foregroundStyle(.secondary)
+            case .done:
+                Text("\(t.resumeText.map { $0 + " · " } ?? "")\(SFTPFormat.size(t.total))").font(.caption2).foregroundStyle(.secondary)
             }
         }
     }
