@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import CoreGraphics
 @testable import EscaleCore
 
 /// Serveur X11 intégré. Les tests réels ne tournent que si `ESCALE_X11_TEST_APP` désigne un paquet installé et signé
@@ -89,5 +90,55 @@ struct EmbeddedX11Tests {
         if let ours { #expect(!FileManager.default.fileExists(atPath: "/tmp/\(ours)")) }
         #expect(Darwin.kill(pid, 0) != 0)
         #expect(!FileManager.default.fileExists(atPath: dir))
+    }
+
+    /// xeyes (150×100 sans décoration) sur un serveur neuf : (fenêtre du serveur nommée « xeyes », ses bornes), pids.
+    private static func xeyesWindow(app: String, windowManager: Bool) throws -> (title: String, height: Double, wmPID: Int32?, serverPID: Int32, dirGone: Bool, wmGone: Bool, serverGone: Bool) {
+        let plist = NSDictionary(contentsOfFile: app + "/Contents/Info.plist")
+        let bundle = EmbeddedX11Bundle(appPath: app, serviceName: try #require(plist?["CFBundleIdentifier"] as? String))
+        let dir = (NSTemporaryDirectory() as NSString).appendingPathComponent("ex11w.\(getpid())")
+        let server = EmbeddedX11Server(bundle: bundle, runtimeDirectory: dir, windowManager: windowManager)
+        defer { server.stop() }
+        try server.ensureRunning()
+        let spid = try #require(server.serverPID)
+        let wm = server.windowManagerPID
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: bundle.macOSDir + "/xeyes")
+        p.environment = ["DISPLAY": server.display, "XAUTHORITY": server.xauthority, "PATH": "/usr/bin:/bin"]
+        p.standardError = FileHandle.nullDevice
+        try p.run()
+        defer { if p.isRunning { p.terminate() } }
+        var found: (String, Double)?
+        let deadline = Date().addingTimeInterval(20)
+        while found == nil && Date() < deadline {
+            usleep(200_000)
+            let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
+            for w in list where (w[kCGWindowOwnerPID as String] as? Int32) == spid {
+                guard let b = w[kCGWindowBounds as String] as? [String: Double], abs((b["Width"] ?? 0) - 150) <= 4, (b["Height"] ?? 0) >= 90,
+                      (b["Height"] ?? 0) < 200 else { continue }
+                found = (w[kCGWindowName as String] as? String ?? "", b["Height"] ?? 0)
+            }
+        }
+        p.terminate()
+        server.stop()
+        let f = try #require(found, "fenêtre xeyes introuvable")
+        return (f.0, f.1, wm, spid, !FileManager.default.fileExists(atPath: dir),
+                wm.map { Darwin.kill($0, 0) != 0 } ?? true, Darwin.kill(spid, 0) != 0)
+    }
+
+    @Test(.enabled(if: testApp != nil)) func gestionnaireDeFenetresDecoreXeyesEtSArrete() throws {
+        let r = try Self.xeyesWindow(app: try #require(Self.testApp), windowManager: true)
+        let wm = try #require(r.wmPID, "quartz-wm non lancé")
+        #expect(wm != r.serverPID)
+        #expect(r.title == "xeyes", "titre « \(r.title) »")
+        #expect(r.height >= 115, "hauteur \(r.height) : barre de titre absente ?") // 100 + barre de titre (22 mesurés)
+        #expect(r.wmGone && r.serverGone && r.dirGone)
+    }
+
+    @Test(.enabled(if: testApp != nil)) func sansGestionnaireDeFenetresPasDeDecoration() throws {
+        let r = try Self.xeyesWindow(app: try #require(Self.testApp), windowManager: false)
+        #expect(r.wmPID == nil)
+        #expect(r.title.isEmpty && r.height < 110, "titre « \(r.title) » hauteur \(r.height)")
+        #expect(r.serverGone && r.dirGone)
     }
 }
