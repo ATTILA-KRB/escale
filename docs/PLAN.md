@@ -290,3 +290,33 @@ Dossier `Escale/MultiExec/` + coeur `Packages/EscaleCore/Sources/EscaleCore/Mult
 - **X11** : `ConnectionManager.sshOptions(for:)` ajoute `ForwardX11=yes`, `ForwardX11Trusted=no` (défaut ; « mode confiance » opt-in dans l'éditeur d'hôte), `XAuthLocation` et `DISPLAY` (socket launchd XQuartz) au **maître** seulement si l'hôte a `x11Forwarding` ET XQuartz est détecté ; sinon aucune option X11 (jamais de `-X` sans XQuartz) et une note dans le terminal. « Lancer une application X11… » (menu hôte) exécute la commande par un client secondaire sur le maître (`-o ControlMaster=no -o ProxyCommand=/usr/bin/false`, invariant 2), avec le forward X11 hérité du maître.
 - Tests : `swift test --filter "Macros|X11"` (dont sshd local `X11Forwarding yes` + faux xauth + faux serveur X : DISPLAY distant `localhost:10`, connexion X rapatriée sur le serveur local) ; `scripts/selftest-macros.sh`.
 - **Reste à valider par Rayan** : affichage réel de `xeyes` en un clic après installation de XQuartz (non installé ici, sudo requis) ; le mode non confiance (extension SECURITY) n'est vérifié qu'avec un vrai xauth.
+
+### M2 interface SFTP (2026-11-11, branche `m-sftp-ui`)
+Code dans `Escale/SFTP/` ; cœur SFTP inchangé (API publique `SFTPClient`, `openSFTPChannel`).
+- **Canal** : `SFTPHostSession` (un par hôte) ouvre un client SFTP sur le lien maître de l'hôte (liens des onglets d'abord,
+  sinon un lien pris pour l'occasion et relâché à la fermeture). Compte dans `sessionCount` (invariant 5) ; un lien plein
+  (`sessionRefused`) fait essayer le suivant. Observateur `linkObservers["sftp"]` : `lost` → état « perdu », `connected` →
+  canal rouvert au même dossier, `disconnected` → fermeture. Aucune nouvelle authentification.
+- **Navigateur** : inspecteur SwiftUI (⌥⌘F, menu Présentation, ou « Parcourir les fichiers (SFTP) » du menu d'hôte) lié à
+  l'onglet actif. Liste (nom, taille, date, droits), chemin éditable (`~`, relatif, absolu), précédent/suivant/parent,
+  actualiser, fichiers cachés, nouveau dossier, renommer, supprimer (confirmation, récursif), copier le chemin, menu
+  contextuel. Chemins gérés en octets. La fenêtre s'élargit à l'ouverture de l'inspecteur (sinon SwiftUI boucle sur la mise
+  en page : `NSGenericException` constraints, constaté sur 880 px).
+- **Glisser-déposer** : Finder → liste (ou ligne de dossier) = envoi, confirmation avant remplacement ; ligne → Finder =
+  `Transferable` (`FileRepresentation`) qui télécharge à la demande sous `~/Library/Caches/<bundle>/drag/`.
+  Non testé au pointeur (la recette teste `upload`/`exportForDrag`).
+- **Transferts** : `SFTPTransferQueue` commune, 3 simultanés max, progression/débit lissé, annuler, réessayer (repart de
+  zéro : pas de reprise côté UI), dossiers expansés fichier par fichier, collision de nom en réception → « nom 2.ext ».
+- **Suivi du terminal** : OSC 7 déjà remonté par `TerminalSession.workingDirectory` (aucun changement moteur nécessaire).
+  `SFTPFeature` observe le panneau actif et relaie vers le navigateur de l'hôte. Si le shell n'annonce rien, bouton
+  « Activer le suivi » → confirmation → fonction `__escale_osc7` tapée dans le shell (bash `PROMPT_COMMAND` / zsh `precmd`).
+- **Édition distante** : téléchargement dans `~/Library/Caches/<bundle>/edit/<uuid>/`, ouverture par `NSWorkspace`,
+  surveillance `DispatchSource` (fichier + dossier, réarmée après remplacement atomique) + sondage 1 s, renvoi à chaque
+  sauvegarde. Conflit (taille/mtime distants ≠ ceux du téléchargement) : demande Écraser / Garder le distant ; « Renvoyer »
+  force. « Terminer » supprime le temporaire.
+- **Recette** : `scripts/selftest-sftp.sh` (sshd local) — 78 vérifications : connexion unique, `sessionCount`, liste du home,
+  mkdir/navigation, envoi/réception (fichier, dossier), file (borne, annulation, réessai), renommer/supprimer, OSC 7
+  (`cd /tmp`, chemin avec espace, suivi coupé/réactivé), édition (en place, atomique, conflits), perte du maître
+  (`kill -9`) puis réouverture du canal, absence de processus ssh résiduel.
+- **Limites** : pas de reprise de transfert dans l'UI, pas de tri par colonne, pas de glisser distant → distant, pas de
+  téléversement de la sélection du Finder via menu « Services ».
