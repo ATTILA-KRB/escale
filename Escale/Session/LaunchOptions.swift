@@ -22,7 +22,17 @@ struct LaunchOptions: Equatable {
     /// `--keychain-service <nom>` : service Keychain (tests : service unique, jamais celui de l'utilisateur).
     var keychainService: String?
 
-    var isSelfTest: Bool { selftestDirectory != nil || selftestSSHDirectory != nil || selftestAuthDirectory != nil || selftestPanesDirectory != nil }
+    /// Toute autre option `--nom valeur` (répétable), pour les modules ajoutés après M1
+    /// (`--selftest-sftp <dossier>`, `--selftest-tunnels <dossier>`…) : pas de cas à ajouter ici.
+    var extra: [String: [String]] = [:]
+
+    /// Dernière valeur de `--nom` (nil si absente).
+    func value(_ name: String) -> String? { extra[name]?.last }
+
+    var isSelfTest: Bool {
+        selftestDirectory != nil || selftestSSHDirectory != nil || selftestAuthDirectory != nil
+            || selftestPanesDirectory != nil || extra.keys.contains { $0.hasPrefix("selftest-") }
+    }
 
     static func parse(_ args: [String]) -> LaunchOptions {
         var o = LaunchOptions()
@@ -48,6 +58,8 @@ struct LaunchOptions: Equatable {
             case "--ssh-config": o.sshConfig = value()
             case "--known-hosts": o.knownHosts = value()
             case "--ssh-option": if let v = value() { o.sshOptions.append(v) }
+            case let a where a.hasPrefix("--") && a.count > 2:
+                if let v = value() { o.extra[String(a.dropFirst(2)), default: []].append(v) }
             default:
                 break // arguments système (-NSDocumentRevisionsDebugMode…) ignorés
             }

@@ -75,10 +75,17 @@ final class TerminalSession: TerminalEngineDelegate {
 
     func kill() { process?.kill() }
 
+    /// Observateurs de la saisie de l'utilisateur, par clé de module (diffusion multi-exécution, macros).
+    @ObservationIgnored var inputObservers: [String: @MainActor (Data) -> Void] = [:]
+
+    /// Envoie des octets au processus comme une saisie, sans prévenir `inputObservers` (pas d'écho de diffusion).
+    func write(_ bytes: Data) { if state == .running { process?.write(bytes) } }
+
     // MARK: TerminalEngineDelegate
 
     func terminal(_ engine: any TerminalEngine, didProduceInput bytes: Data) {
         if state == .running { process?.write(bytes) }
+        for o in inputObservers.values { o(bytes) }
     }
     func terminal(_ engine: any TerminalEngine, didResize size: TerminalSize) {
         process?.resize(columns: size.columns, rows: size.rows)

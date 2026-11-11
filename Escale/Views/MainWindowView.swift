@@ -52,10 +52,11 @@ struct MainWindowView: View {
             }
         }
         .background(WindowAccessor { model.mainWindow = $0 })
+        .modifier(FeatureScenes(model: model))
     }
 
     private var otherSheetOpen: Bool {
-        model.editor != nil || model.importer != nil || model.pendingDeletion != nil
+        model.editor != nil || model.importer != nil || model.pendingDeletion != nil || model.activeFeatureSheet != nil
     }
 
     private var subtitle: String {

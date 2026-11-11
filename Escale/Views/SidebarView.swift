@@ -81,6 +81,7 @@ struct SidebarView: View {
             if model.connections.existing(host.id)?.tabCount ?? 0 > 0 {
                 Button("Déconnecter") { model.disconnect(host) }
             }
+            FeatureHostMenuItems(model: model, host: host)
             Divider()
             Button("Modifier…") { model.editor = .editHost(host) }
             Button("Dupliquer") { model.library.duplicateHost(host.id) }
@@ -102,6 +103,7 @@ struct SidebarView: View {
             // Sélection multiple : seules les actions sans ambiguïté.
             let hosts = ids.compactMap { model.library.host($0) }
             Button("Connecter \(hosts.count) hôtes") { hosts.forEach { model.connect($0) } }.disabled(hosts.isEmpty)
+            FeatureSelectionMenuItems(model: model, hosts: hosts)
         }
     }
 }

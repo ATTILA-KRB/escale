@@ -139,6 +139,7 @@ final class SSHLink {
             try await t.value
             connectTask = nil
             state = .connected
+            manager.notify(self, .connected)
         } catch {
             connectTask = nil
             if cancelRequested { state = .disconnected } else { await recordFailure(error) }
@@ -154,6 +155,7 @@ final class SSHLink {
         epoch += 1
         cancelRequested = false
         state = .reconnecting(attempt: 1, retryIn: nil)
+        manager.notify(self, .lost)
         reconnectTask = Task { await self.reconnectLoop() }
     }
 
@@ -195,6 +197,7 @@ final class SSHLink {
                 state = .connected
                 lastError = nil
                 reconnectTask = nil
+                manager.notify(self, .connected)
                 return true
             } catch {
                 gate.unattended = false
@@ -249,6 +252,7 @@ final class SSHLink {
         state = .disconnected
         manager.dialogs.cancelAll(forHost: profile.id)
         await transport.disconnect()
+        manager.notify(self, .disconnected)
         if let t = reconnectTask { _ = await t.value }
     }
 
@@ -313,6 +317,12 @@ final class ConnectionManager {
     @ObservationIgnored var graceDelay: Double = 3
     @ObservationIgnored let maxShellsPerLink = 9
     /// Compteurs (tests) : chaque shell lancé doit être suivi d'un seul `shellSessionDidEnd()`.
+    /// Événements de cycle de vie d'un lien, pour les modules (tunnels rétablis après reconnexion, SFTP…).
+    enum LinkEvent: Equatable { case connected, lost, disconnected }
+    /// Observateurs par clé de module (une clé remplace l'observateur précédent).
+    @ObservationIgnored var linkObservers: [String: @MainActor (SSHLink, LinkEvent) -> Void] = [:]
+    func notify(_ link: SSHLink, _ event: LinkEvent) { for o in linkObservers.values { o(link, event) } }
+
     @ObservationIgnored var shellsStarted = 0
     @ObservationIgnored var shellsEnded = 0
 

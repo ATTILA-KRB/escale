@@ -45,6 +45,17 @@ final class AppModel {
     var collapsedFolders: Set<UUID> = []
     /// Feuille d'import ssh_config ouverte (nil : aucune).
     var importer: ImportModel?
+    /// Feuille d'un module ouverte (identifiant libre, nil : aucune) : bloque les dialogues d'authentification.
+    var activeFeatureSheet: String?
+
+    // Modules ajoutés après M1 (voir `AppFeature`).
+    let sftp = SFTPFeature()
+    let tunnels = TunnelFeature()
+    let multiExec = MultiExecFeature()
+    let macros = MacroFeature()
+    let imports = ImportFeature()
+    let updates = UpdateFeature()
+    var features: [any AppFeature] { [sftp, tunnels, multiExec, macros, imports, updates] }
 
     @ObservationIgnored weak var mainWindow: NSWindow?
     @ObservationIgnored private var started = false
@@ -61,6 +72,18 @@ final class AppModel {
         // (toujours le cas ici : `ConnectionManager` branche l'app comme son propre SSH_ASKPASS).
         ssh.batchMode = true
         connections = ConnectionManager(sshOptions: ssh, secretStore: AuthKeychain.makeStore(service: options.keychainService))
+        for f in features { f.attach(self) }
+    }
+
+    /// Scénarios d'auto-test des modules : `--selftest-<module> <dossier>`.
+    private var featureSelfTests: [(option: String, run: @MainActor (String) async -> Bool)] {
+        [
+            ("selftest-sftp", { await SFTPSelfTest(directory: $0, model: self).run() }),
+            ("selftest-tunnels", { await TunnelSelfTest(directory: $0, model: self).run() }),
+            ("selftest-multiexec", { await MultiExecSelfTest(directory: $0, model: self).run() }),
+            ("selftest-macros", { await MacroSelfTest(directory: $0, model: self).run() }),
+            ("selftest-import", { await ImportSelfTest(directory: $0, model: self).run() }),
+        ]
     }
 
     /// Environnement du fils : celui de l'app + TERM/COLORTERM (+ LANG UTF-8 si absent, cas Finder).
@@ -90,7 +113,14 @@ final class AppModel {
         guard !started else { return }
         started = true
         await library.load()
-        if let dir = options.selftestPanesDirectory {
+        if let test = featureSelfTests.first(where: { options.value($0.option) != nil }),
+           let dir = options.value(test.option) {
+            Task { @MainActor in
+                let ok = await test.run(dir)
+                await self.shutdown()
+                exit(ok ? 0 : 1)
+            }
+        } else if let dir = options.selftestPanesDirectory {
             let runner = PanesSelfTest(directory: dir, model: self)
             Task { @MainActor in
                 let ok = await runner.run()
@@ -336,6 +366,7 @@ final class AppModel {
     func shutdown() async {
         isShuttingDown = true
         for t in workspace.tabs { t.isClosing = true; for p in t.panes { p.isClosing = true; p.startTask?.cancel(); p.session.kill() } }
+        for f in features { await f.shutdown() }
         await connections.shutdownAll()
         // Laisse les gestionnaires de fin de pty compter leurs shells.
         for _ in 0..<40 where connections.shellsEnded < connections.shellsStarted {

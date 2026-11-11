@@ -30,7 +30,10 @@ struct EscaleApp: App {
                 .task { await model.start() }
         }
         .defaultSize(width: 1180, height: 720)
-        .commands { EscaleCommands(model: model) }
+        .commands {
+            EscaleCommands(model: model)
+            FeatureCommands(model: model)
+        }
     }
 }
 

@@ -69,6 +69,8 @@ struct HostEditorSheet: View {
     @State private var jumpHosts = ""
     @State private var tags = ""
     @State private var folderID: UUID?
+    @State private var tunnels: [TunnelSpec] = []
+    @State private var x11Forwarding = false
     @State private var loaded = false
 
     private var errors: [String] {
@@ -136,6 +138,8 @@ struct HostEditorSheet: View {
                         ForEach(model.library.allFolderPaths, id: \.id) { Text($0.path).tag(UUID?.some($0.id)) }
                     }
                 }
+                TunnelEditorSection(tunnels: $tunnels)
+                X11EditorSection(isOn: $x11Forwarding)
             }
             .formStyle(.grouped)
 
@@ -169,6 +173,7 @@ struct HostEditorSheet: View {
         hostID = h.id
         name = h.name; hostname = h.host; port = h.port.map(String.init) ?? ""; user = h.user ?? ""
         jumpHosts = h.jumpHosts.joined(separator: ", "); tags = h.tags.joined(separator: ", ")
+        tunnels = h.tunnels; x11Forwarding = h.x11Forwarding
         switch h.auth {
         case .openSSHDefaults: authChoice = .defaults
         case .keyFile(let p): authChoice = .keyFile; keyPath = p
@@ -226,6 +231,8 @@ struct HostEditorSheet: View {
         h.jumpHosts = HostFormValidation.split(jumpHosts)
         h.tags = HostFormValidation.split(tags)
         h.folderID = folderID
+        h.tunnels = tunnels
+        h.x11Forwarding = x11Forwarding
         model.library.upsert(h)
         dismiss()
     }

@@ -23,13 +23,40 @@ public struct HostProfile: Codable, Hashable, Identifiable, Sendable {
     public var tags: [String]
     /// Dossier de la bibliothèque qui contient cet hôte (`nil` = racine).
     public var folderID: UUID?
+    /// Tunnels enregistrés pour cet hôte (M3). Absent des bibliothèques antérieures : liste vide.
+    public var tunnels: [TunnelSpec]
+    /// Redirection X11 via XQuartz (M5). Absent des bibliothèques antérieures : désactivée.
+    public var x11Forwarding: Bool
 
     public init(
         id: UUID = UUID(), name: String, host: String, port: Int? = nil, user: String? = nil,
-        auth: Auth = .openSSHDefaults, jumpHosts: [String] = [], tags: [String] = [], folderID: UUID? = nil
+        auth: Auth = .openSSHDefaults, jumpHosts: [String] = [], tags: [String] = [], folderID: UUID? = nil,
+        tunnels: [TunnelSpec] = [], x11Forwarding: Bool = false
     ) {
         self.id = id; self.name = name; self.host = host; self.port = port; self.user = user
         self.auth = auth; self.jumpHosts = jumpHosts; self.tags = tags; self.folderID = folderID
+        self.tunnels = tunnels; self.x11Forwarding = x11Forwarding
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, host, port, user, auth, jumpHosts, tags, folderID, tunnels, x11Forwarding
+    }
+
+    /// Décodage tolérant : les champs ajoutés après la première version ont une valeur par défaut,
+    /// une bibliothèque existante se relit donc sans migration.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        host = try c.decode(String.self, forKey: .host)
+        port = try c.decodeIfPresent(Int.self, forKey: .port)
+        user = try c.decodeIfPresent(String.self, forKey: .user)
+        auth = try c.decodeIfPresent(Auth.self, forKey: .auth) ?? .openSSHDefaults
+        jumpHosts = try c.decodeIfPresent([String].self, forKey: .jumpHosts) ?? []
+        tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
+        folderID = try c.decodeIfPresent(UUID.self, forKey: .folderID)
+        tunnels = try c.decodeIfPresent([TunnelSpec].self, forKey: .tunnels) ?? []
+        x11Forwarding = try c.decodeIfPresent(Bool.self, forKey: .x11Forwarding) ?? false
     }
 
     /// Cible passée à ssh (`user@host` ou `host`).
