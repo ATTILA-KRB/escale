@@ -21,7 +21,7 @@ final class TerminalSession: TerminalEngineDelegate {
     private(set) var workingDirectory: URL?
 
     @ObservationIgnored let engine: SwiftTermEngine
-    @ObservationIgnored private var process: PTYProcess?
+    @ObservationIgnored private var process: (any TerminalByteStream)?
     @ObservationIgnored private var generation = 0
 
     init(engine: SwiftTermEngine = SwiftTermEngine()) {
@@ -37,9 +37,9 @@ final class TerminalSession: TerminalEngineDelegate {
         }
     }
 
-    /// Branche un nouveau processus sur le moteur (l'écran existant est conservé).
+    /// Branche un nouveau processus (pty, port série, Telnet) sur le moteur (l'écran existant est conservé).
     /// `onExit` est appelé exactement une fois, à la fin de CE processus, même si la session a disparu.
-    func attach(_ p: PTYProcess, onExit: @escaping @MainActor (PTYExitStatus) -> Void) {
+    func attach(_ p: any TerminalByteStream, onExit: @escaping @MainActor (PTYExitStatus) -> Void) {
         generation += 1
         let gen = generation
         process = p

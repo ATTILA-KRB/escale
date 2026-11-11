@@ -77,8 +77,9 @@ struct SidebarView: View {
             Button("Ouvrir un terminal local") { model.openLocalTab() }
         } else if ids.count == 1, let id = ids.first, let host = model.library.host(id) {
             Button("Connecter") { model.connect(host) }
-            Button("Nouvel onglet") { model.newTab(host) }
-            if model.connections.existing(host.id)?.tabCount ?? 0 > 0 {
+            if host.connectionProtocol.isTerminal { Button("Nouvel onglet") { model.newTab(host) } }
+            if model.connections.existing(host.id)?.tabCount ?? 0 > 0
+                || (host.connectionProtocol != .ssh && !model.workspace.tabs(forHost: host.id).isEmpty) {
                 Button("Déconnecter") { model.disconnect(host) }
             }
             FeatureHostMenuItems(model: model, host: host)
@@ -173,7 +174,8 @@ private struct HostRow: View {
     var body: some View {
         let state = model.connections.state(of: host.id)
         HStack(spacing: 8) {
-            Image(systemName: "server.rack").foregroundStyle(.secondary)
+            Image(systemName: host.connectionProtocol.symbolName).foregroundStyle(.secondary)
+                .help(host.connectionProtocol.displayName)
             VStack(alignment: .leading, spacing: 1) {
                 Text(highlighted(host.name, result, .name)).lineLimit(1)
                 Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)

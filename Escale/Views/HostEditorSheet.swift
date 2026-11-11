@@ -73,11 +73,23 @@ struct HostEditorSheet: View {
     @State private var x11Forwarding = false
     @State private var startupCommand = ""
     @State private var loaded = false
+    @State private var connectionProtocol: ConnectionProtocol = .ssh
+    @State private var serial = SerialSettings()
+    @State private var telnet = TelnetSettings()
+    @State private var vnc = VNCSettings()
+    @State private var rdp = RDPSettings()
+
+    private var isSSH: Bool { connectionProtocol == .ssh }
 
     private var errors: [String] {
         var e: [String] = []
-        [HostFormValidation.name(name), HostFormValidation.host(hostname), HostFormValidation.port(port),
-         HostFormValidation.user(user), authChoice == .keyFile ? HostFormValidation.keyPath(keyPath) : nil,
+        // Série : pas d'hôte réseau (le port série est dans la section du module).
+        let needsHost = connectionProtocol != .serial
+        [HostFormValidation.name(name), needsHost ? HostFormValidation.host(hostname) : nil,
+         needsHost ? HostFormValidation.port(port) : nil, HostFormValidation.user(user)].forEach { if let m = $0 { e.append(m) } }
+        e += ProtocolEditorSection.errors(connectionProtocol, serial: serial, telnet: telnet, vnc: vnc, rdp: rdp)
+        guard isSSH else { return e }
+        [authChoice == .keyFile ? HostFormValidation.keyPath(keyPath) : nil,
          HostFormValidation.jumpHosts(jumpHosts)].forEach { if let m = $0 { e.append(m) } }
         if let m = StartupCommand.validationMessage(startupCommand) { e.append(m) }
         e += TunnelValidation.listErrors(tunnels) + tunnels.filter { !TunnelValidation.errors($0).isEmpty }.map { "Tunnel « \($0.title) » invalide." }
@@ -88,12 +100,22 @@ struct HostEditorSheet: View {
         VStack(spacing: 0) {
             Form {
                 Section {
-                    TextField("Nom", text: $name, prompt: Text("Identique à l'hôte si vide"))
-                    TextField("Hôte", text: $hostname, prompt: Text("nom, adresse IP ou alias ssh_config"))
-                        .disableAutocorrection(true)
-                    TextField("Port", text: $port, prompt: Text("22"))
-                    TextField("Utilisateur", text: $user, prompt: Text("Utilisateur courant"))
+                    Picker("Protocole", selection: $connectionProtocol) {
+                        ForEach(ConnectionProtocol.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    }
+                    TextField("Nom", text: $name, prompt: Text(connectionProtocol == .serial ? "Nom du port si vide" : "Identique à l'hôte si vide"))
+                    if connectionProtocol != .serial {
+                        TextField("Hôte", text: $hostname, prompt: Text(isSSH ? "nom, adresse IP ou alias ssh_config" : "nom ou adresse IP"))
+                            .disableAutocorrection(true)
+                        TextField("Port", text: $port, prompt: Text(connectionProtocol.defaultPort.map(String.init) ?? ""))
+                    }
+                    if connectionProtocol != .serial && connectionProtocol != .vnc {
+                        TextField("Utilisateur", text: $user, prompt: Text(isSSH ? "Utilisateur courant" : "facultatif"))
+                    }
                 }
+                ProtocolEditorSection(model: model, connectionProtocol: connectionProtocol,
+                                      serial: $serial, telnet: $telnet, vnc: $vnc, rdp: $rdp)
+                if isSSH {
                 Section("Authentification") {
                     Picker("Méthode", selection: $authChoice) {
                         Text("Réglages OpenSSH par défaut").tag(AuthChoice.defaults)
@@ -144,6 +166,15 @@ struct HostEditorSheet: View {
                 TunnelEditorSection(tunnels: $tunnels)
                 X11EditorSection(isOn: $x11Forwarding, detect: { [connections = model.connections] in connections.x11Detect() })
                 StartupCommandEditorSection(text: $startupCommand)
+                } else {
+                    Section {
+                        TextField("Étiquettes", text: $tags, prompt: Text("prod, web"))
+                        Picker("Dossier", selection: $folderID) {
+                            Text("Racine").tag(UUID?.none)
+                            ForEach(model.library.allFolderPaths, id: \.id) { Text($0.path).tag(UUID?.some($0.id)) }
+                        }
+                    }
+                }
             }
             .formStyle(.grouped)
 
@@ -178,6 +209,9 @@ struct HostEditorSheet: View {
         name = h.name; hostname = h.host; port = h.port.map(String.init) ?? ""; user = h.user ?? ""
         jumpHosts = h.jumpHosts.joined(separator: ", "); tags = h.tags.joined(separator: ", ")
         tunnels = h.tunnels; x11Forwarding = h.x11Forwarding; startupCommand = h.startupCommand ?? ""
+        connectionProtocol = h.connectionProtocol
+        serial = h.serial ?? SerialSettings(); telnet = h.telnet ?? TelnetSettings()
+        vnc = h.vnc ?? VNCSettings(); rdp = h.rdp ?? RDPSettings()
         switch h.auth {
         case .openSSHDefaults: authChoice = .defaults
         case .keyFile(let p): authChoice = .keyFile; keyPath = p
@@ -227,9 +261,17 @@ struct HostEditorSheet: View {
             let store = model.connections.secretStore, hid = h.id
             Task { try? await store.removeSecret(for: AuthKeychain.passwordAccount(for: hid)) }
         }
-        h.name = nameTrim.isEmpty ? hostTrim : nameTrim
-        h.host = hostTrim
-        h.port = Int(port.trimmingCharacters(in: .whitespaces))
+        h.connectionProtocol = connectionProtocol
+        h.serial = connectionProtocol == .serial ? serial : nil
+        h.telnet = connectionProtocol == .telnet ? telnet : nil
+        h.vnc = connectionProtocol == .vnc ? vnc : nil
+        h.rdp = connectionProtocol == .rdp ? rdp : nil
+        // Série : le « hôte » affiché est le périphérique (barre latérale, recherche).
+        let isSerial = connectionProtocol == .serial
+        let shownHost = isSerial ? serial.devicePath : hostTrim
+        h.name = !nameTrim.isEmpty ? nameTrim : (isSerial ? (shownHost as NSString).lastPathComponent : hostTrim)
+        h.host = shownHost
+        h.port = connectionProtocol == .serial ? nil : Int(port.trimmingCharacters(in: .whitespaces))
         h.user = userTrim.isEmpty ? nil : userTrim
         h.auth = auth
         h.jumpHosts = HostFormValidation.split(jumpHosts)

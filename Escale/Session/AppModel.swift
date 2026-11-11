@@ -55,7 +55,19 @@ final class AppModel {
     let macros = MacroFeature()
     let imports = ImportFeature()
     let updates = UpdateFeature()
-    var features: [any AppFeature] { [sftp, tunnels, multiExec, macros, imports, updates] }
+    var features: [any AppFeature] { [sftp, tunnels, multiExec, macros, imports, updates, serial, telnet, vnc, rdp] }
+
+    // Modules de protocoles (V1.2/V2), même contrat `AppFeature`.
+    let serial = SerialFeature()
+    let telnet = TelnetFeature()
+    let vnc = VNCFeature()
+    let rdp = RDPFeature()
+
+    /// Ouverture d'un hôte Telnet/série dans un panneau, par protocole (renseigné par le module dans `attach`).
+    /// Rend la source d'octets ouverte, ou lève une erreur dont la description est affichée dans le panneau.
+    @ObservationIgnored var terminalLaunchers: [ConnectionProtocol: @MainActor (Pane, HostProfile) async throws -> any TerminalByteStream] = [:]
+    /// Ouverture d'un hôte VNC/RDP (fenêtre ou app de bureau distant, pas d'onglet), par protocole.
+    @ObservationIgnored var externalOpeners: [ConnectionProtocol: @MainActor (HostProfile) -> Void] = [:]
 
     @ObservationIgnored weak var mainWindow: NSWindow?
     @ObservationIgnored private var started = false
@@ -84,6 +96,10 @@ final class AppModel {
             ("selftest-macros", { await MacroSelfTest(directory: $0, model: self).run() }),
             ("selftest-import", { await ImportSelfTest(directory: $0, model: self).run() }),
             ("selftest-terminal", { await TerminalSelfTest(directory: $0, model: self).run() }),
+            ("selftest-serial", { await SerialSelfTest(directory: $0, model: self).run() }),
+            ("selftest-telnet", { await TelnetSelfTest(directory: $0, model: self).run() }),
+            ("selftest-vnc", { await VNCSelfTest(directory: $0, model: self).run() }),
+            ("selftest-rdp", { await RDPSelfTest(directory: $0, model: self).run() }),
         ]
     }
 
@@ -168,9 +184,16 @@ final class AppModel {
 
     /// « Connecter » : réutilise l'onglet existant de l'hôte s'il y en a un, sinon en ouvre un.
     func connect(_ host: HostProfile) {
+        guard host.connectionProtocol.isTerminal else { openExternal(host); return }
         if let t = workspace.tabs(forHost: host.id).first { workspace.select(t.id) } else { newTab(host) }
     }
 
+    /// VNC/RDP : confié au module du protocole (aucun onglet).
+    func openExternal(_ host: HostProfile) {
+        if let open = externalOpeners[host.connectionProtocol] { open(host) }
+    }
+
+    /// Onglet d'un hôte de terminal (SSH, Telnet, série). Les appelants écartent VNC/RDP (`connect`, menus).
     @discardableResult
     func newTab(_ host: HostProfile) -> TerminalTab {
         // Plusieurs onglets du même hôte : « Hôte », « Hôte 2 », « Hôte 3 »… (titres distinguables).
@@ -262,6 +285,8 @@ final class AppModel {
         switch tab.kind {
         case .local(let command):
             launchLocal(tab, command: command)
+        case .host(let profile) where profile.connectionProtocol != .ssh:
+            await launchStream(tab, profile: profile)
         case .host(let profile):
             let conn = connections.connection(for: profile)
             let link = tab.link ?? conn.acquireLink()
@@ -286,6 +311,26 @@ final class AppModel {
             tab.status = .running
         } catch {
             tab.status = .failed("lancement de \(exe) impossible : \(error)")
+        }
+    }
+
+    /// Telnet, série : source d'octets ouverte par le module du protocole ; pas de maître ssh ni de reconnexion.
+    private func launchStream(_ tab: Pane, profile: HostProfile) async {
+        guard let launcher = terminalLaunchers[profile.connectionProtocol] else {
+            tab.status = .failed("Protocole \(profile.connectionProtocol.displayName) non pris en charge.")
+            return
+        }
+        do {
+            let stream = try await launcher(tab, profile)
+            if tab.isClosing || Task.isCancelled { stream.kill(); return }
+            tab.session.attach(stream) { [weak tab] status in
+                guard let tab, !tab.isClosing else { return }
+                tab.status = .ended(status)
+            }
+            tab.status = .running
+        } catch {
+            if tab.isClosing || Task.isCancelled { return }
+            tab.status = .failed((error as? CustomStringConvertible)?.description ?? error.localizedDescription)
         }
     }
 

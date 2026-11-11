@@ -40,6 +40,10 @@ struct FeatureScenes: ViewModifier {
             .modifier(MacroScene(model: model))
             .modifier(ImportScene(model: model))
             .modifier(UpdateScene(model: model))
+            .modifier(SerialScene(model: model))
+            .modifier(TelnetScene(model: model))
+            .modifier(VNCScene(model: model))
+            .modifier(RDPScene(model: model))
     }
 }
 
@@ -48,9 +52,16 @@ struct FeatureHostMenuItems: View {
     let model: AppModel
     let host: HostProfile
     var body: some View {
-        SFTPHostMenuItems(model: model, host: host)
-        TunnelHostMenuItems(model: model, host: host)
-        MacroHostMenuItems(model: model, host: host)
+        switch host.connectionProtocol {
+        case .ssh:
+            SFTPHostMenuItems(model: model, host: host)
+            TunnelHostMenuItems(model: model, host: host)
+            MacroHostMenuItems(model: model, host: host)
+        case .serial: SerialHostMenuItems(model: model, host: host)
+        case .telnet: TelnetHostMenuItems(model: model, host: host)
+        case .vnc: VNCHostMenuItems(model: model, host: host)
+        case .rdp: RDPHostMenuItems(model: model, host: host)
+        }
     }
 }
 
@@ -59,7 +70,8 @@ struct FeatureSelectionMenuItems: View {
     let model: AppModel
     let hosts: [HostProfile]
     var body: some View {
-        MultiExecSelectionMenuItems(model: model, hosts: hosts)
+        // Multi-exécution : hôtes SSH seulement (commande par maître ssh).
+        MultiExecSelectionMenuItems(model: model, hosts: hosts.filter { $0.connectionProtocol == .ssh })
     }
 }
 
