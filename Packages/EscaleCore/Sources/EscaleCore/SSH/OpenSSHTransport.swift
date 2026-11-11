@@ -142,6 +142,9 @@ public actor OpenSSHTransport: SSHTransport {
     private func launchMaster(builder: OpenSSHCommandBuilder, server: AskpassServer?) async throws {
         let p = try preparePaths()
         if let old = master { await terminate(old) ; master = nil }
+        // Un maître neuf n'a aucun forwarding : sans cela, un tunnel de l'ancien maître (mort sans que `isAlive()` l'ait
+        // constaté) serait cru encore ouvert et jamais rouvert.
+        tunnels.removeAll()
 
         // Un maître étranger répond déjà sur ce socket : ne pas l'écraser.
         if FileManager.default.fileExists(atPath: p.socket), await masterResponds() {

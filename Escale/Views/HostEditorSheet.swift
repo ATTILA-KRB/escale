@@ -78,6 +78,7 @@ struct HostEditorSheet: View {
         [HostFormValidation.name(name), HostFormValidation.host(hostname), HostFormValidation.port(port),
          HostFormValidation.user(user), authChoice == .keyFile ? HostFormValidation.keyPath(keyPath) : nil,
          HostFormValidation.jumpHosts(jumpHosts)].forEach { if let m = $0 { e.append(m) } }
+        e += TunnelValidation.listErrors(tunnels) + tunnels.filter { !TunnelValidation.errors($0).isEmpty }.map { "Tunnel « \($0.title) » invalide." }
         return e
     }
 
