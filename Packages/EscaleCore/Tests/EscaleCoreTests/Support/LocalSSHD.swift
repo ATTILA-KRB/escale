@@ -13,6 +13,8 @@ final class LocalSSHD: @unchecked Sendable {
         /// Active `PasswordAuthentication` : ssh pose alors l'invite de mot de passe (askpass), mais sans PAM (non privilégié)
         /// sshd ne peut JAMAIS valider un mot de passe : l'authentification échoue toujours.
         var passwordAuthentication = false
+        /// Lignes ajoutées telles quelles à sshd_config (ex. `X11Forwarding yes`).
+        var extraConfig = ""
     }
 
     struct StartError: Error, CustomStringConvertible {
@@ -119,6 +121,7 @@ final class LocalSSHD: @unchecked Sendable {
         MaxStartups 100:30:200
         PrintMotd no
         LogLevel VERBOSE
+        \(options.extraConfig)
 
         """
         try config.write(toFile: "\(directory)/sshd_config", atomically: true, encoding: .utf8)

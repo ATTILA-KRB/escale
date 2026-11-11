@@ -238,6 +238,20 @@ public actor OpenSSHTransport: SSHTransport {
             environment: b.environment)
     }
 
+    /// Commande distante sans terminal sur la connexion existante (applications X11). Compte comme une session du maître :
+    /// l'appelant appelle `shellSessionDidEnd()` à la fin du processus.
+    public func execCommand(remoteCommand: String) async throws -> ShellCommand {
+        guard await isAlive() else { throw SSHTransportError.notConnected }
+        guard sessionCount < configuration.maxSessions else {
+            throw SSHTransportError.sessionRefused("plafond local de \(configuration.maxSessions) sessions atteint")
+        }
+        let b = try makeBuilder()
+        shellSessions += 1
+        return ShellCommand(
+            executable: configuration.ssh.sshPath, arguments: b.execArguments(remoteCommand: remoteCommand),
+            environment: b.environment)
+    }
+
     public func openSFTPChannel() async throws -> any ByteChannel {
         guard await isAlive() else { throw SSHTransportError.notConnected }
         guard sessionCount < configuration.maxSessions else {
