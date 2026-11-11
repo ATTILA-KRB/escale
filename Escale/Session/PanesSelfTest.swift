@@ -92,9 +92,27 @@ final class PanesSelfTest {
     /// Action de menu invoquée par l'API (sans événement clavier).
     @discardableResult
     private func menu(_ title: String) -> Bool {
-        guard let m = PaneMenu.shared.menu, let i = m.items.firstIndex(where: { $0.title == title }) else { return false }
+        guard let m = terminalMenu(), let i = m.items.firstIndex(where: { $0.title == title }) else { return false }
         m.performActionForItem(at: i)
         return true
+    }
+
+    /// Menu « Terminal » installé par les `Commands` SwiftUI (cherché dans la barre de menus réelle).
+    private func terminalMenu() -> NSMenu? {
+        NSApp.mainMenu?.items.first { $0.submenu?.title == "Terminal" }?.submenu
+    }
+
+    /// Ce qu'AppKit fait juste avant d'afficher un menu : délégué `menuNeedsUpdate`, puis validation des éléments.
+    private func refreshMenu(_ m: NSMenu) {
+        m.delegate?.menuNeedsUpdate?(m)
+        m.update()
+    }
+
+    /// État activé d'un élément du menu (validation AppKit comprise).
+    private func menuEnabled(_ title: String) -> Bool? {
+        guard let m = terminalMenu(), let i = m.items.first(where: { $0.title == title }) else { return nil }
+        refreshMenu(m)
+        return i.isEnabled
     }
 
     /// Chaque panneau tape `stty size` ; compare à la taille de son moteur (réessaie si la taille bouge).
@@ -144,8 +162,16 @@ final class PanesSelfTest {
         guard let hv = win.contentView.flatMap({ findHost($0) }) else { check("vue_panneaux_trouvee", false); return finish() }
         host = hv
         check("vue_panneaux_trouvee", true)
-        check("menu_terminal_installe", await wait(10) { PaneMenu.shared.menu != nil && NSApp.mainMenu?.items.contains { $0.submenu === PaneMenu.shared.menu } == true })
-        if let m = PaneMenu.shared.menu {
+        check("menu_terminal_installe", await wait(10) { terminalMenu() != nil })
+        let menuTitles = terminalMenu()?.items.filter { !$0.isSeparatorItem }.map(\.title) ?? []
+        check("menu_titres", menuTitles == ["Scinder à droite", "Scinder en bas", "Fermer le panneau", "Panneau suivant", "Panneau précédent",
+                                            "Panneau à gauche", "Panneau à droite", "Panneau au-dessus", "Panneau en dessous", "Égaliser les panneaux"], "\(menuTitles)")
+        // Un seul panneau : scinder/fermer actifs ; navigation et égalisation grisées.
+        check("menu_etat_un_panneau",
+              await wait(10) { menuEnabled("Scinder à droite") == true && menuEnabled("Fermer le panneau") == true
+                  && menuEnabled("Panneau suivant") == false && menuEnabled("Égaliser les panneaux") == false },
+              "\(terminalMenu()?.items.map { "\($0.title):\($0.isEnabled)" } ?? []) etat=\(PaneMenuState.shared.hasTab)/\(PaneMenuState.shared.several) delegue=\(terminalMenu()?.delegate != nil) active=\(NSApp.isActive) key=\(NSApp.keyWindow != nil) onglets=\(NSApp.mainMenu?.items.first { $0.submenu?.title == "Onglets" }?.submenu?.items.map { "\($0.title):\($0.isEnabled)" }.prefix(3) ?? [])")
+        if let m = terminalMenu() {
             func key(_ t: String) -> String {
                 guard let i = m.items.first(where: { $0.title == t }) else { return "absent" }
                 let f = i.keyEquivalentModifierMask
@@ -172,6 +198,7 @@ final class PanesSelfTest {
         check("nouveau_panneau_actif", tabA.activePane.id == p2.id && tabA.layout.active == p2.id)
         check("panneau2_running_meme_maitre", await wait(25) { p2.status == .running } && p2.link === p1.link, "\(p2.status)")
         check("menu_scinder_en_bas", menu("Scinder en bas"))
+        check("menu_etat_plusieurs_panneaux", await wait(5) { menuEnabled("Panneau suivant") == true && menuEnabled("Égaliser les panneaux") == true && menuEnabled("Panneau à gauche") == true })
         check("trois_panneaux", await wait(5) { tabA.panes.count == 3 })
         let p3 = tabA.panes[2]
         check("panneau3_running_meme_maitre", await wait(25) { p3.status == .running } && p3.link === p1.link, "\(p3.status)")
@@ -321,6 +348,24 @@ final class PanesSelfTest {
         check("p4_shell_distant", await waitText(p4, "MK4-444-127.0.0.1"))
         check("toujours_une_authentification", acceptedCount == 1, "\(acceptedCount)")
 
+        // 7b. OSC 52 : écriture permise vers le presse-papiers, lecture refusée (aucune réponse au programme distant).
+        // Presse-papiers nommé dédié : celui de l'utilisateur n'est jamais touché (changeCount vérifié).
+        let osc = NSPasteboard(name: NSPasteboard.Name("com.attila-krb.Escale.selftest.osc52.\(getpid())"))
+        let generalBefore = NSPasteboard.general.changeCount
+        TerminalClipboard.pasteboard = osc
+        defer { osc.releaseGlobally(); TerminalClipboard.pasteboard = .general }
+        osc.clearContents()
+        osc.setString("SENTINELLE-AVANT", forType: .string)
+        let payload = "OSC52-ECRITURE-\(Int.random(in: 100_000...999_999))"
+        type(p4, "printf '\\033]52;c;%s\\007' $(printf '\(payload)' | base64)\r")
+        check("osc52_ecriture_dans_presse_papiers", await wait(10) { osc.string(forType: .string) == payload }, "\(osc.string(forType: .string) ?? "nil")")
+        osc.clearContents()
+        osc.setString("SENTINELLE-LECTURE", forType: .string)
+        type(p4, "bash -c 'stty -echo -icanon min 0 time 20; printf \"\\033]52;c;?\\007\"; R=$(dd bs=1 count=64 2>/dev/null | cat -v); stty sane; echo OSC52-LECTURE-[$R]-FIN'\r")
+        check("osc52_lecture_demande_sans_reponse", await waitText(p4, "OSC52-LECTURE-[]-FIN", 20), tail(text(p4)))
+        check("osc52_lecture_ne_modifie_pas_le_presse_papiers", osc.string(forType: .string) == "SENTINELLE-LECTURE", "\(osc.string(forType: .string) ?? "nil")")
+        check("osc52_presse_papiers_general_intact", NSPasteboard.general.changeCount == generalBefore, "changeCount \(generalBefore) -> \(NSPasteboard.general.changeCount)")
+
         // 8. Autres onglets : B (même hôte, 2 panneaux), C (local, scindé), D (hôte B) ; pire état ; fermeture du dernier panneau
         let tabB = model.newTab(h1)
         check("onglet_b_running", await wait(25) { tabB.status == .running })
@@ -388,6 +433,7 @@ final class PanesSelfTest {
         for (i, p) in cutPanes.enumerated() {
             guard let bv = hv.bannerView(p.id) else { check("bandeau_\(i + 1)_geometrie", false, "absent"); continue }
             let bf = frameInHost(bv), ef = frameInHost(p.session.engine.view)
+            check("bandeau_\(i + 1)_hauteur_selon_largeur", abs(bv.frame.height - PaneBanner.height(forWidth: bv.frame.width)) < 0.01, "largeur \(bv.frame.width) hauteur \(bv.frame.height)")
             check("bandeau_\(i + 1)_ne_recouvre_pas_la_grille", bf.intersection(ef).isEmpty && bf.maxY <= ef.minY + 0.01, "bandeau y \(bf.minY)…\(bf.maxY), grille y \(ef.minY)…\(ef.maxY)")
             let ch = p.session.engine.cellHeight
             check("grille_\(i + 1)_multiple_entier_de_cellule", abs(ef.height / ch - (ef.height / ch).rounded()) < 0.01 && ef.minY - bf.maxY >= PaneHostView.insetTop - 0.01, "grille h \(ef.height) cellule \(ch)")
@@ -443,9 +489,11 @@ final class PanesSelfTest {
         await capture("05-quatre-panneaux-imbriques")
 
         // 11. Tout fermer : plus de maître, plus de ssh
-        check("menu_toujours_present", NSApp.mainMenu?.items.contains { $0.submenu === PaneMenu.shared.menu } == true)
+        check("menu_toujours_present", terminalMenu() != nil)
         for t in model.workspace.tabs { model.close(t) }
         check("tous_onglets_fermes", model.workspace.tabs.isEmpty)
+        check("menu_grise_sans_onglet", await wait(5) { menuEnabled("Scinder à droite") == false && menuEnabled("Fermer le panneau") == false },
+              "état \(PaneMenuState.shared.hasTab)/\(PaneMenuState.shared.several) onglet actif \(model.workspace.activeTab != nil) menu \(terminalMenu()?.items.prefix(3).map { "\($0.title):\($0.isEnabled)" } ?? [])")
         let allDown = await wait(25) { model.connections.allLinks.allSatisfy { $0.state == .disconnected } }
         check("tous_les_maitres_deconnectes", allDown, model.connections.allLinks.map { "\($0.state)" }.joined(separator: ","))
         var pids: [Int32?] = []

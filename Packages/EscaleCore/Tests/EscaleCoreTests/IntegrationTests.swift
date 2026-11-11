@@ -40,7 +40,7 @@ extension PTYProcessTests {
                     let cmd = try await t.shellCommand()
                     var env = cmd.environment
                     env["TERM"] = "xterm-256color"
-                    let pty = try PTYProcess(executable: cmd.executable, arguments: cmd.arguments, environment: env, columns: 97, rows: 31)
+                    let pty = try PTYProcess(executable: cmd.executable, arguments: cmd.arguments, environment: env, columns: 97, rows: 31, lease: cmd.lease)
                     let sortie = Sortie(pty)
                     // Le marqueur est calculé par le shell distant : l'écho de la ligne tapée ne le contient pas.
                     pty.write(Data("echo PRET-$((40+2))\r".utf8))
@@ -83,7 +83,9 @@ extension PTYProcessTests {
                     let statut = await pty.waitForExit()
                     garde.cancel()
                     #expect(statut == .exited(5))
-                    await t.shellSessionDidEnd()
+                    var restant = await t.sessionCount
+                    for _ in 0..<50 where restant != 0 { try? await Task.sleep(for: .milliseconds(40)); restant = await t.sessionCount }
+                    #expect(restant == 0, "le bail du pty rend la place du shell")
                     await t.disconnect()
                 } catch {
                     await t.disconnect()

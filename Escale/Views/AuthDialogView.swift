@@ -12,8 +12,10 @@ struct AuthDialogView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: symbol).font(.system(size: 30)).foregroundStyle(tint).frame(width: 36)
+            HStack(alignment: .center, spacing: 12) {
+                // Icône calée sur le bord gauche du corps (frame leading), centrée sur le bloc titre + sous-titre.
+                Image(systemName: symbol).font(.system(size: 30)).foregroundStyle(tint)
+                    .frame(width: 40, alignment: .leading)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title).font(.headline).fixedSize(horizontal: false, vertical: true)
                     Text("Connexion à « \(dialog.hostName) »").font(.subheadline).foregroundStyle(.secondary)
@@ -131,7 +133,7 @@ struct AuthDialogView: View {
         case .password: "key.fill"
         case .passphrase: "lock.fill"
         case .verificationCode: "number.circle.fill"
-        case .hostKeyConfirmation: "questionmark.shield.fill"
+        case .hostKeyConfirmation: "lock.shield.fill" // « questionmark.shield » n'existe pas : l'icône restait vide
         case .hostKeyChanged: "exclamationmark.shield.fill"
         case .other: "text.bubble.fill"
         }

@@ -23,7 +23,6 @@ struct DetailView: View {
                 if ws.tabs.isEmpty { EmptyStateView(model: model) }
             }
         }
-        .onAppear { PaneMenu.shared.install(model: model) }
     }
 }
 

@@ -109,7 +109,7 @@ final class PaneHostView: NSView {
     /// Rectangle de la grille d'un panneau (multiple entier de la hauteur de cellule), dans notre repère.
     private func engineRect(pane rect: CGRect, hasBanner: Bool, cellHeight: CGFloat) -> CGRect {
         var area = rect
-        if hasBanner { area.origin.y += PaneBanner.height; area.size.height -= PaneBanner.height }
+        if hasBanner { let bh = PaneBanner.height(forWidth: rect.width); area.origin.y += bh; area.size.height -= bh }
         let w = max(area.width - 2 * Self.insetX, 1)
         let avail = max(area.height - Self.insetTop - Self.insetBottom, 1)
         let h = cellHeight > 0 ? max(floor(avail / cellHeight), 1) * cellHeight : avail
@@ -129,14 +129,14 @@ final class PaneHostView: NSView {
                 let hasBanner = banners[p.id] != nil && t.bannerIDs.contains(p.id)
                 if let b = banners[p.id] {
                     b.isHidden = !visible || !hasBanner
-                    b.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: PaneBanner.height)
+                    b.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: PaneBanner.height(forWidth: rect.width))
                 }
                 let er = engineRect(pane: rect, hasBanner: hasBanner, cellHeight: e.cellHeight)
                 e.view.isHidden = !visible
                 if e.view.frame != er { e.view.frame = er }
                 if let c = chromes[p.id] {
                     var area = rect
-                    if hasBanner { area.origin.y += PaneBanner.height; area.size.height -= PaneBanner.height }
+                    if hasBanner { let bh = PaneBanner.height(forWidth: rect.width); area.origin.y += bh; area.size.height -= bh }
                     c.frame = area
                     c.isHidden = !visible || !multi
                     c.isActive = p.id == live.active

@@ -1,6 +1,14 @@
 import AppKit
+import QuartzCore
 import SwiftTerm
 import EscaleCore
+
+/// Presse-papiers cible de l'OSC 52 (écriture). Le général par défaut ; les recettes le remplacent par un
+/// presse-papiers nommé pour ne jamais écraser celui de l'utilisateur.
+@MainActor
+enum TerminalClipboard {
+    static var pasteboard: NSPasteboard = .general
+}
 
 /// Adaptateur SwiftTerm du contrat `TerminalEngine`. Seul fichier (avec ses voisins de ce
 /// dossier) autorisé à importer SwiftTerm : l'app n'en voit que `view` (une `NSView`).
@@ -81,6 +89,10 @@ final class SwiftTermEngine: TerminalEngine {
     func refreshDisplay() {
         terminalView.drawMetalFrameNow()
         terminalView.needsDisplay = true
+        // Force le rendu synchrone de la fenêtre et la validation de la transaction Core Animation : sans cela,
+        // une capture prise juste après une reconnexion peut montrer la frame précédente.
+        terminalView.window?.displayIfNeeded()
+        CATransaction.flush()
     }
 
     /// Donne le focus clavier à la vue du terminal.
@@ -118,8 +130,12 @@ final class SwiftTermEngine: TerminalEngine {
         /// OSC 52 écriture : permise (le programme distant peut copier vers le presse-papiers).
         func clipboardCopy(source: TerminalView, content: Data) {
             guard let s = String(data: content, encoding: .utf8) else { return }
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(s, forType: .string)
+            // Le délégué est appelé sur le fil principal (vue AppKit).
+            MainActor.assumeIsolated {
+                let pb = TerminalClipboard.pasteboard
+                pb.clearContents()
+                pb.setString(s, forType: .string)
+            }
         }
         /// OSC 52 lecture : REFUSÉE. L'API SwiftTerm le permet : renvoyer `nil` nie la requête
         /// (comportement par défaut documenté), sans réponse envoyée au programme distant.

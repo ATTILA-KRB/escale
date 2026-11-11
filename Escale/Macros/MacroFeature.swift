@@ -260,7 +260,7 @@ final class MacroFeature: AppFeature {
             link.release()
             return .failed(link.message(for: error))
         }
-        model.connections.shellsStarted += 1
+        model.connections.trackShell(shell)
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: shell.executable)
@@ -275,21 +275,18 @@ final class MacroFeature: AppFeature {
             let d = h.availableData
             if d.isEmpty { h.readabilityHandler = nil } else { sink.append(d) }
         }
-        let connections = model.connections
         process.terminationHandler = { [weak self] p in
             let pid = p.processIdentifier
             Task { @MainActor in
                 pipe.fileHandleForReading.readabilityHandler = nil
-                await link.transport.shellSessionDidEnd()
-                connections.shellsEnded += 1
+                shell.lease?.release()
                 link.release()
                 self?.x11Processes[pid] = nil
             }
         }
         do { try process.run() } catch {
             pipe.fileHandleForReading.readabilityHandler = nil
-            await link.transport.shellSessionDidEnd()
-            connections.shellsEnded += 1
+            shell.lease?.release()
             link.release()
             return .failed("lancement de ssh impossible : \(error.localizedDescription)")
         }

@@ -190,7 +190,7 @@ final class AppModel {
         pane.startTask = Task { await self.run(pane) }
     }
 
-    /// Fermeture d'un onglet : tue le pty (le gestionnaire de fin appelle `shellSessionDidEnd()` une fois)
+    /// Fermeture d'un onglet : tue le pty (le bail du PTYProcess rend la place une seule fois)
     /// et libère la connexion (déconnexion différée si c'était le dernier).
     func close(_ tab: TerminalTab) {
         guard !tab.isClosing else { return }
@@ -296,17 +296,16 @@ final class AppModel {
                 try await link.ensureConnected()
                 if tab.isClosing { return }
                 let cmd = try await link.transport.shellCommand()
-                connections.shellsStarted += 1
+                connections.trackShell(cmd)
                 var env = Self.environment()
                 for (k, v) in cmd.environment { env[k] = v }
                 let s = tab.session.engine.size
                 let p: PTYProcess
                 do {
                     p = try PTYProcess(executable: cmd.executable, arguments: cmd.arguments, environment: env,
-                                       columns: s.columns, rows: s.rows)
+                                       columns: s.columns, rows: s.rows, lease: cmd.lease)
                 } catch {
-                    await link.transport.shellSessionDidEnd()
-                    connections.shellsEnded += 1
+                    // Le bail est déjà rendu par PTYProcess (échec de lancement).
                     tab.status = .failed("lancement de ssh impossible : \(error)")
                     return
                 }
@@ -333,8 +332,7 @@ final class AppModel {
 
     /// Fin d'un shell distant (appelée une fois par processus).
     private func remoteShellEnded(_ tab: Pane, link: SSHLink, status: PTYExitStatus) async {
-        await link.transport.shellSessionDidEnd()
-        connections.shellsEnded += 1
+        // La place du maître est rendue par le bail du PTYProcess : rien à décrémenter ici.
         if tab.isClosing || isShuttingDown { return }
         let alive = await link.transport.isAlive()
         let lost = !alive || link.epoch != tab.launchEpoch

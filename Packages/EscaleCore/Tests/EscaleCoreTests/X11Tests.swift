@@ -185,7 +185,7 @@ struct X11IntegrationTests {
             #expect(cmd.environment["DISPLAY"] == xserver.path)
 
             let text = Self.run(cmd)
-            await t.shellSessionDidEnd()
+            cmd.lease?.release()
             #expect(text.contains("DISPLAY=localhost:10"), "sortie \(text) ; sshd doit créer DISPLAY=localhost:10.0 : \(text)")
             #expect(text.contains("fin"), "sortie : \(text)")
             // La connexion X ouverte sur le DISPLAY distant est ressortie chez nous, sur le faux serveur.
@@ -207,7 +207,7 @@ struct X11IntegrationTests {
             let cmd = try await t.execCommand(remoteCommand: "echo \"[$DISPLAY]\"")
             #expect(!cmd.arguments.contains("ForwardX11=yes"))
             let r = Self.run(cmd)
-            await t.shellSessionDidEnd()
+            cmd.lease?.release()
             #expect(r.contains("[]"), "\(r)")
             await t.disconnect()
         }

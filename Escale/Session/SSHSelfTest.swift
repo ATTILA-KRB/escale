@@ -59,8 +59,13 @@ final class SSHSelfTest {
         guard let win = window else { return }
         win.orderFrontRegardless()
         await sleep(0.5)
-        model.workspace.activeTab?.session.engine.refreshDisplay()
-        await sleep(0.25)
+        // Rendu frais : plusieurs passes display + attente d'une frame (≈ 60 Hz) avant de capturer, pour ne pas
+        // figer la frame d'avant une reconnexion.
+        for _ in 0..<3 {
+            model.workspace.activeTab?.session.engine.refreshDisplay()
+            win.contentView?.displayIfNeeded()
+            await sleep(0.12)
+        }
         capture(windowNumber: win.windowNumber, name: name)
     }
 

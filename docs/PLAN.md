@@ -338,4 +338,21 @@ Restes (non verifiables ici ou hors perimetre) :
 - Gestes reels non pilotes : glisser-deposer Finder, clics menus, IME/VoiceOver (spike S3), lien distant a vraie latence.
 - SFTP UI : un transfert reessaye repart de zero (brancher la reprise verifiee du coeur) ; pas de tri par colonne.
 - Tunnels : IPv6, `-R 0`, modification d'un tunnel actif. Multi-exec : Echap ne sort pas de la diffusion (diffuse).
-- Icone de l'app absente. Dettes M1 inchangees (PaneMenu, troncatures, OSC 52).
+- Icone de l'app absente. (Dettes M1 PaneMenu, troncatures, OSC 52 : soldees, voir « Dettes techniques M1 ».)
+
+### Dettes techniques M1 (2026-11-11, branche `v2-tech`)
+
+- Compteur de sessions : `ShellCommand.lease` (`SessionLease`, idempotent, thread-safe) est rendu par `PTYProcess(lease:)` a la fin
+  du processus (sortie, kill, echec de lancement) ; `TunnelController` et macros/X11 liberent le leur. Un bail d'avant
+  `disconnect()` ne decremente pas le nouveau maitre (generation). Plus aucun `shellSessionDidEnd()` manuel dans l'app
+  (reste public pour les tests). `ConnectionManager.trackShell` alimente `shellsStarted/shellsEnded` via `lease.whenReleased`.
+- Menu Terminal : `Escale/Views/PaneCommands.swift` (`CommandMenu`), `PaneMenu` et son minuteur supprimes. L'etat grise vient de
+  `PaneMenuState` (ObservableObject relie a l'Observation du modele : un `Commands` ne suit pas `@Observable`).
+  `PanesSelfTest` verifie titres, raccourcis, etat active (1 panneau, plusieurs, sans onglet) via `NSApp.mainMenu`.
+- OSC 52 : ecriture permise, lecture refusee, testees dans `selftest-panes` sur un `NSPasteboard` nomme (`TerminalClipboard.pasteboard`,
+  general par defaut) ; `changeCount` du presse-papiers general inchange.
+- Mise en page : bandeau compact (2 lignes + boutons dessous, `PaneBanner.height(forWidth:)`) sous 460 pt + infobulle ; en-tete de la
+  feuille de cle d'hote : le symbole `questionmark.shield.fill` n'existe pas (icone vide, d'ou le decalage) -> `lock.shield.fill`,
+  icone calee a gauche. Chemin de cle de l'editeur : deja tronque au milieu avec infobulle (verifie en capture).
+- Captures ssh apres reconnexion : `refreshDisplay` force `displayIfNeeded` + `CATransaction.flush`, trois passes + attente de frame.
+- Verifie : coeur 220 tests, recettes ssh 65, auth 99, panes (OSC 52, menu), macros 62, sftp 78, tunnels 31, multiexec 64, import : ok.

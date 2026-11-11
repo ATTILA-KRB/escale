@@ -32,6 +32,7 @@ struct EscaleApp: App {
         .defaultSize(width: 1180, height: 720)
         .commands {
             EscaleCommands(model: model)
+            PaneCommands(model: model)
             FeatureCommands(model: model)
         }
     }

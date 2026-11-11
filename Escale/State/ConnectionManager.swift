@@ -316,7 +316,7 @@ final class ConnectionManager {
     /// Délai de grâce avant déconnexion quand le dernier onglet d'un hôte se ferme.
     @ObservationIgnored var graceDelay: Double = 3
     @ObservationIgnored let maxShellsPerLink = 9
-    /// Compteurs (tests) : chaque shell lancé doit être suivi d'un seul `shellSessionDidEnd()`.
+    /// Compteurs (tests) : chaque shell lancé (bail `ShellCommand.lease`) doit être rendu une seule fois.
     /// Événements de cycle de vie d'un lien, pour les modules (tunnels rétablis après reconnexion, SFTP…).
     enum LinkEvent: Equatable { case connected, lost, disconnected }
     /// Observateurs par clé de module (une clé remplace l'observateur précédent).
@@ -337,6 +337,11 @@ final class ConnectionManager {
 
     @ObservationIgnored var shellsStarted = 0
     @ObservationIgnored var shellsEnded = 0
+    /// Compte un shell/exec lancé et sa fin (bail rendu : une seule fois, quelle que soit la cause).
+    func trackShell(_ cmd: ShellCommand) {
+        shellsStarted += 1
+        cmd.lease?.whenReleased { Task { @MainActor [weak self] in self?.shellsEnded += 1 } }
+    }
 
     init(sshOptions: OpenSSHOptions, secretStore: any SecretStore = AuthKeychain.makeStore(service: nil),
          askpassExecutable: String = Bundle.main.executablePath ?? CommandLine.arguments[0]) {

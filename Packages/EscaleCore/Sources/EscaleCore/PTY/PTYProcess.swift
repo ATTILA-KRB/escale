@@ -47,6 +47,7 @@ public final class PTYProcess: @unchecked Sendable {
     public let slavePath: String
 
     private let continuation: AsyncStream<Data>.Continuation
+    private let lease: SessionLease?
     private let queue = DispatchQueue(label: "escale.pty.read")
     private let writeQueue = DispatchQueue(label: "escale.pty.write")
     private let lock = NSLock()
@@ -71,8 +72,13 @@ public final class PTYProcess: @unchecked Sendable {
         environment: [String: String],
         columns: Int,
         rows: Int,
-        currentDirectory: String? = nil
+        currentDirectory: String? = nil,
+        lease: SessionLease? = nil
     ) throws {
+        // Le bail suit le processus : rendu à la fin, ou tout de suite si le lancement échoue.
+        var launched = false
+        defer { if !launched { lease?.release() } }
+        self.lease = lease
         // Vérification préalable : après fork on ne peut plus remonter d'erreur proprement.
         guard access(executable, X_OK) == 0 else { throw PTYError(operation: "accès à \(executable)", errnoValue: errno) }
 
@@ -132,6 +138,7 @@ public final class PTYProcess: @unchecked Sendable {
         var cont: AsyncStream<Data>.Continuation!
         self.output = AsyncStream(bufferingPolicy: .unbounded) { cont = $0 }
         self.continuation = cont
+        launched = true
         startReading(fd: fd)
         startReaper()
     }
@@ -209,6 +216,7 @@ public final class PTYProcess: @unchecked Sendable {
         let ws = waiters
         waiters = []
         lock.unlock()
+        lease?.release()
         ws.forEach { $0.resume(returning: st) }
     }
 

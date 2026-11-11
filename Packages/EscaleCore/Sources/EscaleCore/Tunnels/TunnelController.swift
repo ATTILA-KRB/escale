@@ -131,7 +131,7 @@ public actor TunnelController {
         do { cmd = try await transport.shellCommand(remoteCommand: script) } catch { return nil }
         let r = await OpenSSHProcessRunner.run(
             executable: cmd.executable, arguments: cmd.arguments, environment: cmd.environment, timeout: 8)
-        await transport.shellSessionDidEnd()
+        cmd.lease?.release()
         if r.stdout.contains("ESCALE_PROBE_OPEN") { return true }
         if r.stdout.contains("ESCALE_PROBE_CLOSED") { return false }
         return nil

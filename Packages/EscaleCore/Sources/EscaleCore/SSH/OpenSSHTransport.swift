@@ -46,6 +46,8 @@ public actor OpenSSHTransport: SSHTransport {
     private var paths: (socket: String, log: String, ownedDirectory: String?)?
     private var channels: [UUID: OpenSSHProcessChannel] = [:]
     private var shellSessions = 0
+    /// Génération des compteurs : un bail d'avant `disconnect()` ne doit pas décrémenter le compte du nouveau maître.
+    private var leaseGeneration = 0
     /// Commandes non interactives en cours (module multi-exécution) : comptées pour le plafond, voir `exec`.
     var execSessions = 0
     private var tunnels: Set<TunnelSpec> = []
@@ -79,8 +81,18 @@ public actor OpenSSHTransport: SSHTransport {
         return (try? String(contentsOfFile: log, encoding: .utf8)) ?? ""
     }
 
-    /// À appeler quand un shell obtenu par `shellCommand()` se termine (libère une place du plafond local).
+    /// Libère une place du plafond local. L'app n'a plus à l'appeler : `ShellCommand.lease` s'en charge, une seule fois,
+    /// à la fin du processus. Reste public pour les tests et les appelants qui comptent à la main.
     public func shellSessionDidEnd() { shellSessions = max(0, shellSessions - 1) }
+
+    private func leaseReleased(generation: Int) {
+        if generation == leaseGeneration { shellSessions = max(0, shellSessions - 1) }
+    }
+
+    private func makeLease() -> SessionLease {
+        let generation = leaseGeneration
+        return SessionLease { [weak self] in Task { await self?.leaseReleased(generation: generation) } }
+    }
 
     // MARK: - Connexion
 
@@ -204,7 +216,7 @@ public actor OpenSSHTransport: SSHTransport {
 
     public func disconnect() async {
         for c in Array(channels.values) { await c.close() }
-        channels.removeAll(); shellSessions = 0; tunnels.removeAll()
+        channels.removeAll(); shellSessions = 0; leaseGeneration += 1; tunnels.removeAll()
         if let m = master {
             if m.isRunning, let b = try? makeBuilder(), let args = try? b.controlArguments(.exit) {
                 _ = await run(args, timeout: 3)
@@ -235,11 +247,11 @@ public actor OpenSSHTransport: SSHTransport {
         shellSessions += 1
         return ShellCommand(
             executable: configuration.ssh.sshPath, arguments: b.shellArguments(remoteCommand: remoteCommand),
-            environment: b.environment)
+            environment: b.environment, lease: makeLease())
     }
 
     /// Commande distante sans terminal sur la connexion existante (applications X11). Compte comme une session du maître :
-    /// l'appelant appelle `shellSessionDidEnd()` à la fin du processus.
+    /// la place est rendue par `ShellCommand.lease` à la fin du processus.
     public func execCommand(remoteCommand: String) async throws -> ShellCommand {
         guard await isAlive() else { throw SSHTransportError.notConnected }
         guard sessionCount < configuration.maxSessions else {
@@ -249,7 +261,7 @@ public actor OpenSSHTransport: SSHTransport {
         shellSessions += 1
         return ShellCommand(
             executable: configuration.ssh.sshPath, arguments: b.execArguments(remoteCommand: remoteCommand),
-            environment: b.environment)
+            environment: b.environment, lease: makeLease())
     }
 
     public func openSFTPChannel() async throws -> any ByteChannel {

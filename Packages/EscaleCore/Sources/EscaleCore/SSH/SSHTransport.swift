@@ -21,14 +21,47 @@ public enum SSHTransportError: Error, Equatable, Sendable {
     case notConnected
 }
 
+/// Place réservée sur le maître par un shell/exec. `release()` est idempotent et sûr depuis n'importe quel fil :
+/// la place est rendue une seule fois, quelle que soit la fin (sortie, kill, échec de lancement, reconnexion).
+public final class SessionLease: @unchecked Sendable, Equatable {
+    private let lock = NSLock()
+    private var action: (@Sendable () -> Void)?
+    private var observers: [@Sendable () -> Void] = []
+
+    public init(onRelease: @escaping @Sendable () -> Void) { action = onRelease }
+
+    public var isReleased: Bool { lock.lock(); defer { lock.unlock() }; return action == nil }
+
+    public func release() {
+        lock.lock(); let a = action; action = nil
+        let obs = a == nil ? [] : observers
+        if a != nil { observers = [] }
+        lock.unlock()
+        a?()
+        obs.forEach { $0() }
+    }
+
+    /// Exécute `f` à la libération (tout de suite si elle a déjà eu lieu).
+    public func whenReleased(_ f: @escaping @Sendable () -> Void) {
+        lock.lock()
+        if action == nil { lock.unlock(); f(); return }
+        observers.append(f); lock.unlock()
+    }
+
+    public static func == (l: SessionLease, r: SessionLease) -> Bool { l === r }
+}
+
 /// Commande à lancer dans le pty d'un onglet pour obtenir un shell sur la connexion existante.
+/// `lease` lie la place réservée sur le maître à la vie du processus : la passer à `PTYProcess(lease:)`
+/// (ou appeler `lease.release()` si le processus n'est jamais lancé / s'il est lancé hors pty).
 public struct ShellCommand: Equatable, Sendable {
     public var executable: String
     public var arguments: [String]
     public var environment: [String: String]
+    public var lease: SessionLease?
 
-    public init(executable: String, arguments: [String], environment: [String: String] = [:]) {
-        self.executable = executable; self.arguments = arguments; self.environment = environment
+    public init(executable: String, arguments: [String], environment: [String: String] = [:], lease: SessionLease? = nil) {
+        self.executable = executable; self.arguments = arguments; self.environment = environment; self.lease = lease
     }
 }
 

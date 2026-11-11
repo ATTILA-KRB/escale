@@ -307,7 +307,9 @@ struct OpenSSHTransportIntegrationTests {
                 let r = await OpenSSHProcessRunner.run(executable: sc.executable, arguments: sc.arguments, environment: sc.environment, timeout: 10)
                 #expect(r.status == 0, "stderr : \(r.stderr)")
                 #expect(r.stdout.contains("escale-42"), "stdout : \(r.stdout)")
-                await t.shellSessionDidEnd()
+                #expect(await t.sessionCount == 1)
+                sc.lease?.release()
+                #expect(await eventually { await t.sessionCount == 0 })
                 #expect(d.acceptedAuthenticationCount() == 1, "sshd : \(d.log())")
             }
         }
@@ -439,6 +441,56 @@ struct OpenSSHTransportIntegrationTests {
                 await t.disconnect()
             } catch { await t.disconnect(); throw error }
             #expect(pgrep("ssh -M").filter { $0.contains(d.directory) || $0.contains("\(d.port)") }.isEmpty)
+        }
+    }
+
+    @Test func bailLibereUneSeuleFoisEtSuitLeProcessPTY() async throws {
+        try await LocalSSHD.with { d in
+            try await withTransport(d) { t in
+                try await t.connect()
+                // Fin normale du pty : place rendue.
+                let a = try await t.shellCommand(remoteCommand: "exit 0")
+                #expect(await t.sessionCount == 1)
+                let pa = try PTYProcess(executable: a.executable, arguments: a.arguments,
+                                        environment: ["PATH": "/usr/bin:/bin"], columns: 80, rows: 24, lease: a.lease)
+                _ = await pa.waitForExit()
+                #expect(await eventually { await t.sessionCount == 0 })
+                // Kill : place rendue, et un second release() manuel ne décrémente pas une autre session.
+                let b = try await t.shellCommand()
+                let c = try await t.shellCommand(remoteCommand: "sleep 30")
+                #expect(await t.sessionCount == 2)
+                let pb = try PTYProcess(executable: b.executable, arguments: b.arguments,
+                                        environment: ["PATH": "/usr/bin:/bin"], columns: 80, rows: 24, lease: b.lease)
+                pb.kill(); _ = await pb.waitForExit()
+                #expect(await eventually { await t.sessionCount == 1 })
+                b.lease?.release(); b.lease?.release()
+                try? await Task.sleep(for: .milliseconds(200))
+                #expect(await t.sessionCount == 1)
+                // Échec de lancement : place rendue sans processus.
+                #expect(throws: PTYError.self) {
+                    _ = try PTYProcess(executable: "/nonexistent/ssh", arguments: [], environment: [:], columns: 80, rows: 24, lease: c.lease)
+                }
+                #expect(await eventually { await t.sessionCount == 0 })
+            }
+        }
+    }
+
+    @Test func bailPerimeApresDisconnectNeTouchepasLeNouveauMaitre() async throws {
+        try await LocalSSHD.with { d in
+            try await withTransport(d) { t in
+                try await t.connect()
+                let old = try await t.shellCommand()
+                await t.disconnect()
+                #expect(await t.sessionCount == 0)
+                try await t.connect()
+                let fresh = try await t.shellCommand()
+                #expect(await t.sessionCount == 1)
+                old.lease?.release()
+                try? await Task.sleep(for: .milliseconds(200))
+                #expect(await t.sessionCount == 1, "le bail de l'ancien maître ne doit pas décrémenter")
+                fresh.lease?.release()
+                #expect(await eventually { await t.sessionCount == 0 })
+            }
         }
     }
 }
