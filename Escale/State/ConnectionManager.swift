@@ -54,7 +54,7 @@ final class SSHLink {
         let askpass = AskpassConfiguration(
             executablePath: manager.askpassExecutable, responder: responder,
             limits: AskpassServer.Limits(responseTimeout: 290))
-        transport = OpenSSHTransport(profile: profile, configuration: .init(ssh: manager.sshOptions, askpass: askpass))
+        transport = OpenSSHTransport(profile: profile, configuration: .init(ssh: manager.sshOptions(for: profile), askpass: askpass))
     }
 
     /// Message français d'une erreur, sans contexte d'hôte (journal de ssh pour les erreurs de transport).
@@ -322,6 +322,18 @@ final class ConnectionManager {
     /// Observateurs par clé de module (une clé remplace l'observateur précédent).
     @ObservationIgnored var linkObservers: [String: @MainActor (SSHLink, LinkEvent) -> Void] = [:]
     func notify(_ link: SSHLink, _ event: LinkEvent) { for o in linkObservers.values { o(link, event) } }
+
+    /// M5 : détection de XQuartz et mode « confiance » (injectables : tests et auto-test).
+    @ObservationIgnored var x11Detect: () -> X11Detection = { X11Detection.detect() }
+    @ObservationIgnored var x11Trusted: () -> Bool = { UserDefaults.standard.bool(forKey: X11Preferences.trustedKey) }
+
+    /// Options ssh d'un hôte : les communes + la redirection X11 quand l'hôte la demande ET que XQuartz est utilisable
+    /// (sinon aucune option X11 : jamais de `-X` sans XQuartz).
+    func sshOptions(for profile: HostProfile) -> OpenSSHOptions {
+        var o = sshOptions
+        if profile.x11Forwarding { o.x11 = x11Detect().settings(trusted: x11Trusted()) }
+        return o
+    }
 
     @ObservationIgnored var shellsStarted = 0
     @ObservationIgnored var shellsEnded = 0

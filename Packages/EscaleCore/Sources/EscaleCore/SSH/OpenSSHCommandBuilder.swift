@@ -48,18 +48,20 @@ public struct OpenSSHOptions: Sendable, Equatable {
     public var extraOptions: [String]
     /// Variables ajoutées à l'environnement des processus ssh (prévu pour `SSH_ASKPASS`, `SSH_ASKPASS_REQUIRE`).
     public var environment: [String: String]
+    /// Redirection X11 (M5) : `nil` = indisponible, aucune option X11 n'est passée même si l'hôte la demande.
+    public var x11: X11Settings?
 
     public init(
         sshPath: String = "/usr/bin/ssh", configFile: String? = nil, userKnownHostsFile: String? = nil,
         strictHostKeyChecking: StrictHostKeyChecking? = nil, batchMode: Bool = true,
         connectTimeout: Int = 10, serverAliveInterval: Int = 5, serverAliveCountMax: Int = 2,
-        extraOptions: [String] = [], environment: [String: String] = [:]
+        extraOptions: [String] = [], environment: [String: String] = [:], x11: X11Settings? = nil
     ) {
         self.sshPath = sshPath; self.configFile = configFile; self.userKnownHostsFile = userKnownHostsFile
         self.strictHostKeyChecking = strictHostKeyChecking; self.batchMode = batchMode
         self.connectTimeout = connectTimeout; self.serverAliveInterval = serverAliveInterval
         self.serverAliveCountMax = serverAliveCountMax; self.extraOptions = extraOptions
-        self.environment = environment
+        self.environment = environment; self.x11 = x11
     }
 }
 
@@ -95,6 +97,10 @@ public struct OpenSSHCommandBuilder: Sendable, Equatable {
         if controlPath.isEmpty || controlPath.hasPrefix("-") || Self.hasControlOrNul(controlPath) {
             throw OpenSSHCommandBuilderError.invalidControlPath(controlPath)
         }
+        if let x = options.x11, x.xauthPath.isEmpty || x.xauthPath.hasPrefix("-") || Self.hasControlOrNul(x.xauthPath)
+            || (x.display.map { $0.isEmpty || $0.hasPrefix("-") || Self.hasControlOrNul($0) } ?? false) {
+            throw OpenSSHCommandBuilderError.invalidOption("X11 : " + x.xauthPath)
+        }
         for opt in options.extraOptions where opt.isEmpty || !opt.contains("=") || Self.hasControlOrNul(opt) {
             throw OpenSSHCommandBuilderError.invalidOption(opt)
         }
@@ -110,6 +116,7 @@ public struct OpenSSHCommandBuilder: Sendable, Equatable {
         a += ["-o", "ServerAliveInterval=\(options.serverAliveInterval)", "-o", "ServerAliveCountMax=\(options.serverAliveCountMax)"]
         if let f = options.configFile { a += ["-F", f] }
         a += targetOptions()
+        a += x11Options()
         if !profile.jumpHosts.isEmpty { a += ["-J", profile.jumpHosts.joined(separator: ",")] }
         if let k = options.userKnownHostsFile { a += ["-o", "UserKnownHostsFile=\(k)"] }
         if let s = options.strictHostKeyChecking { a += ["-o", "StrictHostKeyChecking=\(s.rawValue)"] }
@@ -132,9 +139,26 @@ public struct OpenSSHCommandBuilder: Sendable, Equatable {
     /// Shell interactif sur le maître. `remoteCommand` (optionnel) est UNE chaîne interprétée par le shell distant,
     /// comme le veut ssh : l'appelant en est responsable.
     public func shellArguments(remoteCommand: String? = nil) -> [String] {
-        var a = secondaryPrefix() + ["-tt"] + targetOptions() + ["--", profile.target]
+        var a = secondaryPrefix() + ["-tt"] + targetOptions() + x11Options() + ["--", profile.target]
         if let c = remoteCommand { a.append(c) }
         return a
+    }
+
+    /// Commande distante SANS terminal ni entrée (`-n`), sur le maître : applications graphiques X11.
+    /// `remoteCommand` est UNE chaîne interprétée par le shell distant. Redirection X11 demandée si l'hôte l'active.
+    public func execArguments(remoteCommand: String) -> [String] {
+        secondaryPrefix() + ["-n"] + targetOptions() + x11Options() + ["--", profile.target, remoteCommand]
+    }
+
+    /// Vrai si les lignes produites demandent la redirection X11 (hôte activé ET X11 utilisable).
+    public var forwardsX11: Bool { profile.x11Forwarding && options.x11 != nil }
+
+    /// Options X11 (`-o` plutôt que `-X` : même effet, ssh garde la première valeur lue). Le maître en a besoin :
+    /// avec le multiplexage, c'est lui qui négocie le forward ; un client secondaire seul n'obtient pas de DISPLAY.
+    private func x11Options() -> [String] {
+        guard profile.x11Forwarding, let x = options.x11 else { return [] }
+        return ["-o", "ForwardX11=yes", "-o", "ForwardX11Trusted=\(x.trusted ? "yes" : "no")",
+                "-o", "ForwardX11Timeout=0", "-o", "XAuthLocation=\(x.xauthPath)"]
     }
 
     /// Canal SFTP : `ssh -S … -s <cible> sftp`. `verbose` ajoute `-v` (permet de savoir quand le maître a ouvert la session).
@@ -143,7 +167,11 @@ public struct OpenSSHCommandBuilder: Sendable, Equatable {
     }
 
     /// Environnement à ajouter pour tout processus ssh (askpass prévu, non implémenté ici).
-    public var environment: [String: String] { options.environment }
+    public var environment: [String: String] {
+        var env = options.environment
+        if forwardsX11, let d = options.x11?.display { env["DISPLAY"] = d }
+        return env
+    }
 
     // MARK: - Interne
 
