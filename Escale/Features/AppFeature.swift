@@ -62,3 +62,12 @@ struct FeatureSelectionMenuItems: View {
         MultiExecSelectionMenuItems(model: model, hosts: hosts)
     }
 }
+
+/// Entrées du menu contextuel d'un dossier de la bibliothèque (barre latérale).
+struct FeatureFolderMenuItems: View {
+    let model: AppModel
+    let folder: HostFolder
+    var body: some View {
+        MultiExecFolderMenuItems(model: model, folder: folder)
+    }
+}

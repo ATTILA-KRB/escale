@@ -419,3 +419,25 @@ inclut aussi les rapports souris/focus des applications distantes (negligeable).
 - Correctif : un `cd` rapide du terminal n'est plus ecrase par un `stat` plus lent (`followToken`).
 - Recettes : `scripts/selftest-sftp.sh` (reprise UI dl/up, coupure du maitre en plein transfert + reprise auto, tri, deplacement/copie
   avec noms hostiles) et `scripts/selftest-sftp-shell.sh` (meme scenario, sshd sans `Subsystem sftp`). Tests coeur : `ShellFileSystemTests`.
+- Tunnels : IPv6, `-R 0`, modification d'un tunnel actif.
+- Icone de l'app absente. Dettes M1 inchangees (PaneMenu, troncatures, OSC 52).
+
+### Multi-execution : restes traites (branche v2-multiexec)
+
+- Commande par hote : la feuille d'execution groupee a une commande commune + une surcharge par hote (`GroupExecTarget.command`) ;
+  variables `{host}` `{user}` `{name}` substituees cote client et echappees pour le shell (`GroupExecTemplate`, valeur ordinaire
+  inseree telle quelle, sinon entre apostrophes ; accolades inconnues intactes). « Relancer » garde les surcharges.
+- Cibles : selection, dossier recursif (menu contextuel de dossier via le nouveau point d'accroche `FeatureFolderMenuItems`),
+  etiquette, hotes connectes (menu Multi-execution et bouton « Cibles » de la feuille ; on peut retirer un hote).
+- Sortie de diffusion sans fuite : ⌃⌥Echap et ⌥⌘I (raccourcis de menu, interceptes avant le terminal) + double Echap rapide
+  (`DoubleEscapeDetector`, 0,35 s). Choix : un Echap seul est RETENU pour les autres panneaux pendant la fenetre ; si un second
+  suit, la diffusion s'arrete et aucun des deux n'est diffuse ; sinon il est diffuse apres 0,35 s, avant toute autre saisie.
+  Le panneau actif n'est jamais retarde. Cout : un Echap (vim) arrive avec 0,35 s de retard dans les autres panneaux. Bandeau mis a jour.
+- Historique : 20 dernieres commandes communes, en memoire + `exec-history.json` a cote de la bibliotheque (0600). Une commande
+  qui ressemble a un secret (`password=`, `--token`, `sshpass`, `Authorization: Bearer`…) declenche un avertissement dans la feuille
+  et n'est jamais memorisee (filtre aussi au chargement). Les surcharges par hote ne sont pas memorisees.
+- Export : « Exporter… » (CSV RFC 4180 ou texte selon l'extension, fichier 0600 ; cellules commencant par `= + - @` prefixees d'une apostrophe).
+- Verifie : `scripts/test.sh` vert (224 tests coeur), `selftest-multiexec.sh` 95 controles, ssh 65, panes 138 : `ok`.
+- Limites : le menu ⌃⌥Echap n'a pas repondu a un evenement synthetique (la recette appelle `stopBroadcast`, comme pour ⌥⌘I) ;
+  vrai clavier non pilote. Pas de substitution de variables dans les macros.
+
