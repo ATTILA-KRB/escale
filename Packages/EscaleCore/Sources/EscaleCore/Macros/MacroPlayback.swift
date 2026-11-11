@@ -14,12 +14,24 @@ public enum MacroPlayback {
         return Data(normalized.utf8)
     }
 
-    /// Actions d'une macro, étapes vides ignorées et attentes bornées.
-    public static func actions(for macro: Macro) -> [MacroAction] {
+    /// Variables d'un terminal local : `{host}` = localhost, utilisateur courant, `{name}` = « Terminal local ».
+    public static func localValues(user: String = NSUserName()) -> [String: String] {
+        ["host": "localhost", "user": user, "name": "Terminal local"]
+    }
+
+    /// Valeurs des variables d'un panneau : celles de l'hôte, ou du terminal local (`host == nil`).
+    public static func values(for host: HostProfile?) -> [String: String] {
+        host.map(GroupExecTemplate.values(for:)) ?? localValues()
+    }
+
+    /// Actions d'une macro, étapes vides ignorées et attentes bornées. Les variables `{host}`, `{user}`, `{name}`
+    /// des étapes texte sont substituées (échappées pour le shell, comme en multi-exécution) ; sans `values`,
+    /// le texte part tel quel. Une macro sans variable donne les mêmes octets dans tous les cas.
+    public static func actions(for macro: Macro, values: [String: String]? = nil) -> [MacroAction] {
         macro.steps.compactMap { step in
             switch step {
             case .text(let t):
-                let d = bytes(forText: t)
+                let d = bytes(forText: values.map { GroupExecTemplate.expand(t, values: $0) } ?? t)
                 return d.isEmpty ? nil : .send(d)
             case .key(let k): return .send(Data(k.bytes))
             case .wait(let ms):
@@ -34,11 +46,12 @@ public enum MacroPlayback {
     @discardableResult
     public static func play(
         _ macro: Macro,
+        values: [String: String]? = nil,
         send: @MainActor @Sendable (Data) -> Void,
         sleep: @Sendable (Int) async -> Void = { ms in try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000) }
     ) async -> Int {
         var done = 0
-        for action in actions(for: macro) {
+        for action in actions(for: macro, values: values) {
             if Task.isCancelled { break }
             switch action {
             case .send(let d): await send(d)

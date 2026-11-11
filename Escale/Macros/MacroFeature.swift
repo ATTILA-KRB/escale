@@ -155,6 +155,11 @@ final class MacroFeature: AppFeature {
 
     // MARK: Lecture
 
+    /// Variables `{host}`/`{user}`/`{name}` d'un panneau : son hôte, ou le terminal local.
+    func variables(for pane: Pane) -> [String: String] {
+        MacroPlayback.values(for: pane.hostID.flatMap { id in model?.library.library.hosts.first { $0.id == id } })
+    }
+
     /// Rejoue la macro dans le panneau actif (ou dans tous les panneaux en cours d'exécution de l'onglet actif).
     /// Renvoie la tâche de lecture (nombre d'actions exécutées, tous panneaux confondus) pour qui veut l'attendre.
     @discardableResult
@@ -168,7 +173,8 @@ final class MacroFeature: AppFeature {
         }
         let token = UUID()
         let tasks = targets.map { pane in
-            Task { @MainActor in await MacroPlayback.play(macro, send: { pane.session.write($0) }) }
+            let values = variables(for: pane)
+            return Task { @MainActor in await MacroPlayback.play(macro, values: values, send: { pane.session.write($0) }) }
         }
         playTasks[token] = tasks
         return Task { @MainActor [weak self] in

@@ -215,7 +215,7 @@ struct MacroEditorView: View {
                 }
             }
             .frame(maxHeight: .infinity)
-            Text("Dans un texte, un retour à la ligne est envoyé comme la touche Entrée.").font(.caption).foregroundStyle(.secondary)
+            Text("Dans un texte, un retour à la ligne est envoyé comme la touche Entrée. Variables : {host} (adresse), {user}, {name} (nom de l'hôte ; terminal local : localhost, utilisateur courant, « Terminal local »), remplacées à la lecture et échappées pour le shell.").font(.caption).foregroundStyle(.secondary)
 
             ForEach(Array((errors + warnings).enumerated()), id: \.offset) { _, issue in
                 Label(issue.message, systemImage: issue.severity == .error ? "xmark.octagon.fill" : "exclamationmark.triangle.fill")

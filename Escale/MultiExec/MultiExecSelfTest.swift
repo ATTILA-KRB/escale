@@ -336,6 +336,22 @@ struct MultiExecSelfTest {
             await feature.waitForRun()
             await check("nom_hostile_non_interprete", run6?.rows.first?.result?.stdout == "x'; echo PWNED; '\n", run6?.rows.first?.result?.stdout ?? "nil")
 
+            // 8b'. Macro avec variables rejouée sur des panneaux d'hôtes différents : chaque panneau reçoit ses valeurs
+            let vm = Macro(name: "Variables", steps: [.text("echo MV-{name}-{host}-$((6*7))\n")])
+            let tabV1 = model.newTab(good[0]), tabV2 = model.newTab(good[1])
+            let (pv1, pv2) = (tabV1.panes[0], tabV2.panes[0])
+            await check("macro_vars_panneaux_prets", await wait(40) { pv1.status == .running && pv2.status == .running })
+            model.workspace.select(tabV1.id)
+            _ = await model.macros.play(vm)?.value
+            model.workspace.select(tabV2.id)
+            _ = await model.macros.play(vm)?.value
+            await check("macro_vars_valeur_par_panneau",
+                        await wait(15) { text(pv1).contains("MV-\(good[0].name)-\(good[0].host)-42") && text(pv2).contains("MV-\(good[1].name)-\(good[1].host)-42") },
+                        tail(text(pv1)) + " | " + tail(text(pv2)))
+            await check("macro_vars_pas_de_melange", !text(pv1).contains("MV-\(good[1].name)-") && !text(pv2).contains("MV-\(good[0].name)-"))
+            model.close(tabV1); model.close(tabV2)
+            model.workspace.select(tab.id)
+
             // 8c. Cibles : dossier récursif, étiquette, connectés
             let folderID = all.first(where: { $0.name == "Hôte 1" })?.folderID
             if let folderID {
