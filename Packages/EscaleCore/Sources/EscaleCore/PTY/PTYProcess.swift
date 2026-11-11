@@ -87,13 +87,10 @@ public final class PTYProcess: @unchecked Sendable {
         for (i, e) in envList.enumerated() { cEnv[i] = strdup(e) }
         cEnv[envList.count] = nil
         let cCwd: UnsafeMutablePointer<CChar>? = currentDirectory.map { strdup($0) }
-        // Descripteurs ouverts (> 2) à fermer dans le fils : aucun fd de l'app ne fuit vers ssh.
-        let maxFD = Int32(min(getdtablesize(), 65536))
-        var toClose: [Int32] = []
-        for f in 3..<max(3, maxFD) where fcntl(f, F_GETFD) != -1 { toClose.append(f) }
-        let closeCount = toClose.count
-        let cClose = UnsafeMutablePointer<Int32>.allocate(capacity: max(1, closeCount))
-        for (i, f) in toClose.enumerated() { cClose[i] = f }
+        // Plafond des descripteurs à fermer dans le fils. L'inventaire se fait APRÈS le fork, dans le fils : un fd ouvert par
+        // un autre thread entre un inventaire préalable et le fork serait sinon hérité (course). `closefrom` n'existe pas
+        // sous Darwin ; fermer toute la plage 3..<limite (close sur un fd fermé = EBADF, sans effet) est sûr et rapide.
+        let maxFD = Int32(min(max(getdtablesize(), 256), 65536))
         var dfl = sigaction()
         dfl.__sigaction_u.__sa_handler = SIG_DFL
         sigemptyset(&dfl.sa_mask)
@@ -102,7 +99,7 @@ public final class PTYProcess: @unchecked Sendable {
         defer {
             free(cExec); for i in 0...arguments.count { free(cArgs[i]) }; cArgs.deallocate()
             for i in 0..<envList.count { free(cEnv[i]) }; cEnv.deallocate()
-            free(cCwd); cClose.deallocate()
+            free(cCwd)
         }
 
         var ws = winsize(ws_row: UInt16(clamping: rows), ws_col: UInt16(clamping: columns), ws_xpixel: 0, ws_ypixel: 0)
@@ -115,8 +112,8 @@ public final class PTYProcess: @unchecked Sendable {
             var n: Int32 = 1
             while n < NSIG { if n != SIGKILL && n != SIGSTOP { _ = sigaction(n, &dfl, nil) }; n += 1 }
             _ = sigprocmask(SIG_SETMASK, &emptyMask, nil)
-            var i = 0
-            while i < closeCount { _ = close(cClose[i]); i += 1 }
+            var f: Int32 = 3
+            while f < maxFD { _ = close(f); f += 1 }
             if let cCwd, chdir(cCwd) != 0 { _exit(126) }
             _ = execve(cExec, cArgs, cEnv)
             _exit(127)

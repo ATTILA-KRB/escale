@@ -25,6 +25,11 @@ public actor SFTPClient {
     var outgoing: AsyncStream<Data>.Continuation?
     var readerTask: Task<Void, Never>?
     var writerTask: Task<Void, Never>?
+    var watchdogTask: Task<Void, Never>?
+    /// Dernier signe de vie : réponse reçue, ou envoi d'une requête quand plus rien n'était en attente.
+    var lastActivity = ContinuousClock.now
+    /// Délais successifs sans la moindre réponse entre-temps.
+    var consecutiveTimeouts = 0
 
     /// Extensions annoncées par le serveur dans VERSION (nom → données).
     public private(set) var serverExtensions: [String: String] = [:]
@@ -44,6 +49,7 @@ public actor SFTPClient {
         outgoing?.finish()
         readerTask?.cancel()
         writerTask?.cancel()
+        watchdogTask?.cancel()
         let c = channel
         Task { await c.close() }
     }
@@ -78,6 +84,16 @@ public actor SFTPClient {
                 }
             }
         }
+        if let timeout = configuration.requestTimeout {
+            // Pas de minuterie par requête : une veille unique (quelques ticks par délai) qui compare à `lastActivity`.
+            let tick = min(max(timeout / 4, .milliseconds(20)), .seconds(1))
+            watchdogTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: tick)
+                    guard let me = self, await me.checkTimeouts() else { return }
+                }
+            }
+        }
         readerTask = Task { [weak self] in
             do {
                 while true {
@@ -107,6 +123,8 @@ public actor SFTPClient {
     /// Route une trame reçue vers la requête qui l'attend. Une réponse à un id inconnu (abandonné) est ignorée.
     func dispatch(_ body: Data) throws {
         guard closedError == nil else { return }
+        lastActivity = .now
+        consecutiveTimeouts = 0
         var r = SFTPReader(body)
         let type = try r.u8()
         let id: UInt32 = type == SFTPPacket.version ? 0 : try r.u32()
@@ -128,6 +146,7 @@ public actor SFTPClient {
         closedError = error
         outgoing?.finish()
         readerTask?.cancel()
+        watchdogTask?.cancel()
         let all = pending
         for (id, slot) in all {
             if let c = slot.continuation {
@@ -186,6 +205,7 @@ public actor SFTPClient {
     /// Envoie une requête et réserve sa place ; la réponse se récupère avec `receive`.
     func send(_ type: UInt8, _ build: (inout SFTPWriter) -> Void) throws -> UInt32 {
         if let e = closedError { throw e }
+        if pending.isEmpty { lastActivity = .now }
         let id = nextID
         nextID = nextID == UInt32.max ? 1 : nextID + 1
         var w = SFTPWriter()
@@ -193,6 +213,30 @@ public actor SFTPClient {
         pending[id] = Slot()
         do { try enqueue(w.data) } catch { pending[id] = nil; throw error }
         return id
+    }
+
+    /// Veille des délais. Renvoie false quand le client est fermé (la veille s'arrête).
+    /// Si des requêtes attendent et que rien n'est arrivé depuis `requestTimeout`, elles échouent toutes en
+    /// `requestTimeout` (libérées : une réponse tardive sera ignorée, ids jamais réutilisés tant qu'ils circulent).
+    /// Après `maxConsecutiveTimeouts` délais sans réponse entre-temps, le canal est déclaré mort.
+    func checkTimeouts() -> Bool {
+        guard closedError == nil, let timeout = configuration.requestTimeout else { return false }
+        let now = ContinuousClock.now
+        let waiting = pending.filter { $0.key != 0 && $0.value.result == nil }
+        guard !waiting.isEmpty, now - lastActivity >= timeout else { return true }
+        let seconds = Double(timeout.components.seconds) + Double(timeout.components.attoseconds) / 1e18
+        let error = SFTPError.requestTimeout(seconds: seconds)
+        for (id, slot) in waiting {
+            if let c = slot.continuation { pending[id] = nil; c.resume(throwing: error) }
+            else { pending[id] = Slot(continuation: nil, result: .failure(error)) }
+        }
+        lastActivity = now
+        consecutiveTimeouts += 1
+        if consecutiveTimeouts >= max(1, configuration.maxConsecutiveTimeouts) {
+            fail(.channelClosed("le serveur ne répond plus (\(consecutiveTimeouts) délais de \(Int(seconds)) s sans réponse)"))
+            return false
+        }
+        return true
     }
 
     /// Abandonne une requête en vol (sa réponse éventuelle sera ignorée).

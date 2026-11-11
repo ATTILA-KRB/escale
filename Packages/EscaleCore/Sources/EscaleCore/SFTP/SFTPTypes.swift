@@ -76,5 +76,62 @@ public struct SFTPClientConfiguration: Sendable, Equatable {
     public var chunkSize: Int = 32 * 1024
     /// Nombre maximal de requêtes de transfert en vol.
     public var window: Int = 32
+    /// Délai sans AUCUNE réponse du serveur au-delà duquel les requêtes en attente échouent en `requestTimeout`.
+    /// Le délai court depuis le dernier signe de vie (envoi ou réponse reçue), pas depuis l'envoi de chaque requête :
+    /// un lien lent mais vivant ne déclenche rien. `nil` = pas de délai.
+    public var requestTimeout: Duration? = .seconds(60)
+    /// Nombre de délais successifs, sans réponse entre-temps, après lesquels le canal est déclaré mort.
+    public var maxConsecutiveTimeouts: Int = 3
+    /// Ajuste la fenêtre de requêtes en vol pendant un transfert (montée tant que le débit croît, repli sinon).
+    /// `window` sert alors de valeur initiale. `false` : fenêtre fixe de `window` requêtes.
+    public var adaptiveWindow: Bool = true
+    /// Bornes de la fenêtre adaptative (la valeur initiale `window` est ramenée dans ces bornes).
+    public var minWindow: Int = 4
+    public var maxWindow: Int = 256
     public init() {}
+}
+
+/// Instantané de progression d'un transfert, destiné à l'interface.
+public struct SFTPTransferSnapshot: Sendable, Equatable {
+    /// Octets déjà en place, offset de reprise inclus.
+    public var bytesTransferred: UInt64
+    /// Taille du fichier complet si connue.
+    public var totalBytes: UInt64?
+    /// Débit lissé (octets/s) sur les dernières secondes ; 0 tant qu'il n'est pas mesurable.
+    public var bytesPerSecond: Double
+    /// Fenêtre de requêtes en vol utilisée à cet instant.
+    public var window: Int
+    /// Durée écoulée depuis le début du transfert (vérification de reprise comprise).
+    public var elapsed: Duration
+    /// Fraction 0…1 si la taille est connue.
+    public var fraction: Double? {
+        guard let t = totalBytes else { return nil }
+        return t == 0 ? 1 : min(1, Double(bytesTransferred) / Double(t))
+    }
+    /// Temps restant estimé, si le débit et la taille sont connus.
+    public var estimatedRemaining: Duration? {
+        guard let t = totalBytes, bytesPerSecond > 1, t >= bytesTransferred else { return nil }
+        return .seconds(Double(t - bytesTransferred) / bytesPerSecond)
+    }
+}
+
+/// Résultat d'un transfert avec reprise vérifiée.
+public struct SFTPTransferOutcome: Sendable, Equatable {
+    /// Taille finale du fichier transféré.
+    public var totalBytes: UInt64
+    /// Offset réellement repris (0 = transfert complet depuis le début).
+    public var resumedFrom: UInt64
+    /// Si une reprise était possible (données partielles présentes) mais refusée : la raison. `nil` sinon.
+    public var restartReason: String?
+}
+
+/// Niveau de vérification du préfixe déjà transféré avant de reprendre.
+public enum SFTPResumeVerification: Sendable, Equatable {
+    /// Compare le SHA-256 des `head` premiers octets et des `tail` derniers octets du préfixe (local contre distant).
+    /// Rapide ; ne détecte pas une modification au milieu du préfixe.
+    case sample(head: Int, tail: Int)
+    /// Compare le SHA-256 de tout le préfixe (relit les deux côtés ; coûteux sur un gros préfixe).
+    case full
+    /// Valeur par défaut : 64 Kio de tête et 1 Mio de queue.
+    public static let `default` = SFTPResumeVerification.sample(head: 64 * 1024, tail: 1024 * 1024)
 }

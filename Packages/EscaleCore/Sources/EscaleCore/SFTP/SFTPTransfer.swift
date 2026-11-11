@@ -2,7 +2,7 @@ import Foundation
 
 // Transferts en flux : fenêtre bornée de requêtes en vol, jamais le fichier entier en mémoire.
 
-private func localError(_ what: String) -> SFTPError {
+func localError(_ what: String) -> SFTPError {
     SFTPError.localIO("\(what) : \(String(cString: strerror(errno))) (errno \(errno))")
 }
 
@@ -16,7 +16,7 @@ private func pwriteAll(_ fd: Int32, _ data: Data, at offset: UInt64) throws {
     }
 }
 
-private func preadExact(_ fd: Int32, count: Int, at offset: UInt64) throws -> Data {
+func preadExact(_ fd: Int32, count: Int, at offset: UInt64) throws -> Data {
     var data = Data(count: count)
     let got: Int = try data.withUnsafeMutableBytes { buf in
         var done = 0
@@ -40,7 +40,13 @@ extension SFTPClient {
     @discardableResult
     public func download(remotePath: some SFTPPathRepresentable, to localURL: URL, resumeFrom: UInt64 = 0,
                          progress: (@Sendable (SFTPTransferProgress) -> Void)? = nil) async throws -> UInt64 {
-        let path = remotePath.sftpBytes
+        try await runDownload(path: remotePath.sftpBytes, to: localURL, resumeFrom: resumeFrom, progress: progress, observer: nil)
+    }
+
+    /// Noyau du téléchargement : `progress` (historique, à chaque bloc) et `observer` (instantanés à cadence de 10/s).
+    func runDownload(path: Data, to localURL: URL, resumeFrom: UInt64,
+                     progress: (@Sendable (SFTPTransferProgress) -> Void)?,
+                     observer: (@Sendable (SFTPTransferSnapshot) -> Void)?) async throws -> UInt64 {
         let total = try? await stat(path).size
 
         let fd = open(localURL.path, O_WRONLY | O_CREAT, 0o644)
@@ -59,15 +65,17 @@ extension SFTPClient {
         if let total, resumeFrom > total { throw SFTPError.invalidResumeOffset("offset \(resumeFrom) > taille distante \(total)") }
 
         let handle = try expectHandle(try await call(SFTPPacket.open) { $0.bytes(path); $0.u32(0x1); $0.u32(0) })
-        let chunk = readChunk, window = max(1, configuration.window)
+        let chunk = readChunk
+        var meter = SFTPTransferMeter(configuration: configuration)
         var nextOffset = resumeFrom, done = resumeFrom
         var inflight: [(id: UInt32, offset: UInt64, length: Int)] = []
         var eof = false
         progress?(SFTPTransferProgress(bytesTransferred: done, totalBytes: total))
+        observer?(meter.snapshot(done: done, total: total))
         do {
             while true {
                 try Task.checkCancellation()
-                while !eof && inflight.count < window && (total.map { nextOffset < $0 } ?? true) {
+                while !eof && inflight.count < meter.window && (total.map { nextOffset < $0 } ?? true) {
                     let len = total.map { Int(min(UInt64(chunk), $0 - nextOffset)) } ?? chunk
                     let off = nextOffset
                     let id = try send(SFTPPacket.read) { $0.bytes(handle); $0.u64(off); $0.u32(UInt32(len)) }
@@ -108,7 +116,9 @@ extension SFTPClient {
                 if !data.isEmpty {
                     try pwriteAll(fd, data, at: req.offset)
                     done += UInt64(data.count)
+                    meter.advance(bytes: data.count, done: done)
                     progress?(SFTPTransferProgress(bytesTransferred: done, totalBytes: total))
+                    if let o = observer, let snap = meter.snapshotIfDue(done: done, total: total) { o(snap) }
                 }
             }
         } catch {
@@ -120,6 +130,7 @@ extension SFTPClient {
             throw error
         }
         try await closeHandle(handle, ignoringErrors: false)
+        observer?(meter.snapshot(done: done, total: total))
         return done
     }
 
@@ -131,7 +142,13 @@ extension SFTPClient {
     @discardableResult
     public func upload(localURL: URL, to remotePath: some SFTPPathRepresentable, resumeFrom: UInt64 = 0,
                        progress: (@Sendable (SFTPTransferProgress) -> Void)? = nil) async throws -> UInt64 {
-        let path = remotePath.sftpBytes
+        try await runUpload(localURL: localURL, path: remotePath.sftpBytes, resumeFrom: resumeFrom, progress: progress, observer: nil)
+    }
+
+    /// Noyau de l'envoi (voir `runDownload`).
+    func runUpload(localURL: URL, path: Data, resumeFrom: UInt64,
+                   progress: (@Sendable (SFTPTransferProgress) -> Void)?,
+                   observer: (@Sendable (SFTPTransferSnapshot) -> Void)?) async throws -> UInt64 {
         let fd = open(localURL.path, O_RDONLY)
         guard fd >= 0 else { throw localError("ouverture de \(localURL.path)") }
         defer { Darwin.close(fd) }
@@ -150,18 +167,22 @@ extension SFTPClient {
         let handle = try expectHandle(try await call(SFTPPacket.open) {
             $0.bytes(path); $0.u32(flags); $0.attrs(permissions: mode, accessTime: nil, modificationTime: nil)
         })
-        let chunk = writeChunk, window = max(1, configuration.window)
+        let chunk = writeChunk
+        var meter = SFTPTransferMeter(configuration: configuration)
         var offset = resumeFrom, done = resumeFrom
         var inflight: [(id: UInt32, length: Int)] = []
         progress?(SFTPTransferProgress(bytesTransferred: done, totalBytes: size))
+        observer?(meter.snapshot(done: done, total: size))
         do {
             while offset < size {
                 try Task.checkCancellation()
-                if inflight.count >= window {
+                while inflight.count >= meter.window {
                     let req = inflight.removeFirst()
                     try expectOK(try await receive(req.id))
                     done += UInt64(req.length)
+                    meter.advance(bytes: req.length, done: done)
                     progress?(SFTPTransferProgress(bytesTransferred: done, totalBytes: size))
+                    if let o = observer, let snap = meter.snapshotIfDue(done: done, total: size) { o(snap) }
                 }
                 let len = Int(min(UInt64(chunk), size - offset))
                 let data = try preadExact(fd, count: len, at: offset)
@@ -175,7 +196,9 @@ extension SFTPClient {
                 let req = inflight.removeFirst()
                 try expectOK(try await receive(req.id))
                 done += UInt64(req.length)
+                meter.advance(bytes: req.length, done: done)
                 progress?(SFTPTransferProgress(bytesTransferred: done, totalBytes: size))
+                if let o = observer, let snap = meter.snapshotIfDue(done: done, total: size) { o(snap) }
             }
         } catch {
             for r in inflight { discard(r.id) }
@@ -186,6 +209,7 @@ extension SFTPClient {
             throw error
         }
         try await closeHandle(handle, ignoringErrors: false)
+        observer?(meter.snapshot(done: done, total: size))
         return size
     }
 }

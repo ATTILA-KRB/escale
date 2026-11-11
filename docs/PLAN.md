@@ -164,9 +164,8 @@ Reste pour M1 : modele de sessions persistant, barre laterale, onglets, panneaux
 reconnexion, branchement de `OpenSSHTransport` dans l'app (aujourd'hui la fenetre lance un shell local ou `--command`).
 
 Dettes connues :
-- SFTP : pas de delai par requete apres negociation ; reprise sans verification du contenu ; fenetre fixe (32 x 32 Kio)
-  non ajustee a la latence ; rien de mesure sur un lien reel.
-- PTY : un fd ouvert par un autre thread entre l'inventaire et le fork peut fuir vers le fils.
+- SFTP : rien de mesure sur un lien reel (latence), seulement loopback et simulation (dette de M1 sur delai, reprise,
+  fenetre et fd du PTY soldee, voir « M2 coeur SFTP »).
 - Terminal : IME et accessibilite non verifies (spike S3) ; politique OSC 52 codee mais non testee.
 - Compteur de sessions shell : decremente a la main (`shellSessionDidEnd`), a lier a la fin du pty.
 
@@ -201,3 +200,25 @@ reels (raccourcis, glisser des separateurs, clics, survol), mode clair, VoiceOve
 Dettes : `PaneMenu` installe le menu Terminal par code avec un minuteur (a migrer dans les commandes SwiftUI de
 `EscaleApp`) ; texte du bandeau tronque dans un panneau etroit ; en-tete du dialogue de cle d'hote desaligne ;
 captures de `selftest-ssh.sh` parfois perimees apres reconnexion (le texte du tampon, lui, est verifie).
+
+### M2 coeur SFTP (branche m-sftp-core)
+
+Fait et verifie (coeur : 157 tests, `scripts/test.sh` vert) :
+- Delai par requete : `SFTPClientConfiguration.requestTimeout` (60 s par defaut, `nil` = aucun). Une veille unique compare
+  l'instant courant au dernier signe de vie (reponse recue) : un lien lent mais vivant n'expire pas. Echec en
+  `SFTPError.requestTimeout`, requete liberee, reponse tardive ignoree (canal coherent) ; apres `maxConsecutiveTimeouts` (3)
+  delais sans reponse, canal declare mort (`channelClosed`).
+- Fenetre adaptative (`SFTPWindowController`) : mesure du debit par intervalles de 250 ms, x1,5 tant que le gain depasse 10 %,
+  retour au palier precedent sur plateau, bornes 4...256 (`adaptiveWindow`, `minWindow`, `maxWindow`; `window` = valeur initiale).
+  Valide par simulation de liens (bande passante x latence) ; non mesure sur un vrai lien distant.
+- Reprise verifiee : `downloadResuming` / `uploadResuming` comparent des SHA-256 de tete (64 Kio) et de queue (1 Mio) du prefixe
+  local contre distant (`.full` : tout le prefixe), sinon repart de zero (`SFTPTransferOutcome.restartReason`).
+  OpenSSH n'a pas `check-file` : le distant est relu. Une modification au milieu d'un long prefixe n'est vue qu'avec `.full`.
+- Progression et annulation : `startDownload` / `startUpload` renvoient un `SFTPTransferTask` (`progress` : AsyncStream de
+  `SFTPTransferSnapshot` octets, total, debit lisse, fenetre, duree ; `cancel()` ; `outcome`). Les anciens `download`/`upload`
+  sont inchanges (et beneficient de la fenetre adaptative).
+- PTY : le fils ferme tout 3..<limite apres le fork (plus d'inventaire prealable) ; test de course avec un thread qui ouvre des fd.
+- Tests contre sshd local : 1 Gio aller-retour SHA-256 (~14 s envoi, 4 a 10 s retour selon la charge de la machine), 256 Mio avec
+  coupure du maitre ssh puis reprise (envoi et reception), mort du sftp-server, prefixe modifie (queue, tete, milieu), delai.
+
+Reste : lien reel a latence (NAS, VPS) ; blocs de 64 Kio quand `limits@openssh.com` l'autorise (non fait, reste 32 Kio).

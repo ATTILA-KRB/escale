@@ -41,4 +41,8 @@ public enum SFTPError: Error, Equatable, Sendable {
     /// Transfert annulé (Task cancellation). `partialLocalFile` : fichier local partiel laissé en place
     /// (téléchargement uniquement ; en envoi, le fichier distant partiel reste sur le serveur).
     case cancelled(partialLocalFile: URL?, bytesTransferred: UInt64)
+    /// Aucune réponse du serveur depuis `seconds` secondes alors qu'une requête était en attente. La requête est libérée ;
+    /// sa réponse tardive éventuelle est ignorée (le canal reste cohérent). Après plusieurs délais d'affilée sans la
+    /// moindre réponse, le canal est déclaré mort (`channelClosed`).
+    case requestTimeout(seconds: Double)
 }
