@@ -127,7 +127,8 @@ struct TelnetTunnelTests {
     @Test func portLibreEtRedirection() throws {
         let p = try #require(TelnetTunnel.freeLocalPort())
         #expect((1024...65535).contains(p))
-        #expect(TunnelPortCheck.isFree(address: "127.0.0.1", port: p))
+        // Pas de `TunnelPortCheck.isFree(p)` ici : le port éphémère rendu peut être repris aussitôt par un test
+        // parallèle (échec intermittent). Le produit vérifie l'ouverture par sonde après `ssh -O forward` (invariant 4).
         let s = TelnetTunnel.spec(localPort: p, host: "[::1]", port: 23)
         #expect(s.kind == .local && s.bindAddress == "127.0.0.1" && s.bindPort == p)
         #expect(s.destinationHost == "::1" && s.destinationPort == 23)
