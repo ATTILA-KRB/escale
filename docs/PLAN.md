@@ -79,10 +79,10 @@ Conséquence : distribution directe (DMG + Sparkle), pas de Mac App Store. À co
 | Macros / snippets | V1.1 | enregistrement des frappes |
 | Import `MobaXterm.ini`, PuTTY, Termius | V1.1 | analyseurs dédiés |
 | X11 | V1.1 | serveur X intégré (Xquartz de XQuartz 2.8.6 embarqué, sans installation ni sudo), XQuartz installé en secours |
-| Série | V1.2 | termios POSIX |
-| Telnet | V1.2 | Network.framework |
-| VNC | V2 | bibliothèque Swift tierce à valider, sinon renvoi vers Partage d'écran |
-| RDP | V2 | FreeRDP (C) — sort du « full Swift », à décider |
+| Série | V1.2 | **livré** : termios POSIX (`SerialPort`), découverte IOKit |
+| Telnet | V1.2 | **livré** : Network.framework, négociation RFC 1143, tunnel via SSH |
+| VNC | V2 | **livré** : client RFB natif Swift (DES, ARD, Hextile, ZRLE), repli Partage d'écran |
+| RDP | V2 | **livré** : client externe Windows App (`.rdp` généré, tunnel SSH) ; FreeRDP intégré reporté (spike) |
 | Serveurs embarqués (TFTP, FTP, HTTP), MobApt | hors périmètre | sans objet sur macOS |
 
 ## 5. Jalons
@@ -493,3 +493,32 @@ inclut aussi les rapports souris/focus des applications distantes (negligeable).
   refus sans cookie, X.Org repond via ssh, fenetre xeyes 240×180 affichee et capturee (`x11-integre-xeyes.png`), arret par pid.
 - **Limites** : pas de gestionnaire de fenetres X (fenetres sans decoration macOS, correct pour des outils simples) ; menus « X11 » et
   preferences XQuartz visibles quand le serveur tourne ; notarisation des 31 dylibs + binaire patche a confirmer a la prochaine publication.
+
+### Vague 3 : protocoles Série, Telnet, VNC, RDP (2026-11-11)
+
+- **Socle** (`53ec539`) : `HostProfile.connectionProtocol` (ssh, telnet, serial, vnc, rdp ; inconnu ou absent = ssh) et réglages
+  `serial/telnet/vnc/rdp` (décodage tolérant). `TerminalByteStream` (pty, port série, Telnet) branché sur un panneau par
+  `AppModel.terminalLaunchers` ; VNC/RDP par `AppModel.externalOpeners` (aucun onglet). Multi-exécution : hôtes SSH seulement.
+- **Série** : `SerialPort` (O_NONBLOCK + TIOCEXCL, cfmakeraw, débit cfsetspeed/IOSSIOSPEED, 5-8 bits, parité, stop, RTS/CTS ou
+  XON/XOFF), un seul exemplaire par port et par processus (registre par realpath), fin `.exited(0)` locale / `.exited(74)` si le
+  périphérique disparaît. `SerialPortDiscovery` (IOKit, repli `/dev/cu.*`). BREAK, DTR, RTS au menu d'hôte ; fin de ligne CR/LF/CRLF,
+  écho local. Recette sur pty (15 contrôles). Non vérifié sans matériel : IOSSIOSPEED, DTR/RTS, réception du BREAK.
+- **Telnet** : `TelnetConnection` (Network.framework), parseur NVT pur, négociation RFC 1143 (ECHO, SGA, NAWS, TTYPE, BINARY si
+  les deux sens), le reste refusé. Aucun identifiant stocké, avertissement « non chiffré ». Option via un hôte SSH : tunnel `-L` sur
+  le maître, ouvert à l'ouverture de l'hôte, vérifié par sonde, fermé en fin de session. Recette (30 contrôles).
+- **VNC** : client RFB 3.3/3.7/3.8 en Swift pur : None, VNC (DES maison, vecteurs testés), Apple Remote Desktop (DH + AES) ;
+  Raw, CopyRect, RRE, Hextile, ZRLE, DesktopSize, Cursor ; clavier (keysyms), souris, presse-papiers ; fenêtre dédiée (échelle
+  ajustée/100 %, lecture seule, Ctrl-Alt-Suppr, « Ouvrir dans Partage d'écran »). Mot de passe au Keychain après succès seulement.
+  Recette contre un serveur RFB Python stdlib (`scripts/fixtures/vnc/rfbserver.py`, DES Python pur : aucun outil externe)
+  (36 contrôles). Non vérifié : ARD contre un vrai Mac ; tunnel `viaSSHHostID` non exercé par la recette.
+- **RDP** : `.rdp` généré (jamais de secret ; valeur avec retour à la ligne ou caractère de contrôle refusée) dans un dossier privé
+  0700 supprimé à la sortie, ouvert par Windows App (`com.microsoft.rdc.macos`) ; client absent → alerte vers l'App Store.
+  Tunnel via SSH (`-L 127.0.0.1:<port>`) jusqu'à « Fermer le tunnel ». Import `.rdp`, export depuis le menu d'hôte. Recette
+  (41 contrôles, lanceur injecté, tunnel réel par sshd local). Non vérifié : vrai client Windows App, avertissement de certificat
+  sur 127.0.0.1.
+- **RDP intégré (FreeRDP) : reporté.** Spike `spikes/freerdp/REPORT.md` : FreeRDP 3.33.1 (Apache-2.0) statique universel, NLA/TLS
+  et bitmaps GDI validés contre les serveurs d'exemple ; ~21 j de travail, ~13 Mo, 338 avis de sécurité (140 en 10 semaines).
+  À reconsidérer seulement dans un helper isolé (comme `EscaleX11.app`). PC Windows de test injoignable pendant le spike.
+- **Imports** : MobaXterm (#98 Telnet, #91 RDP, #128 VNC, #131 série ; port COMx → périphérique à choisir) et PuTTY (telnet,
+  serial) créent des hôtes du bon protocole ; raw/rlogin/FTP restent ignorés avec avertissement. Import Termius (CSV du modèle
+  officiel `Groups,Label,Tags,Hostname/IP,Protocol,Port,Username,Password`, mots de passe ignorés). Recette import : 57 contrôles.
