@@ -1,7 +1,7 @@
 [Bookmarks]
 SubRep=
 ImgNum=42
-Maison NAS=#109#0%nas.local%22%<default>%%0%-1%%%%%0%0%0%%%-1%0%0%0%%1080%%0%0%1%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+Maison NAS=#109#0%nas.local%22%<default>%%0%-1%uptime__PTVIRG__ df -h%%%%0%0%0%%%-1%0%0%0%%1080%%0%0%1%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
 
 [Bookmarks_1]
 SubRep=Production
@@ -13,7 +13,7 @@ Switch coeur=#98#1%10.0.0.1%23%%%2%%%%%0%0%%1080%#MobaFont%10%0%0%-1%15%236,236,
 [Bookmarks_2]
 SubRep=Production\Base de données
 ImgNum=41
-DB réplica=#109#0%10.0.0.5%2222%postgres%%0%0%%%%%0%0%0%/Users/rayan/.ssh/id_ed25519%%-1%0%0%0%%1080%%0%0%1%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+DB réplica=#109#0%10.0.0.5%2222%postgres%%0%0%cd /var/lib/postgresql__PTVIRG__ exec bash -l%%%%0%0%0%/Users/rayan/.ssh/id_ed25519%%-1%0%0%0%%1080%%0%0%1%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
 
 [Passwords]
 rayan@web1.example.com=AbCdEf0123encrypted

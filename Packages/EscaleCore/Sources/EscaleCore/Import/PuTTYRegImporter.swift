@@ -8,7 +8,13 @@ import Foundation
 /// Valeurs lues : `HostName`, `PortNumber` (dword), `UserName`, `Protocol` (seul `ssh` ; absent = ssh), `PublicKeyFile`,
 /// `PortForwardings` (`L[adresse:]port=hôte:port`, `R…`, `D[adresse:]port`, séparés par des virgules), `X11Forward` (dword).
 /// Le nom de session est décodé (`My%20Server`) ; un `/` dans le nom (convention de dossiers de KiTTY/PuTTYCM) crée
-/// des dossiers. « Default Settings » est ignoré. Les mots de passe de proxy (`ProxyPassword`) sont comptés, jamais repris.
+/// des dossiers. « Default Settings » est ignoré.
+/// `RemoteCommand` (« Remote command », Connection › SSH ; settings.c) → `startupCommand` (voir `StartupCommand` : PuTTY remplace
+/// le shell par la commande, Escale la tape dans le shell qui reste ouvert ensuite).
+/// `ProxyMethod` (dword, énumération de putty.h : 0 aucun, 1 SOCKS4, 2 SOCKS5, 3 HTTP, 4 Telnet, 5 Command, puis depuis PuTTY 0.77
+/// 6 « SSH to proxy and use port forwarding », 7 « …execute a command », 8 « …invoke a subsystem » ; doc § 4.15 « SSH proxy »)
+/// : seul 6 (équivalent de `ssh -J`) devient un `jumpHosts` (`ProxyHost`, `ProxyPort`, `ProxyUsername` ; si `ProxyHost` est le nom
+/// d'une autre session du même fichier, son hôte/port/utilisateur sont repris) ; les autres types donnent un avertissement. Les mots de passe de proxy (`ProxyPassword`) sont comptés, jamais repris.
 public struct PuTTYRegImporter: SessionImporter {
     public let sourceName = "PuTTY"
     public init() {}
@@ -19,9 +25,13 @@ public struct PuTTYRegImporter: SessionImporter {
         var result = SessionImportResult()
         var currentName: String?
         var values: [String: String] = [:]
+        var entries: [String: [String: String]] = [:]
 
         func flush() {
-            if let n = currentName { finish(name: n, values: values, into: &result) }
+            if let n = currentName {
+                entries[(n.removingPercentEncoding ?? n)] = values
+                finish(name: n, values: values, into: &result)
+            }
             currentName = nil; values = [:]
         }
 
@@ -42,7 +52,38 @@ public struct PuTTYRegImporter: SessionImporter {
             if let (k, v) = Self.value(line) { values[k] = v }
         }
         flush()
+        resolveProxies(entries, into: &result)
         return result
+    }
+
+    /// Sauts SSH (`ProxyMethod` 6) et avertissements pour les autres proxys, une fois toutes les sessions lues.
+    private func resolveProxies(_ entries: [String: [String: String]], into result: inout SessionImportResult) {
+        for i in result.sessions.indices {
+            let key = (result.sessions[i].folderPath + [result.sessions[i].name]).joined(separator: "/")
+            guard let v = entries[key] else { continue }
+            let method = (v["ProxyMethod"] ?? "0").lowercased()
+            let name = result.sessions[i].name
+            if method == "0" || method == "none" { continue }
+            guard method == "6" || method == "ssh" else {
+                let label = ["1": "SOCKS4", "2": "SOCKS5", "3": "HTTP", "4": "Telnet", "5": "commande locale", "7": "SSH + commande", "8": "SSH + sous-système"][method] ?? "type \(method)"
+                result.warnings.append("« \(name) » : proxy PuTTY (\(label)) sans équivalent ssh, ignoré (ajoutez un bastion à la main si besoin).")
+                continue
+            }
+            var host = (v["ProxyHost"] ?? "").trimmingCharacters(in: .whitespaces)
+            var port = ImportSupport.port(v["ProxyPort"])
+            var user: String? = (v["ProxyUsername"] ?? "").isEmpty ? nil : v["ProxyUsername"]
+            if let ref = entries[host], let h = ref["HostName"], !h.isEmpty {
+                host = h.trimmingCharacters(in: .whitespaces)
+                if let at = host.lastIndex(of: "@") { user = user ?? String(host[..<at]); host = String(host[host.index(after: at)...]) }
+                port = ImportSupport.port(ref["PortNumber"]) ?? port
+                if let u = ref["UserName"], !u.isEmpty { user = user ?? u }
+            }
+            guard !host.isEmpty else {
+                result.warnings.append("« \(name) » : proxy SSH PuTTY sans hôte, ignoré.")
+                continue
+            }
+            result.sessions[i].jumpHosts.append(ImportSupport.jump(host: host, port: port, user: user))
+        }
     }
 
     private func finish(name rawName: String, values v: [String: String], into result: inout SessionImportResult) {
@@ -75,7 +116,8 @@ public struct PuTTYRegImporter: SessionImporter {
         let tunnels = Self.tunnels(v["PortForwardings"] ?? "", sessionName: name, warnings: &result.warnings)
         result.sessions.append(ImportedSession(
             name: display, host: host, port: port, user: user.isEmpty ? nil : user, auth: auth,
-            folderPath: comps, tunnels: tunnels, x11Forwarding: v["X11Forward"] == "1"))
+            folderPath: comps, tunnels: tunnels, x11Forwarding: v["X11Forward"] == "1",
+            startupCommand: StartupCommand.normalized(v["RemoteCommand"])))
     }
 
     // MARK: Lignes .reg

@@ -12,6 +12,7 @@ Windows Registry Editor Version 5.00
 "PublicKeyFile"="C:\\Users\\rayan\\keys\\web.ppk"
 "PortForwardings"="L8080=localhost:80,R2222=127.0.0.1:22,D1080,L127.0.0.1:5432=db.internal:5432"
 "X11Forward"=dword:00000001
+"RemoteCommand"="tmux attach || tmux new -s main"
 
 [HKEY_CURRENT_USER\Software\SimonTatham\PuTTY\Sessions\Prod/DB]
 "HostName"="admin@10.0.0.5"
@@ -26,4 +27,7 @@ Windows Registry Editor Version 5.00
 [HKEY_CURRENT_USER\Software\SimonTatham\PuTTY\Sessions\Derriere%20proxy]
 "HostName"="inner.example.com"
 "ProxyPassword"="hunter2"
+"ProxyMethod"=dword:00000006
+"ProxyHost"="Prod/DB"
+"ProxyUsername"="jump"
 "UserName"="bob"

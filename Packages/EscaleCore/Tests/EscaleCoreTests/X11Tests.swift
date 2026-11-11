@@ -79,6 +79,16 @@ struct X11ArgumentsTests {
         #expect(viaSocket.display == sockPath && viaSocket.isReady)
     }
 
+    @Test func xauthHomebrewDetecteMaisXQuartzReste_prefere() {
+        let brew = "/opt/homebrew/bin/xauth"
+        // XQuartz présent + seulement le xauth Homebrew (/opt/X11/bin/xauth absent) : celui de Homebrew est retenu.
+        let seul = X11Detection.detect(fileExists: { $0 == "/opt/X11" || $0 == brew }, environment: ["DISPLAY": "/x/org.xquartz:0"], launchctlDisplay: { nil }, listDirectory: { _ in [] })
+        #expect(seul.xauthPath == brew && seul.isReady)
+        // Les deux : celui de XQuartz d'abord.
+        let deux = X11Detection.detect(fileExists: { $0 == "/opt/X11" || $0 == brew || $0 == xauth }, environment: ["DISPLAY": "/x/org.xquartz:0"], launchctlDisplay: { nil }, listDirectory: { _ in [] })
+        #expect(deux.xauthPath == xauth)
+    }
+
     @Test func etatsIntermediaires() {
         let sansXauth = X11Detection.detect(fileExists: { $0 == "/opt/X11" }, environment: ["DISPLAY": ":0"], launchctlDisplay: { nil }, listDirectory: { _ in [] })
         #expect(sansXauth.status == .missingXauth)

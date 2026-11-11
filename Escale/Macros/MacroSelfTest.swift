@@ -65,7 +65,10 @@ struct MacroSelfTest {
         check("hotes_x11_declares", !hostA.x11Forwarding && hostX.x11Forwarding && hostY.x11Forwarding)
 
         await macrosScenario(f, hostA: hostA, win: win)
+        if let hostS = hosts.first(where: { $0.name == "Hôte S" }) { await startupCommandScenario(hostS) } else { check("hote_s_declare", false) }
         await x11Scenario(f, hostX: hostX, hostY: hostY)
+        if let hostZ = hosts.first(where: { $0.name == "Hôte Z" }) { await x11UntrustedScenario(f, host: hostZ) }
+        else { check("hote_z_declare", false) }
         return finish()
     }
 
@@ -243,6 +246,58 @@ struct MacroSelfTest {
         let badCmd = await f.launchX11(host: hostX, command: "  ")
         check("x11_commande_vide_refusee", { if case .failed = badCmd { true } else { false } }())
         check("x11_etat_xquartz_present", f.x11Detection.isReady)
+    }
+
+    /// Commande de connexion (import MobaXterm/PuTTY) : tapée dans le shell à l'ouverture, le shell reste ouvert.
+    private func startupCommandScenario(_ host: HostProfile) async {
+        let tab = model.newTab(host)
+        let p = tab.panes[0]
+        check("startup_shell_ouvert", await wait(25) { p.status == .running }, "\(p.status)")
+        check("startup_commande_executee", await wait(15) { text(p).contains("STARTUP-42") && text(p).contains("SECOND-72") }, tail(text(p)))
+        type(p, "echo STILL-$((5*5))\r")
+        check("startup_shell_reste_interactif", await wait(10) { text(p).contains("STILL-25") }, tail(text(p)))
+        model.close(tab)
+        _ = await wait(10) { model.workspace.tabs.isEmpty }
+        check("startup_compteurs_shells", await wait(10) { model.connections.shellsEnded == model.connections.shellsStarted })
+    }
+
+    /// X11 NON fiable (ForwardX11Trusted=no) avec un VRAI xauth (Homebrew) et un faux serveur X qui implémente
+    /// l'extension SECURITY : ssh demande un vrai cookie « untrusted » (xauth generate), le distant ne reçoit qu'un
+    /// cookie de substitution, et la connexion X rapatriée arrive au serveur local avec le vrai cookie généré.
+    private func x11UntrustedScenario(_ f: MacroFeature, host: HostProfile) async {
+        let env = ProcessInfo.processInfo.environment
+        guard let xsec = env["ESCALE_XSEC_DIR"], let fakeDir = env["ESCALE_FAKEX_DIR"], let xauth = env["ESCALE_REAL_XAUTH"],
+              FileManager.default.isExecutableFile(atPath: xauth), FileManager.default.fileExists(atPath: "\(xsec)/org.fake:0") else {
+            check("x11_non_fiable_xauth_reel_disponible", false, "brew install xauth (sans sudo) requis"); return
+        }
+        let cm = model.connections
+        let display = "\(xsec)/org.fake:0"
+        cm.x11Detect = { X11Detection(xquartzPath: "/Applications/Utilities/XQuartz.app", xauthPath: xauth, display: display) }
+        cm.x11Trusted = { false }
+        let opts = cm.sshOptions(for: host)
+        check("x11_non_fiable_options", opts.x11 == X11Settings(trusted: false, xauthPath: xauth, display: display))
+        if let b = try? OpenSSHCommandBuilder(profile: host, controlPath: "/tmp/e/m", options: opts) {
+            let m = b.masterArguments()
+            check("x11_non_fiable_maitre_ForwardX11Trusted_no", m.contains("ForwardX11Trusted=no") && !m.contains("ForwardX11Trusted=yes") && !m.contains("-Y"), "\(m)")
+        }
+        // La sonde (scripts/fixtures/x11/xprobe.py) présente à localhost:60xx le cookie « add » reçu par sshd.
+        let probe = "echo \"DISPLAY=$DISPLAY\"; python3 '\(xsec)/xprobe.py' '\(fakeDir)/xauth.stdin' '\(xsec)/proxy-cookie'; echo fin"
+        let outcome = await f.launchX11(host: host, command: probe, settle: 10)
+        switch outcome {
+        case .exited(let code, let output):
+            check("x11_non_fiable_commande_executee", code == 0 && output.contains("fin"), "code \(code) : \(tail(output))")
+        default: check("x11_non_fiable_commande_executee", false, "\(outcome)")
+        }
+        let log = { (try? String(contentsOfFile: "\(xsec)/x.log", encoding: .utf8)) ?? "" }
+        _ = await wait(8) { log().contains("CONNECT") }
+        let generated = log().split(separator: "\n").filter { $0.hasPrefix("GenerateAuthorization") }
+        check("x11_non_fiable_cookie_untrusted_genere_par_le_vrai_xauth", generated.count == 1 && generated[0].contains("MIT-MAGIC-COOKIE-1"), "\(generated)")
+        let real = generated.first?.split(separator: " ").last.map(String.init) ?? ""
+        let proxy = ((try? String(contentsOfFile: "\(xsec)/proxy-cookie", encoding: .utf8)) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        check("x11_non_fiable_le_distant_ne_voit_pas_le_vrai_cookie", real.count == 32 && proxy.count == 32 && proxy != real, "proxy \(proxy.prefix(4))… vrai \(real.prefix(4))…")
+        let connects = log().split(separator: "\n").filter { $0.hasPrefix("CONNECT") }
+        check("x11_non_fiable_connexion_rapatriee_avec_le_cookie_genere", connects.contains { $0.contains("cookie=\(real)") && $0.hasSuffix(" ok") }, "\(connects)")
+        check("x11_non_fiable_compteurs_shells_coherents", await wait(5) { cm.shellsEnded == cm.shellsStarted }, "\(cm.shellsStarted)/\(cm.shellsEnded)")
     }
 
     // MARK: Fin

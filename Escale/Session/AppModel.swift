@@ -316,6 +316,7 @@ final class AppModel {
                     Task { await self.remoteShellEnded(tab, link: link, status: status) }
                 }
                 tab.status = .running
+                sendStartupCommand(for: tab)
                 return
             } catch SSHTransportError.notConnected where attempts < 3 {
                 // Le maître est mort sans que personne ne s'en soit aperçu : même chemin qu'une coupure.

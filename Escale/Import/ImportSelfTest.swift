@@ -26,7 +26,7 @@ struct ImportSelfTest {
         func sha(_ n: String) -> String? {
             (try? Data(contentsOf: url(n))).map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() }
         }
-        let names = ["moba.mxtsessions", "putty.reg", "hosts.csv"]
+        let names = ["moba.mxtsessions", "putty.reg", "hosts.csv", "MobaXterm.ini"]
         let before = names.map(sha)
         check("fixtures_presentes", !before.contains { $0 == nil }, fixtures)
         guard !before.contains(where: { $0 == nil }) else { return finish(log) }
@@ -48,6 +48,7 @@ struct ImportSelfTest {
         check("moba_avertissements_ppk_telnet", moba?.warnings.contains { $0.contains(".ppk") } == true
               && moba?.warnings.contains { $0.contains("Switch coeur") } == true)
         let r1 = moba?.commit()
+        check("moba_commande_connexion", moba?.sessions.first { $0.name == "Maison NAS" }?.startupCommand == "uptime; df -h")
         check("moba_ajout_2", r1?.added.map(\.name).sorted() == ["DB réplica", "Maison NAS"], "\(r1?.added.map(\.name) ?? [])")
         let db = r1?.added.first { $0.name == "DB réplica" }
         check("moba_dossiers_imbriques", db.map { lib.library.folderPath(of: $0.folderID ?? UUID()).map(\.name) } == ["Production", "Base de données"])
@@ -74,6 +75,21 @@ struct ImportSelfTest {
               "\(web?.tunnels.map(\.specArgument) ?? [])")
         check("putty_user_dans_hote", lib.library.hosts.contains { $0.host == "10.0.0.5" && $0.user == "admin" && $0.port == 2222 })
         check("putty_ajout_3", r2?.added.count == 3)
+        check("putty_remotecommand", web?.startupCommand == "tmux attach || tmux new -s main", web?.startupCommand ?? "nil")
+        let proxied = lib.library.hosts.first { $0.host == "inner.example.com" }
+        check("putty_proxy_ssh_vers_jumphost", proxied?.jumpHosts == ["jump@10.0.0.5:2222"], "\(proxied?.jumpHosts ?? [])")
+        feature.close()
+
+        // --- MobaXterm.ini : tunnels ([SSH_Tunnels]) + commande de connexion
+        let ini = feature.open(url("MobaXterm.ini"), kind: .mobaXterm)
+        check("ini_1_session", ini?.sessions.count == 1, "\(ini?.sessions.map(\.name) ?? [])")
+        check("ini_3_tunnels_rattaches", ini?.sessions.first?.tunnels.map(\.kind) == [.local, .dynamic, .remote], "\(ini?.sessions.first?.tunnels.map(\.specArgument) ?? [])")
+        check("ini_avertissements_tunnels", ini?.warnings.contains { $0.contains("Orphelin") } == true && ini?.warnings.contains { $0.contains("Cassé") } == true,
+              "\(ini?.warnings ?? [])")
+        let r4 = ini?.commit()
+        let bastion = r4?.added.first
+        check("ini_hote_importe_avec_tunnels_et_commande", bastion?.tunnels.count == 3 && bastion?.startupCommand == "sudo -iu postgres; psql -c 'select 1%'",
+              bastion?.startupCommand ?? "nil")
         feature.close()
 
         // --- CSV vers le dossier « Importés »
@@ -90,11 +106,11 @@ struct ImportSelfTest {
 
         // --- Bilan bibliothèque, disque, sources, secrets
         await lib.flush()
-        check("bibliotheque_9_hotes", lib.library.hosts.count == 9, "\(lib.library.hosts.count)")
+        check("bibliotheque_10_hotes", lib.library.hosts.count == 10, "\(lib.library.hosts.count)")
         check("aucun_secret_dans_les_profils", lib.library.hosts.allSatisfy { $0.auth == .openSSHDefaults || { if case .keyFile = $0.auth { true } else { false } }($0) })
         let libPath = model.options.libraryPath ?? ""
         let onDisk = try? await FileHostRepository(url: URL(fileURLWithPath: libPath)).load()
-        check("ecrit_sur_disque", onDisk?.hosts.count == 9 && onDisk?.folders.count == lib.library.folders.count)
+        check("ecrit_sur_disque", onDisk?.hosts.count == 10 && onDisk?.folders.count == lib.library.folders.count)
         let raw = (try? String(contentsOfFile: libPath, encoding: .utf8)) ?? ""
         check("aucun_mot_de_passe_sur_disque", !raw.isEmpty && !["s3cret", "hunter2", "p,ass", "encrypted"].contains { raw.contains($0) })
         check("sources_inchangees", names.map(sha) == before)
