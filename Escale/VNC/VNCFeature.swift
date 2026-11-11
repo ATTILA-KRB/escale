@@ -40,7 +40,7 @@ final class VNCFeature: AppFeature {
         let session = VNCSession(host: host, model: model)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1024, height: 700),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        window.title = "\(host.name) — VNC"
+        window.title = host.name
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: VNCWindowView(session: session))
         window.center()

@@ -34,6 +34,8 @@ final class VNCSession: Identifiable {
     var scaling: VNCScaling
     /// Saisie autorisée (clavier, souris, presse-papiers) : faux en lecture seule.
     var inputEnabled: Bool
+    /// Lissage de l'agrandissement (réglage de la fenêtre, non mémorisé).
+    var smoothing = false
     var rememberPassword = true
     private(set) var notice: String?
 
