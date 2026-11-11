@@ -1,39 +1,192 @@
+import AppKit
 import SwiftUI
 import Observation
 import EscaleCore
 
-// PROVISOIRE (squelette M2) : à remplacer par le flux SFTP. Contrat figé : noms de types et initialiseurs
-// appelés depuis `Escale/Features/AppFeature.swift` et `AppModel`.
-
-/// M2 : navigateur SFTP latéral, transferts, édition distante.
+/// M2 : navigateur SFTP latéral, suivi du dossier du terminal, file de transferts, édition distante.
+/// Un navigateur (`SFTPHostSession`) par hôte, chacun sur la connexion maître de l'hôte ; une file de
+/// transferts et un gestionnaire d'éditions communs.
 @MainActor
 @Observable
 final class SFTPFeature: AppFeature {
     @ObservationIgnored private(set) weak var model: AppModel?
-    func attach(_ model: AppModel) { self.model = model }
-    func shutdown() async {}
+    var requireModel: AppModel { model! }
+
+    /// Inspecteur affiché.
+    var isVisible = false
+    /// Le navigateur suit le dossier courant du terminal (OSC 7).
+    var followTerminal = true
+
+    let transfers = SFTPTransferQueue()
+    @ObservationIgnored private(set) var edits: SFTPEditManager!
+    @ObservationIgnored private var sessions: [UUID: SFTPHostSession] = [:]
+    /// Dernier hôte parcouru : affiché tant que l'onglet actif n'est pas un onglet SSH.
+    private(set) var pinnedHostID: UUID?
+    /// Racine des fichiers temporaires de l'app (`~/Library/Caches/<bundle>/`) : éditions et glisser-déposer.
+    @ObservationIgnored var cachesRoot: URL = {
+        let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Caches")
+        return base.appendingPathComponent(Bundle.main.bundleIdentifier ?? "Escale", isDirectory: true)
+    }()
+    /// Confirmation de remplacement d'un fichier distant (remplaçable dans les tests).
+    @ObservationIgnored var confirmReplace: @MainActor ([String]) async -> Bool = { names in
+        let alert = NSAlert()
+        alert.messageText = names.count == 1 ? "« \(names[0]) » existe déjà sur le serveur" : "\(names.count) éléments existent déjà sur le serveur"
+        alert.informativeText = "Voulez-vous les remplacer ?"
+        alert.addButton(withTitle: "Remplacer")
+        alert.addButton(withTitle: "Annuler")
+        alert.alertStyle = .warning
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    init() { edits = SFTPEditManager(feature: self) }
+
+    func attach(_ model: AppModel) {
+        self.model = model
+        // Après une perte et une reconnexion du lien, les navigateurs rouvrent leur canal.
+        model.connections.linkObservers["sftp"] = { [weak self] link, event in self?.linkEvent(link, event) }
+        trackTerminal()
+    }
+
+    func shutdown() async {
+        transfers.cancelAll()
+        edits.stopAll()
+        for s in sessions.values { await s.close() }
+        sessions.removeAll()
+        try? FileManager.default.removeItem(at: cachesRoot.appendingPathComponent("drag"))
+    }
+
+    // MARK: Sessions
+
+    func session(for profile: HostProfile) -> SFTPHostSession {
+        if let s = sessions[profile.id], s.profile == profile { return s }
+        let s = SFTPHostSession(profile: profile, feature: self)
+        sessions[profile.id] = s
+        return s
+    }
+
+    func existingSession(_ hostID: UUID) -> SFTPHostSession? { sessions[hostID] }
+
+    /// Hôte affiché : celui de l'onglet actif s'il est SSH, sinon le dernier parcouru.
+    func currentSession() -> SFTPHostSession? {
+        guard let model else { return nil }
+        if let tab = model.workspace.activeTab, case .host(let p) = tab.kind { return session(for: p) }
+        if let id = pinnedHostID, let h = model.library.host(id) { return session(for: h) }
+        return nil
+    }
+
+    /// « Parcourir les fichiers (SFTP) » : sélectionne (ou ouvre) l'onglet de l'hôte, affiche l'inspecteur, ouvre le canal.
+    func browse(_ host: HostProfile) async {
+        guard let model else { return }
+        pinnedHostID = host.id
+        model.connect(host)
+        isVisible = true
+        widenWindowIfNeeded()
+        await session(for: host).open()
+    }
+
+    func toggle() {
+        isVisible.toggle()
+        if isVisible { widenWindowIfNeeded(); if let s = currentSession() { Task { await s.open() } } }
+    }
+
+    /// L'inspecteur s'ajoute aux deux autres colonnes : sur une fenêtre trop étroite, SwiftUI boucle sur la mise en page.
+    /// On élargit donc la fenêtre (dans les limites de l'écran) quand l'inspecteur s'ouvre.
+    func widenWindowIfNeeded() {
+        guard let w = model?.mainWindow, let screen = w.screen ?? NSScreen.main else { return }
+        let wanted: CGFloat = 1180
+        guard w.frame.width < wanted else { return }
+        var f = w.frame
+        f.size.width = min(wanted, screen.visibleFrame.width)
+        f.origin.x = max(screen.visibleFrame.minX, min(f.origin.x, screen.visibleFrame.maxX - f.size.width))
+        w.setFrame(f, display: true, animate: false)
+    }
+
+    private func linkEvent(_ link: SSHLink, _ event: ConnectionManager.LinkEvent) {
+        for s in sessions.values where s.link === link {
+            switch event {
+            case .lost: s.channelLost()
+            case .connected: Task { await s.reopen() }
+            case .disconnected: Task { await s.close() }
+            }
+        }
+    }
+
+    // MARK: Suivi du terminal (OSC 7)
+
+    /// Observe le panneau actif et son dossier courant ; chaque changement est relayé au navigateur de l'hôte.
+    private func trackTerminal() {
+        withObservationTracking {
+            _ = followTerminal
+            _ = model?.workspace.activeID
+            if let pane = model?.workspace.activeTab?.activePane {
+                _ = pane.id
+                _ = pane.session.workingDirectory
+            }
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.terminalChanged()
+                self?.trackTerminal()
+            }
+        }
+    }
+
+    private func terminalChanged() {
+        guard followTerminal, let pane = model?.workspace.activeTab?.activePane, let host = pane.hostID,
+              let s = sessions[host], let dir = pane.session.workingDirectory else { return }
+        Task { await s.follow(directory: dir.path) }
+    }
+
+    /// Le panneau actif est distant mais n'a encore annoncé aucun dossier : proposer « Activer le suivi ».
+    var trackingMissing: Bool {
+        guard let pane = model?.workspace.activeTab?.activePane, pane.isRemote, pane.status == .running else { return false }
+        return pane.session.workingDirectory == nil
+    }
+
+    /// Fonction shell qui émet OSC 7 à chaque invite (bash : PROMPT_COMMAND, zsh : precmd). Espace initial :
+    /// la ligne n'entre pas dans l'historique de bash/zsh configurés avec HISTCONTROL=ignorespace.
+    static let trackingSnippet = " __escale_osc7() { printf '\\033]7;file://%s%s\\007' \"${HOST:-$HOSTNAME}\" \"${PWD// /%20}\"; }; "
+        + "if [ -n \"$ZSH_VERSION\" ]; then precmd_functions+=(__escale_osc7); else PROMPT_COMMAND=\"__escale_osc7${PROMPT_COMMAND:+;$PROMPT_COMMAND}\"; fi; __escale_osc7\r"
+
+    /// Injecte la fonction dans le shell du panneau actif (après accord de l'utilisateur, demandé par l'appelant).
+    func injectTracking(in pane: Pane? = nil) {
+        guard let pane = pane ?? model?.workspace.activeTab?.activePane, pane.isRemote else { return }
+        pane.session.write(Data(Self.trackingSnippet.utf8))
+    }
+
+    // MARK: Édition
+
+    func edit(_ item: SFTPItem, in session: SFTPHostSession) async {
+        do { try await edits.edit(item, in: session) } catch { session.errorMessage = SFTPMessages.describe(error) }
+    }
 }
 
 struct SFTPCommands: Commands {
     let model: AppModel
-    var body: some Commands { EmptyCommands() }
+    var body: some Commands {
+        CommandGroup(after: .sidebar) {
+            Button(model.sftp.isVisible ? "Masquer les fichiers" : "Afficher les fichiers") { model.sftp.toggle() }
+                .keyboardShortcut("f", modifiers: [.command, .option])
+        }
+    }
 }
 
 struct SFTPScene: ViewModifier {
     let model: AppModel
-    func body(content: Content) -> some View { content }
+    func body(content: Content) -> some View {
+        @Bindable var feature = model.sftp
+        content
+            .inspector(isPresented: $feature.isVisible) {
+                SFTPBrowserView(feature: feature)
+                    .inspectorColumnWidth(min: 300, ideal: 380, max: 640)
+            }
+    }
 }
 
 struct SFTPHostMenuItems: View {
     let model: AppModel
     let host: HostProfile
-    var body: some View { EmptyView() }
-}
-
-/// `--selftest-sftp <dossier>`.
-@MainActor
-struct SFTPSelfTest {
-    let directory: String
-    let model: AppModel
-    func run() async -> Bool { false }
+    var body: some View {
+        Button("Parcourir les fichiers (SFTP)") { Task { await model.sftp.browse(host) } }
+    }
 }
