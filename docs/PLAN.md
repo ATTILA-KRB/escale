@@ -342,12 +342,10 @@ tunnels 31, multiexec 64, macros 62, import 28 controles : toutes `ok`.
 Restes (au 2026-11-11, apres la vague v2 ; toutes les fonctionnalites prevues sont livrees) :
 - Decisions : domaine, donc `ESCALE_FEED_URL` (Sparkle) ; modele de distribution (perso, open source, vente).
 - Mac vierge : telechargement reel (quarantaine), Gatekeeper, mise a jour Sparkle complete.
-- XQuartz : `xeyes` en un clic a valider apres installation (sudo).
 - Gestes humains non pilotables ici : glisser-deposer Finder, raccourcis au vrai clavier, AZERTY/IME systeme, VoiceOver reel,
   lien distant a vraie latence (dont PROMETHEUS en mode shell).
-- SFTP : glisser distant -> distant entre deux hotes differents (meme hote seulement) ; mode shell : noms non UTF-8,
-  listage `find -printf` verifie par son analyseur seulement (pas de find GNU local).
-- Tunnels : zones IPv6 (`%en0`). Multi-exec : variables `{host}` non substituees dans les macros.
+- SFTP : glisser-deposer a la souris entre deux hotes verifie par la recette (logique), pas au geste reel ; listage
+  `find -printf` verifie par son analyseur seulement (pas de find GNU local).
 - Icone de l'app (design).
 
 ### Dettes techniques M1 (2026-11-11, branche `v2-tech`)
@@ -522,3 +520,23 @@ inclut aussi les rapports souris/focus des applications distantes (negligeable).
 - **Imports** : MobaXterm (#98 Telnet, #91 RDP, #128 VNC, #131 série ; port COMx → périphérique à choisir) et PuTTY (telnet,
   serial) créent des hôtes du bon protocole ; raw/rlogin/FTP restent ignorés avec avertissement. Import Termius (CSV du modèle
   officiel `Groups,Label,Tags,Hostname/IP,Protocol,Port,Username,Password`, mots de passe ignorés). Recette import : 57 contrôles.
+
+### Vague 4 : finitions (2026-11-11)
+
+- **SFTP** : cause racine de l'echec intermittent `suivi_navigateur_sur_tmp` : `SFTPHostSession.load` partageait un compteur de
+  generation unique ; une actualisation tardive de l'ancien dossier annulait le chargement du dossier suivi puis le reaffichait.
+  Corrige dans le produit (une actualisation ne supplante plus une navigation plus recente). Copie distant -> distant entre deux
+  hotes differents dans la file de transferts (progression, annulation, SHA verifie en recette). Mode shell : noms non UTF-8
+  affiches par substitution, operations sur les octets d'origine.
+- **Macros** : `{host}`, `{user}`, `{name}` substitues a la lecture (hote du panneau ; terminal local : `localhost`, utilisateur
+  courant, « Terminal local » ; diffusion : par panneau), par `GroupExecTemplate.expand` en un seul passage, echappement shell
+  comme en multi-execution. Pas de `{{` : les accolades inconnues restent intactes.
+- **Tunnels** : adresses IPv6 a zone (`fe80::1%lo0`, avec ou sans crochets) en liaison (interface verifiee par `if_nametoindex`)
+  et en destination (syntaxe) ; sonde et verification du port compatibles ; recette avec un tunnel lie a `[fe80::1%lo0]`.
+- **VNC** : agrandissement au plus proche voisin des x2 ou echelle entiere, en pixels ecran (Retina) ; lineaire en reduction ;
+  case « Lissage ». Titre = nom de l'hote, info « Bureau : <nom annonce> — LxH ». Recette via SSH (sshd local, tunnel, port
+  libere et lien rendu a la fermeture) : 56 controles.
+- **X11 integre : quartz-wm embarque** (XQuartz 2.8.6, APSL 2.0, processus separe ; licence et offre de source dans
+  `EscaleX11.app/Contents/Resources`). Lance apres la remise du socket (rootless), relance jusqu'a 8 fois s'il sort trop tot,
+  arrete par pid avant le serveur. Les fenetres X ont une barre de titre macOS. Desactivable : `defaults write
+  com.attila-krb.Escale x11WindowManager -bool NO`. A confirmer : licence propre de libAppleWM (supposee MIT/X11).

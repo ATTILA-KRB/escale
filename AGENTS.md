@@ -40,12 +40,16 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 14. Serveur X11 integre (`Contents/Helpers/EscaleX11.app`, `scripts/x11-bundle.sh`) : demarre seulement a la demande, arrete par
     son pid (jamais par motif), socket dans un dossier prive 0700, aucune ecoute TCP. Le C reste confine a `CEscaleX11`
     (protocole Mach de Xquartz). Changer de version de XQuartz = nouveau SHA-256 + verifier les chaines patchees de `X11.bin`.
+    quartz-wm (APSL 2.0) est un client du serveur integre : lance apres lui, arrete par son pid avant lui ; sa licence
+    et l'offre de source restent dans `EscaleX11.app/Contents/Resources`.
 15. Protocoles non SSH : un tunnel « via SSH » (Telnet, VNC, RDP) n'est ouvert qu'a l'ouverture de l'hote par l'utilisateur,
     verifie par sonde du port et ferme par sa spec (jamais par motif). Telnet ne stocke rien ; un `.rdp` genere ne contient
     jamais de secret et refuse toute valeur avec retour a la ligne ou caractere de controle (injection de cle).
 16. Un port serie n'est ouvert qu'une fois par processus (registre par realpath, en plus de `TIOCEXCL`). Les tests serie
     utilisent un pty : BREAK, DTR/RTS et debits non standard restent a verifier sur materiel.
 17. Les fixtures de recette ne dependent d'aucun outil Homebrew (PATH systeme seul) : `/usr/bin/openssl` est LibreSSL.
+18. Toute valeur d'hote inseree dans une saisie ou une commande (multi-execution, macros) passe par `GroupExecTemplate`
+    (echappement shell, un seul passage) : jamais d'interpolation brute.
 
 ## Conventions
 - Swift 6, concurrence stricte. Commentaires en francais. Sujets de commit sans accents.
