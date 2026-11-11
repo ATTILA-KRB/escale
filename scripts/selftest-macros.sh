@@ -1,6 +1,7 @@
 #!/bin/bash
 # Recette macros + X11 : sshd local non privilégié (X11Forwarding, faux xauth, faux serveur X) + scénario --selftest-macros.
-# Sans XQuartz : la preuve X11 porte sur la chaîne ssh (DISPLAY distant, connexion X rapatriée), pas sur l'affichage.
+# Serveur X11 intégré (Contents/Helpers/EscaleX11.app) : vrai affichage de xeyes, sans XQuartz ni sudo. Chaîne XQuartz
+# (secours) : faux serveur X, la preuve porte sur ssh (DISPLAY distant, connexion X rapatriée).
 # Sortie : code de l'app ; résultats dans $OUT (result.json + PNG). Ne touche jamais à ~/.ssh.
 set -euo pipefail
 
@@ -17,6 +18,12 @@ FAKEX_PID=""
 FAKEXSEC_PID=""
 
 cleanup() {
+  # Serveur X11 intégré lancé par l'app (enfant direct, pid exact) : à tuer avant elle, sinon il lui survit.
+  if [ -n "$APP_PID" ]; then
+    for c in $(pgrep -P "$APP_PID" 2>/dev/null); do
+      case "$(ps -o comm= -p "$c" 2>/dev/null)" in *EscaleX11.app/Contents/MacOS/X11.bin) kill -9 "$c" 2>/dev/null || true;; esac
+    done
+  fi
   [ -n "$APP_PID" ] && kill -9 "$APP_PID" 2>/dev/null || true
   [ -n "$FAKEX_PID" ] && kill "$FAKEX_PID" 2>/dev/null || true
   [ -n "$FAKEXSEC_PID" ] && kill "$FAKEXSEC_PID" 2>/dev/null || true
@@ -117,7 +124,7 @@ def host(name, x11=False):
          "auth": {"keyFile": {"path": key}}, "jumpHosts": [], "tags": ["test"], "folderID": folder}
     if x11: h["x11Forwarding"] = True
     return h
-lib = {"folders": [{"id": folder, "name": "Tests locaux"}], "hosts": [host("Hôte A"), host("Hôte X", True), host("Hôte Y", True), host("Hôte Z", True), host("Hôte S")]}
+lib = {"folders": [{"id": folder, "name": "Tests locaux"}], "hosts": [host("Hôte A"), host("Hôte X", True), host("Hôte Y", True), host("Hôte Z", True), host("Hôte E", True), host("Hôte S")]}
 lib["hosts"][-1]["startupCommand"] = "echo STARTUP-$((6*7)); echo SECOND-$((8*9))"
 json.dump(lib, open(path, "w"), indent=2)
 PY

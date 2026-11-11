@@ -66,6 +66,9 @@ struct MacroSelfTest {
 
         await macrosScenario(f, hostA: hostA, win: win)
         if let hostS = hosts.first(where: { $0.name == "Hôte S" }) { await startupCommandScenario(hostS) } else { check("hote_s_declare", false) }
+        // Serveur intégré d'abord : les scénarios suivants remplacent la détection par des serveurs simulés.
+        if let hostE = hosts.first(where: { $0.name == "Hôte E" }) { await embeddedX11Scenario(f, host: hostE) }
+        else { check("hote_e_declare", false) }
         await x11Scenario(f, hostX: hostX, hostY: hostY)
         if let hostZ = hosts.first(where: { $0.name == "Hôte Z" }) { await x11UntrustedScenario(f, host: hostZ) }
         else { check("hote_z_declare", false) }
@@ -248,6 +251,94 @@ struct MacroSelfTest {
         check("x11_etat_xquartz_present", f.x11Detection.isReady)
     }
 
+    /// Serveur X11 intégré (Contents/Helpers/EscaleX11.app) : détection prioritaire, démarrage à la demande, vrai
+    /// affichage (fenêtre xeyes du serveur, capturée), accès sans cookie refusé côté distant, arrêt par pid.
+    private func embeddedX11Scenario(_ f: MacroFeature, host: HostProfile) async {
+        let cm = model.connections
+        guard let server = cm.x11Server else { check("x11_integre_embarque", false, "Contents/Helpers/EscaleX11.app absent"); return }
+        check("x11_integre_embarque", true, server.bundle.appPath)
+        guard let fakeDir = ProcessInfo.processInfo.environment["ESCALE_FAKEX_DIR"] else { check("x11_environnement_fourni", false); return }
+        let d = cm.x11Detect()
+        check("x11_integre_prioritaire", d.embedded && d.isReady && d.display == server.display, d.explanation)
+        check("x11_integre_pas_demarre_sans_action", server.serverPID == nil)
+        let opts = cm.sshOptions(for: host)
+        check("x11_integre_options", opts.x11 == server.settings(trusted: false), "\(String(describing: opts.x11))")
+
+        // 1. Commande courte : sans cookie, refus ; avec le cookie de substitution que sshd a reçu, X.Org répond.
+        //    Sonde écrite côté « distant » (même machine) : le faux xauth de sshd garde ce cookie dans xauth.stdin,
+        //    la sonde l'ajoute à un fichier d'autorité à elle (commandes > 500 caractères sinon).
+        let mac = server.bundle.macOSDir
+        let probePath = "\(fakeDir)/x11-probe.sh"
+        let pidFile = "\(fakeDir)/xeyes.pid"
+        let script = """
+        #!/bin/sh
+        M='\(mac)'
+        echo "DISPLAY=$DISPLAY"
+        if [ "$1" = court ]; then
+          XAUTHORITY=/dev/null "$M/xdpyinfo" >/dev/null 2>&1 && echo SANS-COOKIE-ACCEPTE || echo SANS-COOKIE-REFUSE
+        fi
+        c=$(awk '/^add/{print $NF}' '\(fakeDir)/xauth.stdin' | tail -1)
+        export XAUTHORITY='\(fakeDir)/remote.xauth'
+        "$M/xauth" add "$DISPLAY" MIT-MAGIC-COOKIE-1 "$c"
+        if [ "$1" = court ]; then "$M/xdpyinfo" | head -3; echo fin; exit 0; fi
+        "$M/xeyes" -geometry 240x180+140+140 & echo $! > '\(pidFile)'; wait
+        """
+        try? script.write(toFile: probePath, atomically: true, encoding: .utf8)
+        chmod(probePath, 0o755)
+        let o1 = await f.launchX11(host: host, command: "'\(probePath)' court", settle: 15)
+        check("x11_integre_serveur_demarre_a_la_demande", server.serverPID != nil)
+        if case .exited(let code, let out) = o1 {
+            check("x11_integre_display_distant", out.contains("DISPLAY=localhost:1"), tail(out))
+            check("x11_integre_sans_cookie_refuse", out.contains("SANS-COOKIE-REFUSE") && !out.contains("SANS-COOKIE-ACCEPTE"), tail(out))
+            check("x11_integre_xorg_repond", code == 0 && out.contains("The X.Org Foundation") && out.contains("fin"), tail(out))
+        } else { check("x11_integre_xorg_repond", false, "\(o1)") }
+        if let dir = try? FileManager.default.attributesOfItem(atPath: server.runtimeDirectory) {
+            check("x11_integre_dossier_prive_0700", (dir[.posixPermissions] as? Int) == 0o700)
+        } else { check("x11_integre_dossier_prive_0700", false) }
+
+        // 2. Vraie fenêtre : xeyes s'affiche (fenêtre du processus serveur), capturée.
+        let eyes = "'\(probePath)' xeyes"
+        let o2 = await f.launchX11(host: host, command: eyes, settle: 2)
+        check("x11_integre_xeyes_tourne", { if case .running = o2 { true } else { false } }(), "\(o2)")
+        let spid = server.serverPID ?? -1
+        var winID: Int?
+        let shown = await wait(15) {
+            winID = Self.windows(of: spid).first { abs($0.1 - 240) <= 4 && abs($0.2 - 180) <= 4 }?.0
+            return winID != nil
+        }
+        check("x11_integre_fenetre_xeyes_affichee", shown, "\(Self.windows(of: spid).map { "\($0.1)x\($0.2)" })")
+        if let winID {
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            let path = "\(directory)/x11-integre-xeyes.png"
+            let pr = Process()
+            pr.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+            pr.arguments = ["-x", "-o", "-l", "\(winID)", path]
+            try? pr.run(); pr.waitUntilExit()
+            if FileManager.default.fileExists(atPath: path) { results.shots.append("x11-integre-xeyes.png") }
+        }
+        // Fin : xeyes (pid exact écrit par la sonde), puis le maître, puis le serveur (pid, dossier supprimé).
+        if let s = try? String(contentsOfFile: pidFile, encoding: .utf8), let xp = Int32(s.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            kill(xp, SIGTERM)
+        }
+        _ = await wait(10) { cm.shellsEnded == cm.shellsStarted }
+        await cm.existing(host.id)?.shutdown()
+        server.stop()
+        check("x11_integre_arret_par_pid", Darwin.kill(spid, 0) != 0 && server.serverPID == nil)
+        check("x11_integre_dossier_supprime", !FileManager.default.fileExists(atPath: server.runtimeDirectory))
+        check("x11_integre_compteurs_shells", await wait(5) { cm.shellsEnded == cm.shellsStarted }, "\(cm.shellsStarted)/\(cm.shellsEnded)")
+    }
+
+    /// Fenêtres (numéro, largeur, hauteur) appartenant au processus `pid`.
+    private static func windows(of pid: Int32) -> [(Int, Int, Int)] {
+        let list = (CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]]) ?? []
+        return list.compactMap { w in
+            guard (w[kCGWindowOwnerPID as String] as? Int32) == pid, let n = w[kCGWindowNumber as String] as? Int,
+                  let b = w[kCGWindowBounds as String] as? [String: Any],
+                  let wd = (b["Width"] as? NSNumber)?.intValue, let h = (b["Height"] as? NSNumber)?.intValue else { return nil }
+            return (n, wd, h)
+        }
+    }
+
     /// Commande de connexion (import MobaXterm/PuTTY) : tapée dans le shell à l'ouverture, le shell reste ouvert.
     private func startupCommandScenario(_ host: HostProfile) async {
         let tab = model.newTab(host)
@@ -312,7 +403,7 @@ struct MacroSelfTest {
             "failed": r.checks.filter { !$0.1 }.map(\.0),
             "screenshots": r.shots,
             "notes": [
-                "x11": "Sans XQuartz : faux serveur X local ; l'affichage réel (xeyes) reste à valider après installation de XQuartz.",
+                "x11": "Serveur X11 intégré : affichage réel de xeyes (capture x11-integre-xeyes.png). Chaîne XQuartz : faux serveur X local.",
             ],
         ]
         if let d = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]) {

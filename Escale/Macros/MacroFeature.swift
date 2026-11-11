@@ -64,13 +64,16 @@ final class MacroFeature: AppFeature {
         let libraryURL = model.options.libraryPath.map { URL(fileURLWithPath: $0) } ?? LibraryStore.defaultURL
         repository = FileMacroRepository(url: FileMacroRepository.url(besideLibrary: libraryURL))
         Task { @MainActor in await self.load() }
-        // X11 demandé mais inutilisable (XQuartz absent) : un mot dans le terminal, sans bloquer la connexion.
+        // X11 demandé mais inutilisable (XQuartz absent, serveur intégré en échec) : un mot dans le terminal, sans bloquer la connexion.
         model.connections.linkObservers[Self.observerKey] = { [weak self] link, event in
             guard event == .connected, link.profile.x11Forwarding, let self, let model = self.model else { return }
             let detection = model.connections.x11Detect()
-            guard !detection.isReady else { return }
+            // Serveur intégré qui n'a pas pu démarrer : la connexion fonctionne, l'affichage non.
+            let notice = !detection.isReady ? detection.explanation
+                : (detection.embedded ? model.connections.x11ServerError : nil)
+            guard let notice else { return }
             for pane in model.workspace.tabs.flatMap(\.panes) where pane.link === link {
-                pane.session.appendNotice("X11 non activé : " + detection.explanation)
+                pane.session.appendNotice("X11 non activé : " + notice)
             }
         }
     }
@@ -250,11 +253,16 @@ final class MacroFeature: AppFeature {
         }
         guard link.transport.configuration.ssh.x11 != nil else {
             link.release()
-            return .failed("Cette connexion a été ouverte sans X11 (XQuartz était absent) : fermez les onglets de l'hôte, puis relancez.")
+            return .failed("Cette connexion a été ouverte sans X11 (aucun serveur X disponible) : fermez les onglets de l'hôte, puis relancez.")
         }
         let shell: ShellCommand
         do {
             try await link.ensureConnected()
+            // Serveur intégré arrêté depuis la connexion (menu « Quitter » de l'app X11) : relancé ici.
+            if let e = await model.connections.prepareX11(for: link.profile, settings: link.transport.configuration.ssh.x11) {
+                link.release()
+                return .failed(e)
+            }
             shell = try await link.transport.execCommand(remoteCommand: cmd)
         } catch {
             link.release()

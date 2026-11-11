@@ -98,7 +98,8 @@ public struct OpenSSHCommandBuilder: Sendable, Equatable {
             throw OpenSSHCommandBuilderError.invalidControlPath(controlPath)
         }
         if let x = options.x11, x.xauthPath.isEmpty || x.xauthPath.hasPrefix("-") || Self.hasControlOrNul(x.xauthPath)
-            || (x.display.map { $0.isEmpty || $0.hasPrefix("-") || Self.hasControlOrNul($0) } ?? false) {
+            || (x.display.map { $0.isEmpty || $0.hasPrefix("-") || Self.hasControlOrNul($0) } ?? false)
+            || (x.xauthority.map { $0.isEmpty || Self.hasControlOrNul($0) } ?? false) {
             throw OpenSSHCommandBuilderError.invalidOption("X11 : " + x.xauthPath)
         }
         for opt in options.extraOptions where opt.isEmpty || !opt.contains("=") || Self.hasControlOrNul(opt) {
@@ -170,6 +171,7 @@ public struct OpenSSHCommandBuilder: Sendable, Equatable {
     public var environment: [String: String] {
         var env = options.environment
         if forwardsX11, let d = options.x11?.display { env["DISPLAY"] = d }
+        if forwardsX11, let a = options.x11?.xauthority { env["XAUTHORITY"] = a }
         return env
     }
 

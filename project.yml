@@ -34,6 +34,15 @@ targets:
       - package: EscaleCore
       - package: SwiftTerm
       - package: Sparkle
+    # Serveur X11 integre : Contents/Helpers/EscaleX11.app, signe avec l'identite de l'app (runtime durci en Release).
+    # Avant la signature de l'app par Xcode (qui scelle Contents/Helpers). Premier build : telechargement de XQuartz.
+    postBuildScripts:
+      - name: Serveur X11 integre
+        basedOnDependencyAnalysis: false
+        script: |
+          rt=""; [ "${ENABLE_HARDENED_RUNTIME:-NO}" = "YES" ] && rt="--runtime"
+          "$SRCROOT/scripts/x11-bundle.sh" --install "$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers" \
+            --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" $rt
     info:
       path: Escale/Info.plist
       properties:
@@ -51,6 +60,8 @@ targets:
         PRODUCT_NAME: Escale
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: Escale/Escale.entitlements
+        # La phase « Serveur X11 integre » lit le cache ~/Library/Caches/Escale-build et build/x11.
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
         # Identite Release surchargeable par l'environnement (ESCALE_SIGN_IDENTITY).
         ESCALE_SIGN_IDENTITY: D0F93EE12C167056F3206C7CB7D208C0952E9728
       configs:

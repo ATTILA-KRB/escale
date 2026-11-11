@@ -43,6 +43,9 @@ Sorties : `dist/Escale.app`, `dist/Escale-<version>.dmg`, `dist/updates/{Escale-
   pas de `DYLD_*`, pas de bibliothèque non signée). `/usr/bin/ssh` est un binaire système : il n'exige rien de l'app.
 - Pas de helper askpass séparé : l'app est son propre `SSH_ASKPASS` (`AskpassClient.runIfRequested()` en tête de `main`).
   Il n'y a donc rien d'autre à embarquer ni à signer ; le script le vérifie en contrôlant tous les Mach-O du bundle.
+- Serveur X11 integre : `Contents/Helpers/EscaleX11.app` (31 dylibs, `X11.bin` patche, outils) est signe Developer ID + runtime
+  + horodatage par la phase de build (`scripts/x11-bundle.sh --sign … --runtime`) ; `release.sh` verifie sa presence et chaque Mach-O.
+  Premier build sur une machine : telechargement du paquet XQuartz (122 Mo, SHA-256 verifie), garde dans `~/Library/Caches/Escale-build`.
 - Sparkle : Xcode ne re-signe pas `Installer.xpc`, `Downloader.xpc`, `Autoupdate`, `Updater.app` avec notre identité
   (Apple rejette alors la notarisation : « not signed with a valid Developer ID » / « no secure timestamp »).
   `release.sh` les re-signe du plus interne au plus externe, puis le framework, puis l'app.

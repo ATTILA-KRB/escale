@@ -10,13 +10,15 @@ public struct X11Settings: Sendable, Equatable {
     public var xauthPath: String
     /// Valeur de `DISPLAY` à donner à ssh (socket launchd de XQuartz) ; `nil` : hérité de l'environnement.
     public var display: String?
+    /// Valeur de `XAUTHORITY` pour ssh (serveur intégré : fichier privé) ; `nil` : héritée (`~/.Xauthority`).
+    public var xauthority: String?
 
-    public init(trusted: Bool = false, xauthPath: String, display: String? = nil) {
-        self.trusted = trusted; self.xauthPath = xauthPath; self.display = display
+    public init(trusted: Bool = false, xauthPath: String, display: String? = nil, xauthority: String? = nil) {
+        self.trusted = trusted; self.xauthPath = xauthPath; self.display = display; self.xauthority = xauthority
     }
 }
 
-/// État de XQuartz sur ce Mac : installé ou non, `xauth`, `DISPLAY`. Pur : le système de fichiers et l'environnement
+/// État de l'affichage X11 sur ce Mac : serveur intégré à Escale (prioritaire), sinon XQuartz installé, `xauth`, `DISPLAY`. Pur : le système de fichiers et l'environnement
 /// sont injectés pour les tests (aucune détection ne modifie quoi que ce soit).
 public struct X11Detection: Sendable, Equatable {
     public enum Status: Sendable, Equatable {
@@ -32,9 +34,21 @@ public struct X11Detection: Sendable, Equatable {
     public var xquartzPath: String?
     public var xauthPath: String?
     public var display: String?
+    /// Serveur intégré (`Contents/Helpers/EscaleX11.app`) : démarré à la demande, avant la connexion du maître.
+    public var embedded: Bool
+    /// `XAUTHORITY` à donner à ssh (serveur intégré).
+    public var xauthority: String?
 
-    public init(xquartzPath: String? = nil, xauthPath: String? = nil, display: String? = nil) {
+    public init(xquartzPath: String? = nil, xauthPath: String? = nil, display: String? = nil,
+                embedded: Bool = false, xauthority: String? = nil) {
         self.xquartzPath = xquartzPath; self.xauthPath = xauthPath; self.display = display
+        self.embedded = embedded; self.xauthority = xauthority
+    }
+
+    /// Détection pour le serveur intégré : toujours prête (le serveur démarre à la première connexion X11).
+    public static func embedded(_ server: EmbeddedX11Server) -> X11Detection {
+        X11Detection(xquartzPath: server.bundle.appPath, xauthPath: server.bundle.xauthPath, display: server.display,
+                     embedded: true, xauthority: server.xauthority)
     }
 
     public static let installURL = URL(string: "https://www.xquartz.org")!
@@ -53,12 +67,14 @@ public struct X11Detection: Sendable, Equatable {
     /// Réglages à donner au transport, ou `nil` si X11 n'est pas utilisable (alors jamais de `-X`).
     public func settings(trusted: Bool) -> X11Settings? {
         guard isReady, let x = xauthPath else { return nil }
-        return X11Settings(trusted: trusted, xauthPath: x, display: display)
+        return X11Settings(trusted: trusted, xauthPath: x, display: display, xauthority: xauthority)
     }
 
     /// Message français pour l'utilisateur.
     public var explanation: String {
         switch status {
+        case .ready where embedded:
+            return "Serveur X11 intégré à Escale : les applications X11 s'affichent sur ce Mac, sans rien installer."
         case .ready:
             return "XQuartz détecté (\(xquartzPath ?? "")). Les applications X11 s'afficheront sur ce Mac."
         case .notInstalled:

@@ -368,6 +368,8 @@ final class AppModel {
         for t in workspace.tabs { t.isClosing = true; for p in t.panes { p.isClosing = true; p.startTask?.cancel(); p.session.kill() } }
         for f in features { await f.shutdown() }
         await connections.shutdownAll()
+        // Serveur X11 intégré : arrêté par son pid (jamais par motif), dossier privé supprimé.
+        connections.x11Server?.stop()
         // Laisse les gestionnaires de fin de pty compter leurs shells.
         for _ in 0..<40 where connections.shellsEnded < connections.shellsStarted {
             try? await Task.sleep(for: .milliseconds(50))

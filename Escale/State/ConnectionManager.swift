@@ -133,7 +133,10 @@ final class SSHLink {
         state = .connecting
         cancelRequested = false
         connectAttempts += 1
-        let t = Task { try await self.transport.connect() }
+        let t = Task {
+            await self.manager.prepareX11(for: self.profile, settings: self.transport.configuration.ssh.x11)
+            try await self.transport.connect()
+        }
         connectTask = t
         do {
             try await t.value
@@ -191,6 +194,7 @@ final class SSHLink {
             gate.resetNeedsInput()
             gate.unattended = true
             do {
+                await manager.prepareX11(for: profile, settings: transport.configuration.ssh.x11)
                 try await transport.connect()
                 gate.unattended = false
                 if Task.isCancelled { break }
@@ -323,7 +327,12 @@ final class ConnectionManager {
     @ObservationIgnored var linkObservers: [String: @MainActor (SSHLink, LinkEvent) -> Void] = [:]
     func notify(_ link: SSHLink, _ event: LinkEvent) { for o in linkObservers.values { o(link, event) } }
 
-    /// M5 : détection de XQuartz et mode « confiance » (injectables : tests et auto-test).
+    /// Serveur X11 intégré (`Contents/Helpers/EscaleX11.app`, prioritaire) ; `nil` s'il n'est pas embarqué : XQuartz
+    /// installé sert alors de secours. Démarré à la demande, juste avant un maître ou une application X11.
+    @ObservationIgnored var x11Server: EmbeddedX11Server?
+    /// Dernière erreur de démarrage du serveur intégré (affichée avec la détection).
+    @ObservationIgnored private(set) var x11ServerError: String?
+    /// M5 : détection de l'affichage X11 et mode « confiance » (injectables : tests et auto-test).
     @ObservationIgnored var x11Detect: () -> X11Detection = { X11Detection.detect() }
     @ObservationIgnored var x11Trusted: () -> Bool = { UserDefaults.standard.bool(forKey: X11Preferences.trustedKey) }
 
@@ -333,6 +342,22 @@ final class ConnectionManager {
         var o = sshOptions
         if profile.x11Forwarding { o.x11 = x11Detect().settings(trusted: x11Trusted()) }
         return o
+    }
+
+    /// Démarre le serveur intégré si ces réglages X11 le désignent (sinon rien : XQuartz, ou pas de X11). Bloquant
+    /// hors du fil principal. Renvoie le message d'erreur, ou `nil` ; la connexion ssh se fait de toute façon.
+    @discardableResult
+    func prepareX11(for profile: HostProfile, settings: X11Settings?) async -> String? {
+        guard profile.x11Forwarding, let x = settings, let server = x11Server, x.display == server.display else { return nil }
+        do {
+            try await Task.detached { try server.ensureRunning() }.value
+            x11ServerError = nil
+            return nil
+        } catch {
+            let m = (error as? EmbeddedX11Error)?.description ?? error.localizedDescription
+            x11ServerError = m
+            return m
+        }
     }
 
     @ObservationIgnored var shellsStarted = 0
@@ -348,6 +373,11 @@ final class ConnectionManager {
         self.sshOptions = sshOptions
         self.secretStore = secretStore
         self.askpassExecutable = askpassExecutable
+        if let bundle = EmbeddedX11Bundle.inside(appBundle: Bundle.main.bundleURL) {
+            let server = EmbeddedX11Server(bundle: bundle, runtimeDirectory: EmbeddedX11Server.defaultRuntimeDirectory())
+            x11Server = server
+            x11Detect = { X11Detection.embedded(server) }
+        }
     }
 
     func connection(for profile: HostProfile) -> HostConnection {

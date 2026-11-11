@@ -30,7 +30,7 @@ Date : 2026-11-10. Statut : D1 tranché (feuille blanche), spikes S1 et S2 faits
 Constats :
 - Le créneau « MobaXterm pour Mac » est saturé (≥ 10 produits actifs, plusieurs gratuits, plusieurs de 2026).
   Concurrence : 1-2/5. Comme produit à vendre, l'angle est faible ; comme outil personnel ou open source, aucun obstacle.
-- Trou constant chez tous les natifs : pas de serveur X11 intégré (tous renvoient à XQuartz), aucune intégration XQuartz soignée.
+- Trou constant chez tous les natifs : pas de serveur X11 intégré (tous renvoient à XQuartz), aucune intégration XQuartz soignée. Escale l'embarque (voir « Serveur X11 integre »).
 - Non vérifié : parts d'usage réelles, prix Noden, contenu exact des achats intégrés Upshell.
 
 ## 3. Décisions d'architecture
@@ -78,7 +78,7 @@ Conséquence : distribution directe (DMG + Sparkle), pas de Mac App Store. À co
 | Reconnexion automatique | V1 | processus superviseur au bout du pty |
 | Macros / snippets | V1.1 | enregistrement des frappes |
 | Import `MobaXterm.ini`, PuTTY, Termius | V1.1 | analyseurs dédiés |
-| X11 | V1.1 | détection/lancement XQuartz + `ssh -Y`, pas de serveur X maison |
+| X11 | V1.1 | serveur X intégré (Xquartz de XQuartz 2.8.6 embarqué, sans installation ni sudo), XQuartz installé en secours |
 | Série | V1.2 | termios POSIX |
 | Telnet | V1.2 | Network.framework |
 | VNC | V2 | bibliothèque Swift tierce à valider, sinon renvoi vers Partage d'écran |
@@ -463,3 +463,33 @@ inclut aussi les rapports souris/focus des applications distantes (negligeable).
   arrive au serveur avec le vrai cookie genere (`CONNECT … ok`). La detection connait `/opt/homebrew/bin/xauth` (apres `/opt/X11/bin/xauth`)
   mais exige toujours XQuartz installe (`/opt/X11` ou XQuartz.app) : l'affichage reel reste a valider avec XQuartz.
 - Recettes : `selftest-import.sh` (+ MobaXterm.ini, RemoteCommand, proxy SSH), `selftest-macros.sh` (+ commande de connexion via sshd, X11 non fiable).
+
+### Serveur X11 integre (2026-11-11)
+
+- **Principe** : `Contents/Helpers/EscaleX11.app` = serveur `X11.bin` du paquet officiel XQuartz 2.8.6 (version + SHA-256 figes dans
+  `scripts/x11-bundle.sh`), rendu autonome : 31 dylibs de `/opt/X11/lib` copiees dans `Contents/Frameworks` et reliees en `@rpath`,
+  xkb + polices `misc`, outils `xauth`, `xkbcomp`, `xdpyinfo`, `xeyes`. Licence MIT/X11 (`Resources/XQuartz-LICENSE.txt`). +34 Mo (app), ~18 Mo zippe.
+  Ni XQuartz installe, ni sudo, ni `/opt/X11`, ni `/tmp/.X11-unix`. Prioritaire sur XQuartz (secours si le helper manque).
+- **Patch binaire de `X11.bin`** (chaines entre deux NUL, echec du script si absentes) : `/opt/X11/bin` → vide (xkbcomp cherche dans le
+  PATH = `Contents/MacOS`) ; `/tmp/.X11-unix` → `/private/tmp` et `/tmp/.X11-unix/X` → `X` (xtrans exige un dossier de socket
+  appartenant a root : `/private/tmp` passe le controle, le socket `X<n>` est cree relatif au `HOME` du serveur = dossier prive).
+  Re-signature apres patch. Sparkle de XQuartz garde (X11.bin y est lie) sans `Autoupdate`/`Updater.app`/XPC ni flux.
+- **Demarrage sans root** (protocole Mach de `hw/xquartz/mach-startup`, nom bootstrap = `CFBundleIdentifier` `com.attila-krb.Escale.X11`) :
+  `X11.bin --listenonly`, puis Escale cree le socket d'ecoute `<dossier 0700>/x11:0` (= `DISPLAY`) et le remet par
+  `request_fd_handoff_socket` + `SCM_RIGHTS`, puis `start_x11_server(argv, env)` (appel bloquant jusqu'a l'arret : fil dedie).
+  **Seule partie en C** : cible SwiftPM `CEscaleX11` (`handoff.c` + stubs MIG generes depuis `mach_startup.defs`, versionnes).
+  Arguments : `:<n> -nolisten tcp -noreset -xkbdir … -fp …` ; `<n>` = premier `/tmp/.X<n>-lock` libre a partir de 64 (`-nolock` reserve a root).
+- **Cycle de vie** (`EmbeddedX11Server`, cœur) : demarre a la demande (`ConnectionManager.prepareX11`, juste avant le maitre d'un hote
+  X11 ou un lancement d'application), jamais au lancement de l'app (invariant 12) ; idempotent ; un serveur deja enregistre est reutilise.
+  Arret a la sortie d'Escale par pid (SIGKILL : SIGTERM est ignore par Xquartz), verrou `/tmp/.X<n>-lock` retire s'il porte ce pid, dossier
+  prive supprime. Dossier `$TMPDIR/escale-x11.<pid>` (0700) : socket, `Xauthority` vide (ssh n'ecrit plus `~/.Xauthority`), journaux.
+- **Securite** : pas d'ecoute TCP ; acces local limite par le dossier 0700 ; cote distant, `ForwardX11Trusted=no` par defaut (cookie
+  `untrusted` genere par le vrai `xauth` contre le serveur integre) ; un client distant sans le cookie de substitution est refuse par ssh.
+- **Build** : phase « Serveur X11 integre » de `project.yml` (`ENABLE_USER_SCRIPT_SANDBOXING: NO`) → `x11-bundle.sh --install … --sign
+  $EXPANDED_CODE_SIGN_IDENTITY [--runtime]` avant la signature de l'app. Paquet 122 Mo en cache dans `~/Library/Caches/Escale-build`,
+  produit dans `build/x11`. `scripts/test.sh` installe un exemplaire ad hoc dans `build/x11-test` pour les tests reels du cœur.
+- **Verifie** : `EmbeddedX11Tests` (serveur reel : X.Org repond, aucune ecoute TCP, arret par pid, verrou et dossier supprimes) ;
+  recette `selftest-macros.sh` hote E (87 controles) : serveur pas demarre sans action, demarre a la demande, `DISPLAY=localhost:10` distant,
+  refus sans cookie, X.Org repond via ssh, fenetre xeyes 240×180 affichee et capturee (`x11-integre-xeyes.png`), arret par pid.
+- **Limites** : pas de gestionnaire de fenetres X (fenetres sans decoration macOS, correct pour des outils simples) ; menus « X11 » et
+  preferences XQuartz visibles quand le serveur tourne ; notarisation des 31 dylibs + binaire patche a confirmer a la prochaine publication.

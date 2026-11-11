@@ -3,7 +3,8 @@
 Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan et decisions : `docs/PLAN.md`.
 
 ## Structure
-- `Packages/EscaleCore` : logique sans UI (modeles, transport SSH, SFTP, pty). Testee par `swift test`.
+- `Packages/EscaleCore` : logique sans UI (modeles, transport SSH, SFTP, pty, serveur X11 integre). Testee par `swift test`.
+  Seule cible C : `CEscaleX11` (remise du socket au serveur Xquartz par Mach).
 - `Escale/` : app SwiftUI/AppKit. Le moteur de terminal (SwiftTerm) reste confine a `Escale/Terminal/`.
 - Modules M2-M5 (`Escale/{SFTP,Tunnels,MultiExec,Macros,Import,Update}/`) : s'accrochent a l'app uniquement par
   `Escale/Features/AppFeature.swift` (commandes, scenes, menus d'hote), `ConnectionManager.linkObservers`,
@@ -36,6 +37,9 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
     `.inspector` meme replie, donc garder sa vue derriere `if visible` (sinon `sessionCount` derive).
 13. Deux lignes exec distinctes : `execArguments` (applications X11, avec ForwardX11) et `batchExecArguments`
     (multi-execution : BatchMode, sans X11). Toute session exec compte dans `sessionCount`.
+14. Serveur X11 integre (`Contents/Helpers/EscaleX11.app`, `scripts/x11-bundle.sh`) : demarre seulement a la demande, arrete par
+    son pid (jamais par motif), socket dans un dossier prive 0700, aucune ecoute TCP. Le C reste confine a `CEscaleX11`
+    (protocole Mach de Xquartz). Changer de version de XQuartz = nouveau SHA-256 + verifier les chaines patchees de `X11.bin`.
 
 ## Conventions
 - Swift 6, concurrence stricte. Commentaires en francais. Sujets de commit sans accents.

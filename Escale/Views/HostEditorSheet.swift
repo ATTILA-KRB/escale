@@ -142,7 +142,7 @@ struct HostEditorSheet: View {
                     }
                 }
                 TunnelEditorSection(tunnels: $tunnels)
-                X11EditorSection(isOn: $x11Forwarding)
+                X11EditorSection(isOn: $x11Forwarding, detect: { [connections = model.connections] in connections.x11Detect() })
                 StartupCommandEditorSection(text: $startupCommand)
             }
             .formStyle(.grouped)

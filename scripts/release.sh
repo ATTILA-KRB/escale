@@ -84,7 +84,9 @@ done
 "${CS[@]}" --preserve-metadata=entitlements,identifier "$APP"
 
 step "Verification de la signature"
-# Le helper d'askpass est le binaire principal (AskpassClient.runIfRequested en tete de main) : rien d'autre a embarquer.
+# Le helper d'askpass est le binaire principal (AskpassClient.runIfRequested en tete de main). Le serveur X11 integre
+# (Contents/Helpers/EscaleX11.app) est signe Developer ID + runtime par la phase de build (scripts/x11-bundle.sh).
+[ -x "$APP/Contents/Helpers/EscaleX11.app/Contents/MacOS/X11.bin" ] || { echo "serveur X11 integre absent" >&2; exit 4; }
 codesign --verify --deep --strict --verbose=2 "$APP"
 codesign -dvv "$APP" 2>&1 | rg "Authority|TeamIdentifier|flags|Timestamp|Identifier="
 rg -q "runtime" <(codesign -dv "$APP" 2>&1) || { echo "runtime durci absent" >&2; exit 4; }

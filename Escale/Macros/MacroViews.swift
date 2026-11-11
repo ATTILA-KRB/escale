@@ -305,7 +305,8 @@ struct X11LaunchSheet: View {
             TextField("Commande", text: $command, prompt: Text(X11LaunchCommand.defaultCommand))
                 .textFieldStyle(.roundedBorder)
                 .onSubmit { launch() }
-            Text("La commande s'exécute sur l'hôte et s'affiche dans XQuartz sur ce Mac.").font(.caption).foregroundStyle(.secondary)
+            Text(detection.embedded ? "La commande s'exécute sur l'hôte et s'affiche sur ce Mac (serveur X11 intégré)."
+                 : "La commande s'exécute sur l'hôte et s'affiche dans XQuartz sur ce Mac.").font(.caption).foregroundStyle(.secondary)
             if let error {
                 Label(error, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.orange)
                 if !detection.isReady { Button("Installer XQuartz (xquartz.org)") { NSWorkspace.shared.open(X11Detection.installURL) } }
@@ -332,13 +333,16 @@ struct X11LaunchSheet: View {
 /// Section X11 de la feuille d'édition d'hôte.
 struct X11EditorSection: View {
     @Binding var isOn: Bool
+    /// Détection de l'app (serveur intégré prioritaire) ; à défaut, XQuartz seul.
+    var detect: () -> X11Detection = { X11Detection.detect() }
     @AppStorage(X11Preferences.trustedKey) private var trusted = false
     @State private var detection = X11Detection()
 
     var body: some View {
         Section {
-            Toggle("Redirection X11 (XQuartz)", isOn: $isOn)
-            Text("Affiche sur ce Mac les applications graphiques lancées sur l'hôte (xeyes, éditeurs…). Nécessite XQuartz.")
+            Toggle("Redirection X11", isOn: $isOn)
+            Text(detection.embedded ? "Affiche sur ce Mac les applications graphiques lancées sur l'hôte (xeyes, éditeurs…), sans rien installer."
+                 : "Affiche sur ce Mac les applications graphiques lancées sur l'hôte (xeyes, éditeurs…). Nécessite XQuartz.")
                 .font(.caption).foregroundStyle(.secondary)
             Label(detection.explanation, systemImage: detection.isReady ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .font(.caption).foregroundStyle(detection.isReady ? .green : .orange)
@@ -351,6 +355,6 @@ struct X11EditorSection: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
-        .onAppear { detection = X11Detection.detect() }
+        .onAppear { detection = detect() }
     }
 }
