@@ -108,9 +108,10 @@ struct TunnelSelfTest {
                   let auto = host.tunnels.first(where: { $0.autoStart }) else {
                 check("hote_avec_tunnels", false, "bibliothèque inattendue"); return finish()
             }
-            check("hote_avec_tunnels", host.tunnels.count == 7, "\(host.tunnels.map(\.summary))")
+            check("hote_avec_tunnels", host.tunnels.count == 8, "\(host.tunnels.map(\.summary))")
             guard let http6Port = env["ESCALE_TUNNEL_HTTP6_PORT"].flatMap(Int.init), let body6 = env["ESCALE_TUNNEL_HTTP6_BODY"],
                   let v6 = host.tunnels.first(where: { $0.name == "ipv6 local" }),
+                  let vz = host.tunnels.first(where: { $0.name == "ipv6 zone" }),
                   let r0 = host.tunnels.first(where: { $0.name == "distant port attribué" }),
                   let ed = host.tunnels.first(where: { $0.name == "a modifier" }) else {
                 check("environnement_ipv6", false, "ESCALE_TUNNEL_HTTP6_* ou tunnels IPv6 / -R 0 / à modifier absents"); return finish()
@@ -172,6 +173,21 @@ struct TunnelSelfTest {
             await sleep(0.5)
             c = await curl(["-g", "http://[::1]:\(v6.bindPort)/"])
             check("ipv6_port_ferme", c.status != 0, "status \(c.status)")
+
+            // 5b'. IPv6 avec zone : écoute sur [fe80::1%lo0] (lien local de lo0), destination [::1] ; curl par la zone (%25 en URL).
+            check("zone_validation", TunnelValidation.errors(vz).isEmpty, "\(TunnelValidation.errors(vz))")
+            check("zone_argument_ssh", vz.specArgument.hasPrefix("[fe80::1%lo0]:") && vz.specArgument.contains(":[::1]:"), vz.specArgument)
+            check("zone_port_libre_avant", TunnelPortCheck.isFree(address: vz.bindAddress, port: vz.bindPort))
+            check("zone_ouvert", await feature.start(vz, on: host) == .active, "\(feature.state(of: vz.id))")
+            check("zone_port_occupe", !TunnelPortCheck.isFree(address: vz.bindAddress, port: vz.bindPort))
+            c = await curl(["-g", "http://[fe80::1%25lo0]:\(vz.bindPort)/"])
+            check("zone_curl", c.status == 0 && c.out == body6, "status \(c.status) corps \(c.out.prefix(60))")
+            check("zone_arret", await feature.stop(vz, on: host) == .stopped)
+            await sleep(0.5)
+            c = await curl(["-g", "http://[fe80::1%25lo0]:\(vz.bindPort)/"])
+            check("zone_port_ferme", c.status != 0, "status \(c.status)")
+            var ghost = vz; ghost.bindAddress = "fe80::1%nonexist9"
+            check("zone_interface_inconnue_refusee", TunnelValidation.errors(ghost).first?.contains("n'existe pas") == true, "\(TunnelValidation.errors(ghost))")
 
             // 5c. -R 0 : le serveur attribue le port ; il est récupéré, utilisable, puis fermé à l'arrêt.
             check("r0_ouvert", await feature.start(r0, on: host) == .active, "\(feature.state(of: r0.id))")

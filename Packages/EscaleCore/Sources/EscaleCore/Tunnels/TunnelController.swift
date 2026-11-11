@@ -180,7 +180,7 @@ public actor TunnelController {
     /// true : le serveur écoute ; false : refus certain ; nil : sonde impossible (on se fie à ssh).
     private func remoteProbe(_ spec: TunnelSpec) async -> Bool? {
         let host = TunnelValidation.displayBind(spec.bindAddress)
-        let safe = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_:") // « : » : IPv6
+        let safe = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_:%") // « : » : IPv6, « % » : zone
         guard host.unicodeScalars.allSatisfy({ safe.contains($0) }) else { return nil }
         let script = "if command -v bash >/dev/null 2>&1; then if bash -c 'exec 3<>/dev/tcp/\(host)/\(spec.bindPort)' 2>/dev/null; "
             + "then echo ESCALE_PROBE_OPEN; else echo ESCALE_PROBE_CLOSED; fi; else echo ESCALE_PROBE_UNKNOWN; fi"
