@@ -14,8 +14,9 @@ XQ_VERSION="2.8.6"
 XQ_SHA256="9ac35a505095bfbd3009c3b4772f0c6421e2f79c4210ab908459270d1c447909"
 XQ_URL="https://github.com/XQuartz/XQuartz/releases/download/XQuartz-$XQ_VERSION/XQuartz-$XQ_VERSION.pkg"
 BUNDLE_ID="com.attila-krb.Escale.X11"
-# Outils copies a cote du serveur : xauth (ssh), xkbcomp (clavier), xdpyinfo/xeyes (diagnostic et recettes).
-TOOLS="xauth xkbcomp xdpyinfo xeyes"
+# Outils copies a cote du serveur : xauth (ssh), xkbcomp (clavier), xdpyinfo/xeyes (diagnostic et recettes),
+# quartz-wm (gestionnaire de fenetres de XQuartz : barres de titre macOS, mode rootless ; licence APSL 2.0).
+TOOLS="xauth xkbcomp xdpyinfo xeyes quartz-wm"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PKG_CACHE="${ESCALE_X11_PKG_CACHE:-$HOME/Library/Caches/Escale-build}"
@@ -59,6 +60,15 @@ build_cache() {
   cp -R "$x11/share/X11/xkb/." "$c/Resources/xkb/"
   cp -R "$x11/share/fonts/misc" "$c/Resources/fonts/misc"
   cp "$work/x/Resources/LICENSE.txt" "$c/Resources/XQuartz-LICENSE.txt"
+  # quartz-wm est sous Apple Public Source License 2.0 (autorise la redistribution commerciale ; binaire non modifie hors
+  # chemins de bibliotheques ; source : https://gitlab.freedesktop.org/xorg/app/quartz-wm, offre dans le fichier ci-dessous).
+  cp "$ROOT/scripts/x11-licenses/quartz-wm-APSL-2.0.txt" "$c/Resources/quartz-wm-APSL-2.0.txt"
+  cat > "$c/Resources/quartz-wm-SOURCE.txt" <<'TXT'
+quartz-wm (gestionnaire de fenetres de XQuartz 2.8.6) - Copyright Apple Inc. - Apple Public Source License 2.0
+(texte : quartz-wm-APSL-2.0.txt). Le binaire est celui du paquet XQuartz 2.8.6, dont seuls les chemins de bibliotheques
+ont ete modifies (install_name_tool, @rpath). Code source : https://gitlab.freedesktop.org/xorg/app/quartz-wm
+et https://github.com/XQuartz/quartz-wm (etiquette de la version XQuartz 2.8.6).
+TXT
 
   # Bibliotheques : copie transitive depuis /opt/X11/lib, identifiants et references en @rpath.
   python3 - "$x11" "$c" $TOOLS <<'PY'

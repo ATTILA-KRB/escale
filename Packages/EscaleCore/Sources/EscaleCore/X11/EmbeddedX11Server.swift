@@ -27,6 +27,8 @@ public struct EmbeddedX11Bundle: Sendable, Equatable {
     public var macOSDir: String { appPath + "/Contents/MacOS" }
     public var serverPath: String { macOSDir + "/X11.bin" }
     public var xauthPath: String { macOSDir + "/xauth" }
+    /// Gestionnaire de fenêtres (quartz-wm de XQuartz, APSL 2.0) : barres de titre macOS, mode rootless.
+    public var windowManagerPath: String { macOSDir + "/quartz-wm" }
     public var xkbDir: String { appPath + "/Contents/Resources/xkb" }
     public var fontDir: String { appPath + "/Contents/Resources/fonts/misc/" }
 }
@@ -61,9 +63,15 @@ public final class EmbeddedX11Server: @unchecked Sendable {
     private var process: Process?
     private var handedOff = false
     private var displayNumber: Int?
+    private var windowManager: Process?
+    /// Incrémenté à chaque (re)démarrage et à l'arrêt : invalide la surveillance du gestionnaire de fenêtres précédent.
+    private var wmGeneration = 0
 
-    public init(bundle: EmbeddedX11Bundle, runtimeDirectory: String) {
-        self.bundle = bundle; self.runtimeDirectory = runtimeDirectory
+    /// Lance quartz-wm comme client du serveur (fenêtres décorées) ; `false` : fenêtres X nues.
+    public let windowManagerEnabled: Bool
+
+    public init(bundle: EmbeddedX11Bundle, runtimeDirectory: String, windowManager: Bool = true) {
+        self.bundle = bundle; self.runtimeDirectory = runtimeDirectory; self.windowManagerEnabled = windowManager
     }
 
     /// Dossier par défaut : court (socket limité à ~104 octets, invariant 6), propre à ce processus.
@@ -79,6 +87,12 @@ public final class EmbeddedX11Server: @unchecked Sendable {
     public var serverPID: Int32? {
         lock.lock(); defer { lock.unlock() }
         return process.map { $0.isRunning ? $0.processIdentifier : nil } ?? nil
+    }
+
+    /// Pid du gestionnaire de fenêtres lancé par cette instance, s'il tourne.
+    public var windowManagerPID: Int32? {
+        lock.lock(); defer { lock.unlock() }
+        return windowManager.map { $0.isRunning ? $0.processIdentifier : nil } ?? nil
     }
 
     /// Réglages ssh correspondants.
@@ -113,12 +127,17 @@ public final class EmbeddedX11Server: @unchecked Sendable {
         }
         if launchedHere { startServer() }
         handedOff = true
+        if windowManagerEnabled, launchedHere || !(windowManager?.isRunning ?? false) { startWindowManager() }
     }
 
     /// Arrête le serveur lancé par cette instance (pid précis ; SIGTERM est ignoré par Xquartz : SIGKILL) et
     /// supprime le dossier privé. Un serveur réutilisé appartenant à une autre instance n'est jamais touché.
     public func stop() {
         lock.lock(); defer { lock.unlock() }
+        // Gestionnaire de fenêtres d'abord (client du serveur), par pid ; la surveillance est invalidée.
+        wmGeneration += 1
+        if let w = windowManager { Self.kill(w) }
+        windowManager = nil
         if let p = process {
             let pid = p.processIdentifier
             Self.kill(p)
@@ -188,6 +207,54 @@ public final class EmbeddedX11Server: @unchecked Sendable {
         }
         t.name = "EscaleX11.start"
         t.start()
+    }
+
+    /// Lance quartz-wm (rootless : aucune option de bureau) puis le surveille : tant que le serveur est à nous et que
+    /// la génération n'a pas changé, un arrêt prématuré (serveur pas encore prêt) est suivi d'un nouvel essai.
+    /// Appelé avec `lock` pris.
+    private func startWindowManager() {
+        guard FileManager.default.isExecutableFile(atPath: bundle.windowManagerPath) else { return }
+        wmGeneration += 1
+        let generation = wmGeneration
+        if let w = windowManager { Self.kill(w); windowManager = nil }
+        guard let first = try? launchWindowManager() else { return }
+        windowManager = first
+        let t = Thread { [weak self] in
+            var current = first
+            var failures = 0
+            while let self {
+                current.waitUntilExit()
+                self.lock.lock()
+                let stillOurs = self.wmGeneration == generation && self.process?.isRunning == true
+                self.lock.unlock()
+                guard stillOurs else { return }
+                failures += 1
+                guard failures <= 8 else { return }
+                Thread.sleep(forTimeInterval: 0.5)
+                self.lock.lock()
+                guard self.wmGeneration == generation, let next = try? self.launchWindowManager() else { self.lock.unlock(); return }
+                self.windowManager = next
+                self.lock.unlock()
+                current = next
+            }
+        }
+        t.name = "EscaleX11.wm"
+        t.start()
+    }
+
+    private func launchWindowManager() throws -> Process {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: bundle.windowManagerPath)
+        var env = serverEnvironment
+        env["DISPLAY"] = display
+        env["XAUTHORITY"] = xauthority
+        p.environment = env
+        p.currentDirectoryURL = URL(fileURLWithPath: runtimeDirectory)
+        p.standardInput = FileHandle.nullDevice
+        p.standardOutput = FileHandle.nullDevice
+        p.standardError = FileHandle.nullDevice
+        try p.run()
+        return p
     }
 
     /// Socket Unix en écoute sur `display` (recréé : un ancien socket est remplacé).

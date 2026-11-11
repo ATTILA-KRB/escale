@@ -374,7 +374,9 @@ final class ConnectionManager {
         self.secretStore = secretStore
         self.askpassExecutable = askpassExecutable
         if let bundle = EmbeddedX11Bundle.inside(appBundle: Bundle.main.bundleURL) {
-            let server = EmbeddedX11Server(bundle: bundle, runtimeDirectory: EmbeddedX11Server.defaultRuntimeDirectory())
+            // Gestionnaire de fenêtres (quartz-wm) actif par défaut ; `defaults write … x11WindowManager -bool NO` le coupe.
+            let wm = UserDefaults.standard.object(forKey: "x11WindowManager") as? Bool ?? true
+            let server = EmbeddedX11Server(bundle: bundle, runtimeDirectory: EmbeddedX11Server.defaultRuntimeDirectory(), windowManager: wm)
             x11Server = server
             x11Detect = { X11Detection.embedded(server) }
         }

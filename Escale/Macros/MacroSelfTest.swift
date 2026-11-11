@@ -303,11 +303,18 @@ struct MacroSelfTest {
         let spid = server.serverPID ?? -1
         var winID: Int?
         let shown = await wait(15) {
-            winID = Self.windows(of: spid).first { abs($0.1 - 240) <= 4 && abs($0.2 - 180) <= 4 }?.0
+            // Largeur 240 ; hauteur 180 + barre de titre du gestionnaire de fenêtres (quartz-wm).
+            winID = Self.windows(of: spid).first { abs($0.1 - 240) <= 4 && $0.2 >= 176 && $0.2 <= 215 }?.0
             return winID != nil
         }
         check("x11_integre_fenetre_xeyes_affichee", shown, "\(Self.windows(of: spid).map { "\($0.1)x\($0.2)" })")
+        let wmPID = server.windowManagerPID
+        check("x11_integre_gestionnaire_fenetres_lance", wmPID != nil && wmPID != spid, "\(String(describing: wmPID))")
         if let winID {
+            // Décoration quartz-wm : titre « xeyes » et hauteur > 180 (barre de titre).
+            let h = Self.windows(of: spid).first { $0.0 == winID }?.2 ?? 0
+            check("x11_integre_fenetre_decoree_titre", Self.windowTitle(winID) == "xeyes", "\(Self.windowTitle(winID))")
+            check("x11_integre_fenetre_decoree_barre_titre", h >= 196, "hauteur \(h) pour 180 demandes")
             try? await Task.sleep(nanoseconds: 800_000_000)
             let path = "\(directory)/x11-integre-xeyes.png"
             let pr = Process()
@@ -324,6 +331,7 @@ struct MacroSelfTest {
         await cm.existing(host.id)?.shutdown()
         server.stop()
         check("x11_integre_arret_par_pid", Darwin.kill(spid, 0) != 0 && server.serverPID == nil)
+        check("x11_integre_gestionnaire_arrete_par_pid", wmPID.map { Darwin.kill($0, 0) != 0 } ?? false && server.windowManagerPID == nil)
         check("x11_integre_dossier_supprime", !FileManager.default.fileExists(atPath: server.runtimeDirectory))
         check("x11_integre_compteurs_shells", await wait(5) { cm.shellsEnded == cm.shellsStarted }, "\(cm.shellsStarted)/\(cm.shellsEnded)")
     }
@@ -337,6 +345,12 @@ struct MacroSelfTest {
                   let wd = (b["Width"] as? NSNumber)?.intValue, let h = (b["Height"] as? NSNumber)?.intValue else { return nil }
             return (n, wd, h)
         }
+    }
+
+    /// Titre d'une fenêtre (kCGWindowName), vide si inconnu.
+    private static func windowTitle(_ number: Int) -> String {
+        let list = (CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]]) ?? []
+        return list.first { ($0[kCGWindowNumber as String] as? Int) == number }?[kCGWindowName as String] as? String ?? ""
     }
 
     /// Commande de connexion (import MobaXterm/PuTTY) : tapée dans le shell à l'ouverture, le shell reste ouvert.
