@@ -199,7 +199,7 @@ public struct OpenSSHCommandBuilder: Sendable, Equatable {
 
     private static func validate(_ t: TunnelSpec) throws {
         func bad(_ why: String) -> OpenSSHCommandBuilderError { .invalidTunnel(why) }
-        guard (1...65535).contains(t.bindPort) else { throw bad("port local \(t.bindPort)") }
+        guard ((t.kind == .remote ? 0 : 1)...65535).contains(t.bindPort) else { throw bad("port local \(t.bindPort)") } // -R 0 : port attribué par le serveur
         if hasControlOrNul(t.bindAddress) || t.bindAddress.contains(where: \.isWhitespace) { throw bad("adresse locale") }
         if t.kind != .dynamic {
             guard (1...65535).contains(t.destinationPort) else { throw bad("port destination \(t.destinationPort)") }

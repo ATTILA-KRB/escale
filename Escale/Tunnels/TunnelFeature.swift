@@ -30,6 +30,10 @@ final class TunnelFeature: AppFeature {
     @ObservationIgnored private(set) weak var model: AppModel?
     /// État de chaque tunnel connu (clé : identifiant du tunnel). Absent = arrêté.
     private(set) var states: [UUID: TunnelState] = [:]
+    /// Port attribué par le serveur à un tunnel `-R 0` ouvert (clé : identifiant du tunnel).
+    private(set) var allocatedPorts: [UUID: Int] = [:]
+    /// Dernière modification de tunnel actif refusée (le tunnel d'avant reste ouvert) ; effacée au prochain succès ou arrêt.
+    private(set) var editErrors: [UUID: String] = [:]
     var isManagerPresented = false
     /// Hôte mis en avant par « Tunnels… » du menu d'hôte (nil : tous les hôtes).
     var focusedHostID: UUID?
@@ -90,8 +94,55 @@ final class TunnelFeature: AppFeature {
         var waited = 0
         while result == .opening, waited < 400 { try? await Task.sleep(for: .milliseconds(50)); waited += 1; result = await ctx.controller.state(of: spec.id) }
         states[spec.id] = result
+        await refreshAllocatedPort(spec.id, ctx)
+        editErrors[spec.id] = nil
         if case .failed = result { ctx.wanted.remove(spec.id); releaseIfIdle(ctx) }
         return result
+    }
+
+    /// Modification d'un tunnel actif (appelée à l'enregistrement de la fiche d'hôte) : annule l'ancien, ouvre le nouveau ;
+    /// si le nouveau échoue, l'ancien est rétabli et l'erreur est affichée dans le gestionnaire (`editErrors`).
+    /// Les tunnels supprimés de l'hôte pendant qu'ils tournent sont fermés.
+    func hostSaved(oldTunnels: [TunnelSpec], host: HostProfile) {
+        guard !isShutDown, let ctx = contexts[host.id] else { return }
+        let kept = Set(host.tunnels.map(\.id))
+        let removed = oldTunnels.filter { !kept.contains($0.id) && state(of: $0.id) != .stopped }
+        let changed = host.tunnels.filter { t in
+            state(of: t.id).isActive && (oldTunnels.first { $0.id == t.id }.map { !$0.sameForwarding(as: t) } ?? false)
+        }
+        guard !removed.isEmpty || !changed.isEmpty else { return }
+        Task { [weak self] in
+            for t in removed { await self?.stop(t, on: host) }
+            for t in changed { await self?.applyEdit(t, ctx: ctx, host: host) }
+        }
+    }
+
+    /// Remplace à chaud un tunnel actif par sa version modifiée. Renvoie le résultat (testable sans passer par la fiche).
+    @discardableResult
+    func applyEdit(_ spec: TunnelSpec, ctx: HostContext, host: HostProfile) async -> TunnelReplaceResult {
+        states[spec.id] = .opening
+        let r = await ctx.controller.replace(with: spec)
+        states[spec.id] = r.state
+        await refreshAllocatedPort(spec.id, ctx)
+        if let e = r.error {
+            editErrors[spec.id] = r.restored
+                ? "Modification non appliquée : \(e) L'ancien tunnel a été rétabli."
+                : "Modification non appliquée : \(e)"
+            if !r.state.isActive { ctx.wanted.remove(spec.id) }
+            show(host: host.id) // l'erreur doit se voir
+        } else { editErrors[spec.id] = nil }
+        return r
+    }
+
+    /// Variante pour la recette et les appels directs : retrouve le contexte de l'hôte.
+    @discardableResult
+    func applyEdit(_ spec: TunnelSpec, on host: HostProfile) async -> TunnelReplaceResult? {
+        guard let ctx = contexts[host.id] else { return nil }
+        return await applyEdit(spec, ctx: ctx, host: host)
+    }
+
+    private func refreshAllocatedPort(_ id: UUID, _ ctx: HostContext) async {
+        allocatedPorts[id] = await ctx.controller.allocatedPort(of: id)
     }
 
     /// Ferme un tunnel. Sans effet sur un tunnel arrêté.
@@ -101,6 +152,7 @@ final class TunnelFeature: AppFeature {
         ctx.wanted.remove(spec.id)
         let result = await ctx.controller.stop(spec.id)
         states[spec.id] = result
+        allocatedPorts[spec.id] = nil; editErrors[spec.id] = nil
         releaseIfIdle(ctx)
         return result
     }
@@ -159,6 +211,7 @@ final class TunnelFeature: AppFeature {
     private func markStopped(_ ctx: HostContext) {
         let ids = Set(model?.library.host(ctx.hostID)?.tunnels.map(\.id) ?? []).union(ctx.wanted)
         for id in ids where states[id] != nil { states[id] = .stopped }
+        for id in ids { allocatedPorts[id] = nil }
         Task { await ctx.controller.connectionLost() }
     }
 
@@ -170,6 +223,7 @@ final class TunnelFeature: AppFeature {
             for s in specs {
                 let r = await ctx.controller.start(s)
                 self?.states[s.id] = r
+                await self?.refreshAllocatedPort(s.id, ctx)
                 if case .failed = r { ctx.wanted.remove(s.id) }
             }
         }

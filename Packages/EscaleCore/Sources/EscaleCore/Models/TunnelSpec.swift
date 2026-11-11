@@ -52,10 +52,24 @@ public struct TunnelSpec: Codable, Hashable, Identifiable, Sendable {
         autoStart = try c.decodeIfPresent(Bool.self, forKey: .autoStart) ?? false
     }
 
+    /// Valeur passée à `-L`/`-R`/`-D` (et à `-O forward|cancel`). Une adresse IPv6 est entourée de crochets
+    /// (`[::1]:8080:[::1]:80`) : ssh découpe sur « : » et refuse `::1:8080:…`. `-R` accepte le port 0 (le serveur choisit).
     public var specArgument: String {
+        let bind = Self.bracketed(bindAddress)
         switch kind {
-        case .dynamic: "\(bindAddress):\(bindPort)"
-        case .local, .remote: "\(bindAddress):\(bindPort):\(destinationHost):\(destinationPort)"
+        case .dynamic: return "\(bind):\(bindPort)"
+        case .local, .remote: return "\(bind):\(bindPort):\(Self.bracketed(destinationHost)):\(destinationPort)"
         }
+    }
+
+    /// `::1` ou `[::1]` donne `[::1]` ; toute autre adresse est rendue telle quelle.
+    public static func bracketed(_ address: String) -> String {
+        let inner = unbracketed(address)
+        return inner.contains(":") ? "[\(inner)]" : address
+    }
+
+    /// `[::1]` donne `::1`.
+    public static func unbracketed(_ address: String) -> String {
+        address.hasPrefix("[") && address.hasSuffix("]") && address.count >= 2 ? String(address.dropFirst().dropLast()) : address
     }
 }

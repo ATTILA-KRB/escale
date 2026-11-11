@@ -87,12 +87,14 @@ private struct TunnelEditForm: View {
             TextField(tunnel.kind == .remote ? "Écoute (serveur)" : "Écoute (ce Mac)", text: $tunnel.bindAddress, prompt: Text("127.0.0.1"))
                 .disableAutocorrection(true)
             TextField("Port d'écoute", value: $tunnel.bindPort, format: .number.grouping(.never))
+                .help(tunnel.kind == .remote ? "0 : le serveur choisit un port libre (affiché dans le gestionnaire)." : "")
             if tunnel.kind != .dynamic {
                 TextField(tunnel.kind == .remote ? "Destination (depuis ce Mac)" : "Destination (depuis le serveur)",
                           text: $tunnel.destinationHost, prompt: Text("localhost"))
                     .disableAutocorrection(true)
                 TextField("Port de destination", value: $tunnel.destinationPort, format: .number.grouping(.never))
             }
+            Text("Adresses IPv6 : ::1 ou [::1] (les crochets sont ajoutés pour ssh).").font(.caption2).foregroundStyle(.secondary)
             Toggle("Ouvrir à la connexion de l'hôte", isOn: $tunnel.autoStart)
             ForEach(errors, id: \.self) { Text($0).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
             ForEach(warnings, id: \.self) {
@@ -169,7 +171,7 @@ struct TunnelManagerView: View {
             }
             .padding(12)
         }
-        .frame(width: 640, height: 460)
+        .frame(width: 640, height: 560)
     }
 }
 
@@ -217,6 +219,16 @@ private struct TunnelRow: View {
                 if case .failed(let m) = state {
                     Text(m).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                 }
+                if let e = model.tunnels.editErrors[tunnel.id] {
+                    Text(e).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                }
+                if state.isActive, let port = model.tunnels.allocatedPorts[tunnel.id] {
+                    HStack(spacing: 4) {
+                        Text("Port attribué par le serveur : \(String(port))").font(.caption).textSelection(.enabled)
+                        Button { copy(String(port)) } label: { Image(systemName: "doc.on.doc") }
+                            .buttonStyle(.borderless).controlSize(.small).help("Copier le port \(port)")
+                    }
+                }
                 ForEach(TunnelValidation.warnings(tunnel), id: \.self) {
                     Label($0, systemImage: "exclamationmark.triangle.fill").font(.caption2).foregroundStyle(.orange)
                         .fixedSize(horizontal: false, vertical: true)
@@ -224,8 +236,9 @@ private struct TunnelRow: View {
             }
             Spacer(minLength: 8)
             badge(state)
-            Button { copy(tunnel.clientURL) } label: { Image(systemName: "doc.on.doc") }
-                .buttonStyle(.borderless).help("Copier \(tunnel.clientURL)")
+            let url = liveURL
+            Button { copy(url) } label: { Image(systemName: "doc.on.doc") }
+                .buttonStyle(.borderless).help("Copier \(url)")
             Button(state.isActive || state == .opening ? "Arrêter" : "Démarrer") {
                 Task {
                     if state.isActive { await model.tunnels.stop(tunnel, on: host) }
@@ -236,6 +249,13 @@ private struct TunnelRow: View {
             .frame(minWidth: 72)
         }
         .padding(.vertical, 2)
+    }
+
+    /// URL à copier ; pour un `-R 0` ouvert, avec le port attribué.
+    private var liveURL: String {
+        guard let port = model.tunnels.allocatedPorts[tunnel.id] else { return tunnel.clientURL }
+        var t = tunnel; t.bindPort = port
+        return t.clientURL
     }
 
     @ViewBuilder private func badge(_ s: TunnelState) -> some View {

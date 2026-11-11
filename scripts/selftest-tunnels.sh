@@ -1,6 +1,7 @@
 #!/bin/bash
 # Recette des tunnels : sshd local non privilégié + serveur HTTP local + scénario --selftest-tunnels piloté en interne.
-# L, D, R et autoStart vérifiés par curl, coupure du maître, rétablissement automatique.
+# L, D, R et autoStart vérifiés par curl, IPv6 (::1), -R 0 (port attribué), modification à chaud d'un tunnel actif
+# (succès, puis échec avec rétablissement de l'ancien), coupure du maître, rétablissement automatique.
 # Sortie : code de l'app ; résultats dans $OUT (result.json + PNG). Ne touche jamais à ~/.ssh.
 set -euo pipefail
 
@@ -14,10 +15,12 @@ mkdir -p "$OUT"
 SSHD_PID=""
 APP_PID=""
 HTTP_PID=""
+HTTP6_PID=""
 
 cleanup() {
   [ -n "$APP_PID" ] && kill -9 "$APP_PID" 2>/dev/null || true
   [ -n "$HTTP_PID" ] && kill "$HTTP_PID" 2>/dev/null || true
+  [ -n "$HTTP6_PID" ] && kill "$HTTP6_PID" 2>/dev/null || true
   if [ -n "$SSHD_PID" ]; then
     pkill -P "$SSHD_PID" 2>/dev/null || true
     kill "$SSHD_PID" 2>/dev/null || true
@@ -40,6 +43,28 @@ HTTP_PID=$!
 for _ in $(seq 1 50); do
   (exec 3<>"/dev/tcp/127.0.0.1/$HTTP_PORT") 2>/dev/null && break
   kill -0 "$HTTP_PID" 2>/dev/null || { echo "serveur HTTP a quitté :"; cat "$WORK/http.log"; exit 2; }
+  sleep 0.1
+done
+
+# --- second serveur HTTP en IPv6 (::1) : cible des tunnels IPv6 et de la modification à chaud
+HTTP6_PORT="$(freeport)"
+BODY6="escale-tunnel-ipv6-$RANDOM$RANDOM"
+mkdir -p "$WORK/www6"
+printf '%s' "$BODY6" > "$WORK/www6/index.html"
+cat > "$WORK/http6.py" <<'PY'
+import http.server, socket, sys
+class S(http.server.ThreadingHTTPServer):
+    address_family = socket.AF_INET6
+    def log_message(self, *a): pass
+import os
+os.chdir(sys.argv[2])
+S(("::1", int(sys.argv[1])), http.server.SimpleHTTPRequestHandler).serve_forever()
+PY
+python3 "$WORK/http6.py" "$HTTP6_PORT" "$WORK/www6" > "$WORK/http6.log" 2>&1 &
+HTTP6_PID=$!
+for _ in $(seq 1 50); do
+  (exec 3<>"/dev/tcp/::1/$HTTP6_PORT") 2>/dev/null && break
+  kill -0 "$HTTP6_PID" 2>/dev/null || { echo "serveur HTTP IPv6 a quitté :"; cat "$WORK/http6.log"; exit 2; }
   sleep 0.1
 done
 
@@ -77,20 +102,23 @@ for _ in $(seq 1 50); do
 done
 
 # --- bibliothèque JSON : « Hôte A » porte 4 tunnels (L, D, R, L autoStart), « Hôte B » aucun
-PL="$(freeport)"; PD="$(freeport)"; PR="$(freeport)"; PA="$(freeport)"
-python3 - "$WORK/library.json" "$PORT" "$D/client" "$(id -un)" "$HTTP_PORT" "$PL" "$PD" "$PR" "$PA" <<'PY'
+PL="$(freeport)"; PD="$(freeport)"; PR="$(freeport)"; PA="$(freeport)"; P6="$(freeport)"; PE="$(freeport)"
+python3 - "$WORK/library.json" "$PORT" "$D/client" "$(id -un)" "$HTTP_PORT" "$PL" "$PD" "$PR" "$PA" "$HTTP6_PORT" "$P6" "$PE" <<'PY'
 import json, sys, uuid
-path, port, key, user, http, pl, pd, pr, pa = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4], *map(int, sys.argv[5:])
+path, port, key, user, http, pl, pd, pr, pa, http6, p6, pe = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4], *map(int, sys.argv[5:])
 folder = str(uuid.uuid4()).upper()
-def tun(kind, bind, dest=0, name="", auto=False):
-    return {"id": str(uuid.uuid4()).upper(), "kind": kind, "bindAddress": "127.0.0.1", "bindPort": bind,
-            "destinationHost": "127.0.0.1" if kind != "dynamic" else "", "destinationPort": dest if kind != "dynamic" else 0,
+def tun(kind, bind, dest=0, name="", auto=False, addr="127.0.0.1", dhost="127.0.0.1"):
+    return {"id": str(uuid.uuid4()).upper(), "kind": kind, "bindAddress": addr, "bindPort": bind,
+            "destinationHost": dhost if kind != "dynamic" else "", "destinationPort": dest if kind != "dynamic" else 0,
             "name": name, "autoStart": auto}
 def host(name, tunnels):
     return {"id": str(uuid.uuid4()).upper(), "name": name, "host": "127.0.0.1", "port": port, "user": user,
             "auth": {"keyFile": {"path": key}}, "jumpHosts": [], "tags": ["test"], "folderID": folder, "tunnels": tunnels}
 a = host("Hôte A", [tun("local", pl, http, "web local"), tun("dynamic", pd, 0, "proxy SOCKS"),
-                    tun("remote", pr, http, "exposition distante"), tun("local", pa, http, "auto", True)])
+                    tun("remote", pr, http, "exposition distante"), tun("local", pa, http, "auto", True),
+                    tun("local", p6, http6, "ipv6 local", addr="::1", dhost="::1"),
+                    tun("remote", 0, http, "distant port attribué"),
+                    tun("local", pe, http, "a modifier")])
 lib = {"folders": [{"id": folder, "name": "Tests locaux"}], "hosts": [a, host("Hôte B", [])]}
 json.dump(lib, open(path, "w"), indent=2)
 PY
@@ -106,6 +134,7 @@ xcodebuild -project Escale.xcodeproj -scheme Escale -configuration Debug -derive
 # --- lancement
 set +e
 ESCALE_TUNNEL_HTTP_PORT="$HTTP_PORT" ESCALE_TUNNEL_HTTP_BODY="$BODY" \
+ESCALE_TUNNEL_HTTP6_PORT="$HTTP6_PORT" ESCALE_TUNNEL_HTTP6_BODY="$BODY6" \
 "$DD/Build/Products/Debug/Escale.app/Contents/MacOS/Escale" \
   --library "$WORK/library.json" --ssh-config /dev/null --known-hosts "$D/known_hosts" \
   --ssh-option IdentityAgent=none --ssh-option GlobalKnownHostsFile=/dev/null \
