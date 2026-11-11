@@ -234,7 +234,9 @@ struct HostEditorSheet: View {
         h.folderID = folderID
         h.tunnels = tunnels
         h.x11Forwarding = x11Forwarding
+        let previousTunnels = host?.tunnels ?? []
         model.library.upsert(h)
+        model.tunnels.hostSaved(oldTunnels: previousTunnels, host: h) // modification à chaud des tunnels actifs
         dismiss()
     }
 }

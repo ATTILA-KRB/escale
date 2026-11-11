@@ -73,6 +73,8 @@ struct TunnelSelfTest {
                 "failed": checks.filter { !$0.1 }.map(\.0),
                 "screenshots": shots,
                 "notes": notes,
+                "not_tested": ["fiche d'édition (popover SwiftUI) et clic sur Enregistrer : le scénario appelle upsert + hostSaved comme save()",
+                               "copie dans le presse-papiers du port attribué / de l'URL (bouton du gestionnaire)"],
             ]
             if let d = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]) {
                 try? d.write(to: URL(fileURLWithPath: "\(dir)/result.json"))
@@ -106,7 +108,13 @@ struct TunnelSelfTest {
                   let auto = host.tunnels.first(where: { $0.autoStart }) else {
                 check("hote_avec_tunnels", false, "bibliothèque inattendue"); return finish()
             }
-            check("hote_avec_tunnels", host.tunnels.count == 4, "\(host.tunnels.map(\.summary))")
+            check("hote_avec_tunnels", host.tunnels.count == 7, "\(host.tunnels.map(\.summary))")
+            guard let http6Port = env["ESCALE_TUNNEL_HTTP6_PORT"].flatMap(Int.init), let body6 = env["ESCALE_TUNNEL_HTTP6_BODY"],
+                  let v6 = host.tunnels.first(where: { $0.name == "ipv6 local" }),
+                  let r0 = host.tunnels.first(where: { $0.name == "distant port attribué" }),
+                  let ed = host.tunnels.first(where: { $0.name == "a modifier" }) else {
+                check("environnement_ipv6", false, "ESCALE_TUNNEL_HTTP6_* ou tunnels IPv6 / -R 0 / à modifier absents"); return finish()
+            }
             let feature = model.tunnels
             let url: (TunnelSpec) -> String = { "http://127.0.0.1:\($0.bindPort)/" }
             check("etat_initial_arrete", host.tunnels.allSatisfy { feature.state(of: $0.id) == .stopped })
@@ -154,6 +162,66 @@ struct TunnelSelfTest {
             check("dynamic_reouvert", await feature.start(d, on: host) == .active)
             c = await curl(["--socks5-hostname", "127.0.0.1:\(d.bindPort)", "http://127.0.0.1:\(httpPort)/"])
             check("dynamic_curl_apres_reouverture", c.out == body)
+
+            // 5b. IPv6 : écoute sur [::1], destination [::1] ; curl par ::1.
+            check("ipv6_argument_ssh", v6.specArgument.hasPrefix("[::1]:") && v6.specArgument.contains(":[::1]:"), v6.specArgument)
+            check("ipv6_ouvert", await feature.start(v6, on: host) == .active, "\(feature.state(of: v6.id))")
+            c = await curl(["-g", "http://[::1]:\(v6.bindPort)/"])
+            check("ipv6_curl", c.status == 0 && c.out == body6, "status \(c.status) corps \(c.out.prefix(60))")
+            check("ipv6_arret", await feature.stop(v6, on: host) == .stopped)
+            await sleep(0.5)
+            c = await curl(["-g", "http://[::1]:\(v6.bindPort)/"])
+            check("ipv6_port_ferme", c.status != 0, "status \(c.status)")
+
+            // 5c. -R 0 : le serveur attribue le port ; il est récupéré, utilisable, puis fermé à l'arrêt.
+            check("r0_ouvert", await feature.start(r0, on: host) == .active, "\(feature.state(of: r0.id))")
+            let allocated = feature.allocatedPorts[r0.id]
+            check("r0_port_attribue", (allocated ?? 0) > 0, "\(String(describing: allocated))")
+            if let allocated {
+                c = await curl(["http://127.0.0.1:\(allocated)/"])
+                check("r0_curl_port_attribue", c.status == 0 && c.out == body, "port \(allocated) status \(c.status)")
+                check("r0_arret", await feature.stop(r0, on: host) == .stopped && feature.allocatedPorts[r0.id] == nil)
+                await sleep(0.5)
+                check("r0_port_ferme", await isClosed(allocated), "port \(allocated)")
+            }
+
+            // 5d. Modification d'un tunnel ACTIF (comme à l'enregistrement de la fiche d'hôte : upsert + hostSaved).
+            check("edition_ouvert", await feature.start(ed, on: host) == .active)
+            c = await curl([url(ed)])
+            check("edition_avant_curl", c.out == body, "corps \(c.out.prefix(60))")
+            var edited = ed; edited.destinationHost = "::1"; edited.destinationPort = http6Port // même port d'écoute, autre cible (IPv6)
+            var h1 = model.library.host(host.id) ?? host
+            h1.tunnels = h1.tunnels.map { $0.id == ed.id ? edited : $0 }
+            model.library.upsert(h1)
+            feature.hostSaved(oldTunnels: host.tunnels, host: h1)
+            var editedBody = ""
+            await sleep(0.5)
+            for _ in 0..<20 where editedBody != body6 { editedBody = await curl([url(ed)]).out; if editedBody != body6 { await sleep(0.25) } }
+            let switched = await wait(15) { feature.state(of: ed.id) == .active } // l'état final suit la réouverture
+            check("edition_appliquee_curl", switched && editedBody == body6, "état \(feature.state(of: ed.id)) corps \(editedBody.prefix(60))")
+            check("edition_sans_erreur", feature.editErrors[ed.id] == nil)
+            // Modification refusée : le port d'écoute est pris par un autre programme (le serveur HTTP lui-même).
+            var clash = edited; clash.bindPort = httpPort
+            var h2 = model.library.host(host.id) ?? host
+            h2.tunnels = h2.tunnels.map { $0.id == ed.id ? clash : $0 }
+            model.library.upsert(h2)
+            feature.hostSaved(oldTunnels: h1.tunnels, host: h2)
+            let errShown = await wait(15) { feature.editErrors[ed.id] != nil }
+            check("edition_echec_erreur_affichee", errShown, feature.editErrors[ed.id] ?? "aucune erreur")
+            check("edition_echec_ancien_retabli", feature.state(of: ed.id) == .active, "\(feature.state(of: ed.id))")
+            c = await curl([url(ed)])
+            check("edition_echec_ancien_curl", c.out == body6, "corps \(c.out.prefix(60))")
+            c = await curl(["http://127.0.0.1:\(httpPort)/"])
+            check("edition_echec_programme_tiers_intact", c.out == body)
+            check("edition_echec_gestionnaire_ouvert", await wait(5) { feature.isManagerPresented })
+            await sleep(0.8)
+            capture(win, "03-edition-refusee")
+            feature.isManagerPresented = false
+            _ = await wait(5) { model.activeFeatureSheet == nil }
+            // Retour à une bibliothèque saine, puis arrêt du tunnel modifié.
+            model.library.upsert(h1)
+            check("edition_arret", await feature.stop(edited, on: host) == .stopped)
+            check("edition_port_ferme", await isClosed(ed.bindPort))
 
             // 6. Coupure brutale du maître : tunnels marqués arrêtés, puis rétablis seuls à la reconnexion.
             let link = conn.links[0]

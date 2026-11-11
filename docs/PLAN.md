@@ -242,7 +242,14 @@ A faire : test sur un Mac vierge ; choix du domaine et publication du flux (voir
 - **Correctif transport** : `OpenSSHTransport.connect()` vide sa liste de tunnels ouverts (un maître neuf n'a aucun forwarding) ; sans cela un tunnel de l'ancien maître mort n'était jamais rouvert.
 - **App** (`Escale/Tunnels/`) : `TunnelFeature` (observateur `linkObservers["tunnels"]` : `.connected` rouvre les tunnels voulus + `autoStart`, `.lost/.disconnected` les marque arrêtés ; surveillance périodique du maître ; un tunnel voulu retient le lien, la connexion survit à la fermeture du dernier onglet). UI : `TunnelEditorSection` (fiche d'hôte), gestionnaire en feuille ⇧⌘T (`activeFeatureSheet = "tunnels"`), « Tunnels… » dans le menu d'hôte, copie d'URL.
 - **Preuves** : `swift test` (tunnels L/D/R par curl, port occupé, `AllowTcpForwarding no`, cancel effectif, coupure du maître) ; `scripts/selftest-tunnels.sh` (connexion, autoStart, L/R/D par curl, port occupé, arrêt, SIGKILL du maître, rétablissement auto, 30 contrôles).
-- **Limites** : IPv6 non pris en charge dans les adresses de tunnel ; pas de modification d'un tunnel actif (arrêter puis relancer) ; R sans bash côté serveur = confiance au serveur ; `-R 0` (port attribué) non géré.
+- **Limites** : R sans bash côté serveur = confiance au serveur (la sonde distante renvoie « inconnu »). Voir « Tunnels : IPv6, -R 0, modification à chaud » plus bas pour le reste.
+
+### Tunnels : IPv6, -R 0, modification a chaud (branche `v2-tunnels`)
+- **Syntaxe ssh verifiee (OpenSSH systeme)** : `-L/-R/-D` et `-O forward/cancel` acceptent `[::1]:8080:[::1]:80` ; la forme `::1/8080/::1/80` et `::1:8080:::1:80` sont refusees (« Bad local forwarding specification »). `TunnelSpec.specArgument` met donc toujours les adresses IPv6 entre crochets (saisie avec ou sans crochets, `::` et `::1` acceptes, zones `%if` refusees). Sonde de port et curl de l'app en IPv6 (`AF_UNSPEC`, crochets retires), doublons compares sur l'adresse canonique.
+- **-R 0** : `ssh -O forward -R 0:...` imprime le port attribue sur stdout ; `OpenSSHTransport.openTunnel` le renvoie (`addTunnel` inchange). `TunnelController.allocatedPort(of:)`, `TunnelFeature.allocatedPorts` ; le gestionnaire affiche « Port attribue par le serveur : N » avec bouton de copie, et l'URL copiee porte ce port. `-O cancel` ne retrouve la redirection que par la specification demandee (port 0), pas par le port attribue : le controleur garde la specification demandee. Deux `-R 0` identiques sont fusionnes par ssh (meme port) : le second est refuse avec un message.
+- **Modification d'un tunnel actif** : `TunnelController.replace(with:)` = validation, cancel de l'ancien, forward du nouveau ; en cas d'echec l'ancien est reouvert (`restored`) et l'erreur est renvoyee. `HostEditorSheet.save()` appelle `TunnelFeature.hostSaved` (ajout minimal) : tunnels modifies actifs remplaces a chaud, tunnels supprimes fermes ; l'erreur reste affichee dans le gestionnaire (`editErrors`, feuille ouverte).
+- **Preuves** : `swift test` (228 tests, dont IPv6 L/D/R par curl via `::1`, -R 0, remplacement reussi/refuse/rollback L et R, validations) ; `scripts/selftest-tunnels.sh` 52 controles ok (IPv6, -R 0, edition a chaud + echec avec retablissement) ; ssh et panes ok.
+- **Limites** : la fiche d'edition SwiftUI (clic Enregistrer) n'est pas pilotee : la recette appelle `upsert` + `hostSaved` comme `save()`. Copie presse-papiers non verifiee. Pas d'adresses IPv6 a zone (`%en0`). Une modification est mise en file : deux enregistrements tres rapproches peuvent se chevaucher.
 
 ### M3 multi-execution
 
@@ -358,6 +365,7 @@ Restes (non verifiables ici ou hors perimetre) :
   icone calee a gauche. Chemin de cle de l'editeur : deja tronque au milieu avec infobulle (verifie en capture).
 - Captures ssh apres reconnexion : `refreshDisplay` force `displayIfNeeded` + `CATransaction.flush`, trois passes + attente de frame.
 - Verifie : coeur 220 tests, recettes ssh 65, auth 99, panes (OSC 52, menu), macros 62, sftp 78, tunnels 31, multiexec 64, import : ok.
+- Multi-exec : Echap ne sort pas de la diffusion (diffuse).
 - Icone de l'app absente. Dettes M1 inchangees (PaneMenu, troncatures, OSC 52).
 
 ### Spike S3 + terminal : IME et accessibilite (2026-11-11) — PARTIEL

@@ -96,7 +96,8 @@ enum OpenSSHPortProbe {
 
     private static func probeBlocking(host: String, port: Int, observe: TimeInterval) -> Outcome {
         // Une adresse d'écoute générique se sonde via le loopback.
-        let target = (host.isEmpty || host == "*" || host == "0.0.0.0") ? "127.0.0.1" : (host == "::" ? "::1" : host)
+        let bare = TunnelSpec.unbracketed(host)
+        let target = (bare.isEmpty || bare == "*" || bare == "0.0.0.0") ? "127.0.0.1" : (bare == "::" ? "::1" : bare)
         var hints = addrinfo(); hints.ai_family = AF_UNSPEC; hints.ai_socktype = SOCK_STREAM
         var res: UnsafeMutablePointer<addrinfo>?
         guard getaddrinfo(target, String(port), &hints, &res) == 0, let first = res else { return .closed }

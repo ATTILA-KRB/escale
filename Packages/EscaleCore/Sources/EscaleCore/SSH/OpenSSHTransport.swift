@@ -303,8 +303,17 @@ public actor OpenSSHTransport: SSHTransport {
     // MARK: - Tunnels
 
     public func addTunnel(_ tunnel: TunnelSpec) async throws {
+        _ = try await openTunnel(tunnel)
+    }
+
+    /// Comme `addTunnel`, et renvoie la spécification réellement ouverte : pour `-R 0`, le port attribué par le serveur
+    /// (imprimé sur stdout par `ssh -O forward`) remplace le 0 ; c'est cette spécification qu'il faut annuler.
+    @discardableResult
+    public func openTunnel(_ tunnel: TunnelSpec) async throws -> TunnelSpec {
         guard await isAlive() else { throw SSHTransportError.notConnected }
-        if tunnels.contains(tunnel) { return }
+        if let existing = tunnels.first(where: { $0.id == tunnel.id && $0.kind == tunnel.kind && $0.destinationPort == tunnel.destinationPort
+                                                  && $0.destinationHost == tunnel.destinationHost && $0.bindAddress == tunnel.bindAddress
+                                                  && ($0.bindPort == tunnel.bindPort || tunnel.bindPort == 0) }) { return existing }
         let b = try makeBuilder()
         let before = masterJournal().utf8.count
         let r = await run(try b.controlArguments(.forward(tunnel)), timeout: 10)
@@ -328,9 +337,20 @@ public actor OpenSSHTransport: SSHTransport {
                 break // rien à sonder localement : seul le message de ssh (vérifié ci-dessus) renseigne.
             }
         }
-        tunnels.insert(tunnel)
+        var opened = tunnel
+        if tunnel.kind == .remote, tunnel.bindPort == 0 {
+            let digits = r.stdout.split(whereSeparator: \.isWhitespace).compactMap { Int($0) }.last
+            guard let port = digits, (1...65535).contains(port) else {
+                throw SSHTransportError.forwardRefused("le serveur n'a pas indiqué le port attribué à -R 0 : \(text)")
+            }
+            opened.bindPort = port
+        }
+        tunnels.insert(opened)
+        return opened
     }
 
+    /// Annule un tunnel. Pour un `-R 0`, passer la spécification DEMANDÉE (port 0) : ssh ne reconnaît pas le port attribué
+    /// dans `-O cancel` (« master cancel forward request failed ») mais retrouve la redirection par son 0.
     public func removeTunnel(_ tunnel: TunnelSpec) async throws {
         guard await isAlive() else { throw SSHTransportError.notConnected }
         let b = try makeBuilder()
@@ -339,7 +359,7 @@ public actor OpenSSHTransport: SSHTransport {
             // Le port local doit réellement avoir cessé d'écouter (quelques essais : fermeture côté maître asynchrone).
             for attempt in 0..<10 {
                 if await OpenSSHPortProbe.probe(host: tunnel.bindAddress, port: tunnel.bindPort, observe: 0) == .closed {
-                    tunnels.remove(tunnel); return
+                    forgetTunnel(tunnel); return
                 }
                 if attempt < 9 { try? await Task.sleep(for: .milliseconds(50)) }
             }
@@ -349,8 +369,11 @@ public actor OpenSSHTransport: SSHTransport {
         if r.status != 0 || r.timedOut || Self.looksLikeForwardError(r.combined) {
             throw SSHTransportError.forwardRefused(r.combined)
         }
-        tunnels.remove(tunnel)
+        forgetTunnel(tunnel)
     }
+
+    /// Oublie le tunnel par identifiant (la spécification mémorisée d'un `-R 0` porte le port attribué, pas 0).
+    private func forgetTunnel(_ tunnel: TunnelSpec) { tunnels = tunnels.filter { $0.id != tunnel.id } }
 
     private func verifyLocalProbe(_ outcome: OpenSSHPortProbe.Outcome, tunnel: TunnelSpec, journalOffset: Int, builder: OpenSSHCommandBuilder) async throws {
         // Laisse au maître le temps de journaliser un éventuel rejet.

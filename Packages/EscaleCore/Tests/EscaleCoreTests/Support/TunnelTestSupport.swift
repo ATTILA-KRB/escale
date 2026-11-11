@@ -8,18 +8,30 @@ final class TestHTTPServer: @unchecked Sendable {
     private let lock = NSLock()
     private var stopped = false
 
-    init(body: String = "escale-tunnel-ok") throws {
+    /// `ipv6` : écoute sur `::1` (cible d'un tunnel IPv6) au lieu de 127.0.0.1.
+    init(body: String = "escale-tunnel-ok", ipv6: Bool = false) throws {
         self.body = body
-        let s = socket(AF_INET, SOCK_STREAM, 0)
+        let s = socket(ipv6 ? AF_INET6 : AF_INET, SOCK_STREAM, 0)
         guard s >= 0 else { throw LocalSSHD.StartError(description: "socket") }
         var one: Int32 = 1
         setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, socklen_t(MemoryLayout<Int32>.size))
-        var a = sockaddr_in(); a.sin_family = sa_family_t(AF_INET); a.sin_addr.s_addr = inet_addr("127.0.0.1"); a.sin_port = 0
-        let b = withUnsafePointer(to: &a) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(s, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) } }
-        guard b == 0, listen(s, 16) == 0 else { close(s); throw LocalSSHD.StartError(description: "bind/listen") }
-        var len = socklen_t(MemoryLayout<sockaddr_in>.size)
-        _ = withUnsafeMutablePointer(to: &a) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(s, $0, &len) } }
-        port = Int(UInt16(bigEndian: a.sin_port)); fd = s
+        if ipv6 {
+            var a = sockaddr_in6(); a.sin6_len = UInt8(MemoryLayout<sockaddr_in6>.size); a.sin6_family = sa_family_t(AF_INET6)
+            a.sin6_addr = in6addr_loopback; a.sin6_port = 0
+            let b = withUnsafePointer(to: &a) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(s, $0, socklen_t(MemoryLayout<sockaddr_in6>.size)) } }
+            guard b == 0, listen(s, 16) == 0 else { close(s); throw LocalSSHD.StartError(description: "bind/listen IPv6") }
+            var len = socklen_t(MemoryLayout<sockaddr_in6>.size)
+            _ = withUnsafeMutablePointer(to: &a) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(s, $0, &len) } }
+            port = Int(UInt16(bigEndian: a.sin6_port))
+        } else {
+            var a = sockaddr_in(); a.sin_family = sa_family_t(AF_INET); a.sin_addr.s_addr = inet_addr("127.0.0.1"); a.sin_port = 0
+            let b = withUnsafePointer(to: &a) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(s, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) } }
+            guard b == 0, listen(s, 16) == 0 else { close(s); throw LocalSSHD.StartError(description: "bind/listen") }
+            var len = socklen_t(MemoryLayout<sockaddr_in>.size)
+            _ = withUnsafeMutablePointer(to: &a) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(s, $0, &len) } }
+            port = Int(UInt16(bigEndian: a.sin_port))
+        }
+        fd = s
         let payload = body
         Thread.detachNewThread { [fd] in
             while true {
