@@ -1,0 +1,12 @@
+[Bookmarks]
+SubRep=
+ImgNum=42
+Routeur Telnet=#98#1%10.1.1.1%23%%%2%%%%%0%0%%1080%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+Telnet port custom=#98#1%10.1.1.2%2323%ops%%2%%%%%0%0%%1080%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+Bureau Windows=#91#4%win.example.com%3390%administrateur%0%0%0%0%-1%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+Bureau defaut=#91#4%win2.example.com%3389%<default>%0%0%0%0%-1%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+Ecran VNC=#128#5%vnc.example.com%5901%-1%0%gw.example.com%22%gwuser%%%%%#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+Console COM=#131#8%1%1115200%3%0%0%1%2%COM9 (USB Serial Port (COM9))#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+Console 9600=#131#8%-2%1009600%3%0%0%1%2%/dev/ttyUSB0#MobaFont%10%0%0%-1%15%236,236,236%30,30,30%180,180,192%0%-1%0%%xterm%-1%0%_Std_Colors_0_%80%24%0%1%-1%<none>%%0#0# #-1
+Partage FTP=#130#6%ftp.example.com%21%anon%%#MobaFont%10#0# #-1
+Mosh=#145#12%mosh.example.com%22%u%%#MobaFont%10#0# #-1

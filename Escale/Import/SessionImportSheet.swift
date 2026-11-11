@@ -1,7 +1,7 @@
 import SwiftUI
 import EscaleCore
 
-/// Feuille d'aperçu de l'import de sessions MobaXterm / PuTTY / CSV (même présentation que `ImportSheet`).
+/// Feuille d'aperçu de l'import de sessions MobaXterm / PuTTY / Termius / CSV (même présentation que `ImportSheet`).
 struct SessionImportSheet: View {
     let model: AppModel
     @Bindable var importer: SessionImportModel
@@ -22,7 +22,7 @@ struct SessionImportSheet: View {
             if let error = importer.error {
                 Text(error).foregroundStyle(.red).padding(20).frame(maxWidth: .infinity, minHeight: 120, alignment: .center)
             } else if importer.sessions.isEmpty {
-                Text("Aucune session SSH trouvée dans ce fichier.").foregroundStyle(.secondary)
+                Text("Aucune session importable trouvée dans ce fichier.").foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 List { ForEach(importer.sessions) { row($0) } }
@@ -82,6 +82,8 @@ struct SessionImportSheet: View {
                 .labelsHidden().disabled(!importable)
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
+                    Image(systemName: s.connectionProtocol.symbolName).foregroundStyle(.secondary)
+                        .help(s.connectionProtocol.displayName).accessibilityLabel(s.connectionProtocol.displayName)
                     Text(s.name).fontWeight(.medium)
                     if !importable {
                         Text("déjà présent").font(.caption2).padding(.horizontal, 5).padding(.vertical, 1)
@@ -98,6 +100,11 @@ struct SessionImportSheet: View {
 
     private func detail(_ s: ImportedSession) -> String {
         var parts = [(s.user.map { "\($0)@" } ?? "") + s.host + (s.port.map { ":\($0)" } ?? "")]
+        if s.connectionProtocol != .ssh { parts.insert(s.connectionProtocol.displayName, at: 0) }
+        if let serial = s.serial {
+            parts[parts.count - 1] = serial.devicePath.isEmpty ? "port à choisir" : serial.devicePath
+            parts.append("\(serial.baudRate) bauds")
+        }
         if !s.folderPath.isEmpty { parts.append("Dossier : " + s.folderPath.joined(separator: " / ")) }
         if !s.jumpHosts.isEmpty { parts.append("Bastion : " + s.jumpHosts.joined(separator: ", ")) }
         if !s.tunnels.isEmpty { parts.append("\(s.tunnels.count) tunnel\(s.tunnels.count > 1 ? "s" : "")") }

@@ -281,7 +281,7 @@ Dossier `Escale/MultiExec/` + coeur `Packages/EscaleCore/Sources/EscaleCore/Mult
 - Enregistrement : `TerminalSession.inputObservers["macros"]` sur le panneau actif (`MacroRecorder` fusionne les octets en étapes). Lecture : `TerminalSession.write` (pas d'écho aux observateurs) sur le panneau actif ou sur tous les panneaux de l'onglet (sans dépendre de multiexec). Menu « Macros », gestionnaire en feuille (`activeFeatureSheet = "macros"`).
 - **X11** : `ConnectionManager.sshOptions(for:)` ajoute `ForwardX11=yes`, `ForwardX11Trusted=no` (défaut ; « mode confiance » opt-in dans l'éditeur d'hôte), `XAuthLocation` et `DISPLAY` (socket launchd XQuartz) au **maître** seulement si l'hôte a `x11Forwarding` ET XQuartz est détecté ; sinon aucune option X11 (jamais de `-X` sans XQuartz) et une note dans le terminal. « Lancer une application X11… » (menu hôte) exécute la commande par un client secondaire sur le maître (`-o ControlMaster=no -o ProxyCommand=/usr/bin/false`, invariant 2), avec le forward X11 hérité du maître.
 - Tests : `swift test --filter "Macros|X11"` (dont sshd local `X11Forwarding yes` + faux xauth + faux serveur X : DISPLAY distant `localhost:10`, connexion X rapatriée sur le serveur local) ; `scripts/selftest-macros.sh`.
-- **Reste à valider par Rayan** : affichage réel de `xeyes` en un clic après installation de XQuartz (non installé ici, sudo requis) ; le mode non confiance (extension SECURITY) n'est vérifié qu'avec un vrai xauth.
+- **Reste à valider par Rayan** : affichage réel de `xeyes` en un clic avec le serveur X11 intégré (voir « Serveur X11 integre » en fin de fichier ; XQuartz n'est plus requis) ; le mode non confiance (extension SECURITY) n'est vérifié qu'avec un vrai xauth.
 
 ### M2 interface SFTP (2026-11-11, branche `m-sftp-ui`)
 Code dans `Escale/SFTP/` ; cœur SFTP inchangé (API publique `SFTPClient`, `openSFTPChannel`).
@@ -461,7 +461,7 @@ inclut aussi les rapports souris/focus des applications distantes (negligeable).
   (repond a `GenerateAuthorization`). Recette `selftest-macros.sh` (hote Z, `ForwardX11Trusted=no`, vrai xauth) : le vrai `xauth generate … untrusted`
   obtient un cookie MIT-MAGIC-COOKIE-1 du serveur ; sshd distant ne recoit qu'un cookie de substitution different ; la connexion X rapatriee
   arrive au serveur avec le vrai cookie genere (`CONNECT … ok`). La detection connait `/opt/homebrew/bin/xauth` (apres `/opt/X11/bin/xauth`)
-  mais exige toujours XQuartz installe (`/opt/X11` ou XQuartz.app) : l'affichage reel reste a valider avec XQuartz.
+  mais exigeait alors XQuartz installe (`/opt/X11` ou XQuartz.app) ; depuis le serveur X11 integre (voir « Serveur X11 integre » en fin de fichier) XQuartz n'est plus requis, il ne sert que de secours.
 - Recettes : `selftest-import.sh` (+ MobaXterm.ini, RemoteCommand, proxy SSH), `selftest-macros.sh` (+ commande de connexion via sshd, X11 non fiable).
 
 ### Serveur X11 integre (2026-11-11)

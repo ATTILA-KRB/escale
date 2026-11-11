@@ -5,8 +5,13 @@ import Foundation
 ///
 /// Sources : documentation PuTTY (https://the.earth.li/~sgtatham/putty/latest/htmldoc/ : « Storing configuration in a file »,
 /// « Port forwarding ») et `settings.c` de PuTTY (noms de valeurs, `PortForwardings`, nom de session échappé en `%XX`).
-/// Valeurs lues : `HostName`, `PortNumber` (dword), `UserName`, `Protocol` (seul `ssh` ; absent = ssh), `PublicKeyFile`,
+/// Valeurs lues : `HostName`, `PortNumber` (dword), `UserName`, `Protocol` (`ssh` ; absent = ssh ; `telnet` et `serial` aussi, `raw`
+/// et `rlogin` sont ignorés avec un avertissement), `PublicKeyFile`,
 /// `PortForwardings` (`L[adresse:]port=hôte:port`, `R…`, `D[adresse:]port`, séparés par des virgules), `X11Forward` (dword).
+/// Série (settings.c de PuTTY, valeurs de putty.h) : `SerialLine` (`COM3`, `/dev/ttyUSB0`), `SerialSpeed` (bauds), `SerialDataBits`,
+/// `SerialStopHalfbits` (2 = 1 bit, 3 = 1,5, 4 = 2), `SerialParity` (0 aucune, 1 impaire, 2 paire, 3 marque, 4 espace),
+/// `SerialFlowControl` (0 aucun, 1 XON/XOFF, 2 RTS/CTS, 3 DSR/DTR). Sans équivalent : 1,5 arrêt → 1, marque/espace → aucune,
+/// DSR/DTR → matériel (avertissement). Une ligne `COMx` n'existe pas sous macOS : `devicePath` vide + avertissement « choisir le port ».
 /// Le nom de session est décodé (`My%20Server`) ; un `/` dans le nom (convention de dossiers de KiTTY/PuTTYCM) crée
 /// des dossiers. « Default Settings » est ignoré.
 /// `RemoteCommand` (« Remote command », Connection › SSH ; settings.c) → `startupCommand` (voir `StartupCommand` : PuTTY remplace
@@ -63,6 +68,12 @@ public struct PuTTYRegImporter: SessionImporter {
             guard let v = entries[key] else { continue }
             let method = (v["ProxyMethod"] ?? "0").lowercased()
             let name = result.sessions[i].name
+            guard result.sessions[i].connectionProtocol == .ssh else {
+                if method != "0", method != "none" {
+                    result.warnings.append("« \(name) » : proxy PuTTY ignoré (session \(result.sessions[i].connectionProtocol.displayName), pas SSH).")
+                }
+                continue
+            }
             if method == "0" || method == "none" { continue }
             guard method == "6" || method == "ssh" else {
                 let label = ["1": "SOCKS4", "2": "SOCKS5", "3": "HTTP", "4": "Telnet", "5": "commande locale", "7": "SSH + commande", "8": "SSH + sous-système"][method] ?? "type \(method)"
@@ -90,10 +101,12 @@ public struct PuTTYRegImporter: SessionImporter {
         let name = rawName.removingPercentEncoding ?? rawName
         if name == "Default Settings" { return }
         let proto = (v["Protocol"] ?? "ssh").lowercased()
-        guard proto == "ssh" else {
-            result.warnings.append("« \(name) » : protocole \(proto) non SSH, ignoré.")
+        if proto == "serial" { serialSession(name: name, values: v, into: &result); return }
+        guard proto == "ssh" || proto == "telnet" else {
+            result.warnings.append("« \(name) » : protocole \(proto) non pris en charge, ignoré.")
             return
         }
+        let isTelnet = proto == "telnet"
         if let p = v["ProxyPassword"], !p.isEmpty { result.ignoredPasswordCount += 1 }
         var host = (v["HostName"] ?? "").trimmingCharacters(in: .whitespaces)
         var user = (v["UserName"] ?? "").trimmingCharacters(in: .whitespaces)
@@ -111,13 +124,58 @@ public struct PuTTYRegImporter: SessionImporter {
         let display = comps.popLast() ?? name
 
         var port: Int?
-        if let p = v["PortNumber"] { port = ImportSupport.port(p) }
+        if let p = v["PortNumber"] { port = ImportSupport.port(p, protocol: isTelnet ? .telnet : .ssh) }
+        if isTelnet {
+            result.sessions.append(ImportedSession(
+                name: display, host: host, port: port, user: user.isEmpty ? nil : user, folderPath: comps,
+                connectionProtocol: .telnet))
+            return
+        }
         let auth = ImportSupport.auth(forKeyPath: v["PublicKeyFile"] ?? "", sessionName: name, warnings: &result.warnings)
         let tunnels = Self.tunnels(v["PortForwardings"] ?? "", sessionName: name, warnings: &result.warnings)
         result.sessions.append(ImportedSession(
             name: display, host: host, port: port, user: user.isEmpty ? nil : user, auth: auth,
             folderPath: comps, tunnels: tunnels, x11Forwarding: v["X11Forward"] == "1",
             startupCommand: StartupCommand.normalized(v["RemoteCommand"])))
+    }
+
+    /// Session série : `SerialLine`, `SerialSpeed`, `SerialDataBits`, `SerialStopHalfbits`, `SerialParity`, `SerialFlowControl`.
+    private func serialSession(name rawName: String, values v: [String: String], into result: inout SessionImportResult) {
+        let name = rawName
+        var comps = name.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+        let display = comps.popLast() ?? name
+        var s = SerialSettings()
+        let line = (v["SerialLine"] ?? "").trimmingCharacters(in: .whitespaces)
+        if line.hasPrefix("/dev/") {
+            s.devicePath = line
+        } else {
+            result.warnings.append("« \(name) » : port série PuTTY « \(line.isEmpty ? "inconnu" : line) » sans équivalent macOS, choisir le port (/dev/cu.…) après l'import.")
+        }
+        if let b = Int(v["SerialSpeed"] ?? ""), b > 0 { s.baudRate = b }
+        if let d = Int(v["SerialDataBits"] ?? ""), (5...8).contains(d) { s.dataBits = d }
+        switch v["SerialStopHalfbits"] ?? "2" {
+        case "4": s.stopBits = 2
+        case "3":
+            result.warnings.append("« \(name) » : 1,5 bit d'arrêt sans équivalent, 1 bit utilisé.")
+        default: break
+        }
+        switch v["SerialParity"] ?? "0" {
+        case "1": s.parity = .odd
+        case "2": s.parity = .even
+        case "3", "4":
+            result.warnings.append("« \(name) » : parité marque/espace sans équivalent, aucune parité utilisée.")
+        default: break
+        }
+        switch v["SerialFlowControl"] ?? "0" {
+        case "1": s.flowControl = .software
+        case "2": s.flowControl = .hardware
+        case "3":
+            s.flowControl = .hardware
+            result.warnings.append("« \(name) » : contrôle de flux DSR/DTR sans équivalent, matériel (RTS/CTS) utilisé.")
+        default: break
+        }
+        result.sessions.append(ImportedSession(
+            name: display, host: s.devicePath, folderPath: comps, connectionProtocol: .serial, serial: s))
     }
 
     // MARK: Lignes .reg
