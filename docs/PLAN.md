@@ -146,7 +146,7 @@ Décisions qui en découlent :
 3. Metal activé avec repli CoreGraphics.
 4. OSC 52 : lecture du presse-papiers refusée par défaut.
 5. Captures de test : `screencapture -l <windowID>` (cacheDisplay sort noir avec Metal).
-6. Spike S3 à prévoir avant M1 : IME réel (CJK, touches mortes AZERTY) et accessibilité.
+6. Spike S3 : IME (CJK, touches mortes AZERTY) et accessibilité — PARTIEL, voir « Spike S3 + terminal ».
 
 ## 9. Avancement (2026-11-10)
 
@@ -166,7 +166,7 @@ reconnexion, branchement de `OpenSSHTransport` dans l'app (aujourd'hui la fenetr
 Dettes connues :
 - SFTP : rien de mesure sur un lien reel (latence), seulement loopback et simulation (dette de M1 sur delai, reprise,
   fenetre et fd du PTY soldee, voir « M2 coeur SFTP »).
-- Terminal : IME et accessibilite non verifies (spike S3) ; politique OSC 52 codee mais non testee.
+- Terminal : IME et accessibilite traites par le spike S3 (voir plus bas) ; politique OSC 52 codee mais non testee.
 - Compteur de sessions shell : decremente a la main (`shellSessionDidEnd`), a lier a la fin du pty.
 
 ### Vague 2 (2026-11-10, suite)
@@ -335,7 +335,38 @@ tunnels 31, multiexec 64, macros 62, import 28 controles : toutes `ok`.
 Restes (non verifiables ici ou hors perimetre) :
 - Mac vierge : telechargement reel (quarantaine), Gatekeeper, mise a jour Sparkle complete. Domaine et `ESCALE_FEED_URL` a decider.
 - XQuartz : `xeyes` en un clic a valider apres installation (sudo). Mode X11 non fiable avec vrai cookie xauth non teste.
-- Gestes reels non pilotes : glisser-deposer Finder, clics menus, IME/VoiceOver (spike S3), lien distant a vraie latence.
+- Gestes reels non pilotes : glisser-deposer Finder, clics menus, lien distant a vraie latence. IME/VoiceOver : voir spike S3 (reste le test humain AZERTY/CJK/VoiceOver reels).
 - SFTP UI : un transfert reessaye repart de zero (brancher la reprise verifiee du coeur) ; pas de tri par colonne.
 - Tunnels : IPv6, `-R 0`, modification d'un tunnel actif. Multi-exec : Echap ne sort pas de la diffusion (diffuse).
 - Icone de l'app absente. Dettes M1 inchangees (PaneMenu, troncatures, OSC 52).
+
+### Spike S3 + terminal : IME et accessibilite (2026-11-11) — PARTIEL
+
+Code : `Escale/Terminal/EscaleTerminalView.swift` (sous-classe de `TerminalView`), `SwiftTermEngine` (API ajoutee : `accessibilityLabel`,
+`textInputClient`, `isComposing`, compteurs), `TerminalSelfTest`, `scripts/selftest-terminal.sh` (56 controles, `result.json` + capture).
+Ajouts dans des fichiers partages : `Pane.init` (libelle « Terminal — <hote> »), `AppModel.featureSelfTests` (option `selftest-terminal`).
+
+Saisie composee (pilotee par appels directs au `NSTextInputClient`, octets lus au delegue ET a travers un vrai pty) :
+- OK : `^`+`e` = `c3 aa`, `¨`+`i` = `c3 af`, `^^` = `5e`, `^x` = `5e 78`, annulation sans octet ; japonais `日本` = `e6 97 a5 e6 9c ac` ; chinois `你好`
+  = `e4 bd a0 e5 a5 bd` ; aucun octet pendant la composition ; flux pty identique au flux emis.
+- Defauts de SwiftTerm 1.99.3 corriges : (1) `insertText` ignorait un `NSAttributedString` (validation de certains IME CJK perdue) ;
+  (2) `markedRange`/`selectedRange`/`attributedSubstring` dans des reperes differents (l'IME pouvait remplacer le mauvais texte) ;
+  (3) `doCommand(by:)` (non surchargeable : `public override`) envoyait Retour arriere/Echap/fleches pendant la composition : le pont du moteur
+  retient toute sortie produite pendant une composition (sauf la validation et `sendInput`, macros/diffusion jamais filtrees) ;
+  (4) avec le rendu Metal la `CaretView` interne n'est jamais positionnee : `firstRect` renvoyait le coin bas-gauche de la vue et le texte marque
+  s'affichait dans le coin de la fenetre (capture a l'appui). `firstRect` est calcule depuis le curseur de l'ecran et la `CaretView` est recalee
+  avant chaque composition (retrouvee par nom de classe : fragile en cas de mise a jour de SwiftTerm, couvert par la recette).
+  Mesure : `firstRect` suit le curseur (dx 320 pt pour 40 colonnes, dy 96 pt pour 6 lignes, hauteur = 1 ligne).
+
+Accessibilite (lue par `AXUIElement` sur l'app elle-meme, `AXIsProcessTrusted` = vrai) : AXTextArea, description « Terminal — <hote> », AXValue =
+ecran + au plus 200 lignes de scrollback, AXNumberOfCharacters, AXVisibleCharacterRange (ecran vivant), AXSelectedText, AXSelectedTextRange (curseur ou
+selection), AXValueChanged limite a 1 par 0,5 s (5 notifications pour ~220 ecritures/s pendant 1,5 s, 0 au repos).
+Perf (scrollback 100 000 lignes, 110 000 lignes alimentees en 215 ms) : 1re requete AX 4,7 ms, empreinte memoire +0,9 Mio (un instantane complet
+≈ 500 Mio), 150 requetes repetees = 1 seule reconstruction, 5 000 ecritures d'un octet = 0 reconstruction (~1,7 µs chacune).
+Les requetes AX in-process s'executent sur le fil appelant : la recette les fait depuis le fil principal (depuis un autre fil, l'assertion d'isolation
+`@MainActor` de la vue plante ; avec VoiceOver reel l'appel arrive sur le fil principal).
+
+Reste (PARTIEL) : clavier AZERTY physique et IME systeme reels non pilotes (CGEvent ou changement de source de saisie voleraient le focus / changeraient les
+reglages de l'utilisateur) ; panneau de candidats dessine par macOS non vu ; lecture par VoiceOver reel non faite ; AXVisibleCharacterRange = ecran vivant
+meme si l'utilisateur a remonte dans l'historique ; AXValue ne couvre pas tout le scrollback (borne voulue) ; sortie retenue pendant une composition
+inclut aussi les rapports souris/focus des applications distantes (negligeable).

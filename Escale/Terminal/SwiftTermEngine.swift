@@ -13,7 +13,9 @@ final class SwiftTermEngine: TerminalEngine {
     let view: NSView
     weak var delegate: (any TerminalEngineDelegate)?
 
-    private let terminalView: TerminalView
+    private let terminalView: EscaleTerminalView
+    /// Vrai pendant `sendInput` : une saisie programmée (macros, diffusion) n'est jamais filtrée par la composition.
+    private var isProgrammaticInput = false
     private let bridge: Bridge
 
     /// Vrai si le rendu Metal est actif ; sinon repli CoreGraphics (rendu par défaut de SwiftTerm).
@@ -24,7 +26,7 @@ final class SwiftTermEngine: TerminalEngine {
     init(scrollback: Int = 10_000) {
         var options = TerminalOptions.default
         options.scrollback = scrollback
-        let tv = TerminalView(frame: NSRect(x: 0, y: 0, width: 900, height: 560), font: nil, options: options)
+        let tv = EscaleTerminalView(frame: NSRect(x: 0, y: 0, width: 900, height: 560), font: nil, options: options)
         terminalView = tv
         view = tv
         bridge = Bridge()
@@ -52,10 +54,13 @@ final class SwiftTermEngine: TerminalEngine {
 
     func feed(_ bytes: Data) {
         terminalView.feed(byteArray: [UInt8](bytes)[...])
+        terminalView.contentDidChange()
     }
 
     /// Comme une frappe : passe par `send(source:data:)` du délégué SwiftTerm → `didProduceInput`.
     func sendInput(_ bytes: Data) {
+        isProgrammaticInput = true
+        defer { isProgrammaticInput = false }
         terminalView.send(data: [UInt8](bytes)[...])
     }
 
@@ -89,6 +94,23 @@ final class SwiftTermEngine: TerminalEngine {
     /// Vrai si la vue du terminal est le premier répondeur de sa fenêtre (vérifié par l'auto-test).
     var hasKeyboardFocus: Bool { terminalView.window?.firstResponder === terminalView }
 
+    // MARK: - Accessibilité et saisie composée (voir EscaleTerminalView)
+
+    /// Libellé VoiceOver de la vue (« Terminal — <hôte> »).
+    var accessibilityLabel: String {
+        get { terminalView.terminalAccessibilityLabel }
+        set { terminalView.terminalAccessibilityLabel = newValue }
+    }
+    /// La vue comme client de saisie AppKit (la recette pilote setMarkedText/insertText comme un IME).
+    var textInputClient: NSTextInputClient { terminalView }
+    var isComposing: Bool { terminalView.isComposing }
+    var suppressedOutputCount: Int { terminalView.suppressedOutputCount }
+    var accessibilityNotificationCount: Int { terminalView.accessibilityNotificationCount }
+    var accessibilityRebuildCount: Int { terminalView.accessibilityRebuildCount }
+    func selectAll() { terminalView.selectAll() }
+    func clearSelection() { terminalView.selectNone() }
+    func forceAccessibilityNotifications(_ on: Bool) { terminalView.forceAccessibilityNotifications = on }
+
     // MARK: - Pont vers TerminalViewDelegate (SwiftTerm)
 
     private final class Bridge: TerminalViewDelegate {
@@ -110,6 +132,9 @@ final class SwiftTermEngine: TerminalEngine {
         }
         func send(source: TerminalView, data: ArraySlice<UInt8>) {
             guard let e = engine else { return }
+            // Pendant une composition IME, le clavier appartient à l'IME (Retour arrière, Échap, flèches
+            // passés par doCommand ne doivent pas atteindre l'hôte).
+            if !e.isProgrammaticInput && e.terminalView.shouldSuppressOutput { return }
             e.delegate?.terminal(e, didProduceInput: Data(data))
         }
         func scrolled(source: TerminalView, position: Double) {}
