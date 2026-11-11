@@ -71,6 +71,7 @@ struct HostEditorSheet: View {
     @State private var folderID: UUID?
     @State private var tunnels: [TunnelSpec] = []
     @State private var x11Forwarding = false
+    @State private var startupCommand = ""
     @State private var loaded = false
 
     private var errors: [String] {
@@ -78,6 +79,7 @@ struct HostEditorSheet: View {
         [HostFormValidation.name(name), HostFormValidation.host(hostname), HostFormValidation.port(port),
          HostFormValidation.user(user), authChoice == .keyFile ? HostFormValidation.keyPath(keyPath) : nil,
          HostFormValidation.jumpHosts(jumpHosts)].forEach { if let m = $0 { e.append(m) } }
+        if let m = StartupCommand.validationMessage(startupCommand) { e.append(m) }
         e += TunnelValidation.listErrors(tunnels) + tunnels.filter { !TunnelValidation.errors($0).isEmpty }.map { "Tunnel « \($0.title) » invalide." }
         return e
     }
@@ -141,6 +143,7 @@ struct HostEditorSheet: View {
                 }
                 TunnelEditorSection(tunnels: $tunnels)
                 X11EditorSection(isOn: $x11Forwarding)
+                StartupCommandEditorSection(text: $startupCommand)
             }
             .formStyle(.grouped)
 
@@ -174,7 +177,7 @@ struct HostEditorSheet: View {
         hostID = h.id
         name = h.name; hostname = h.host; port = h.port.map(String.init) ?? ""; user = h.user ?? ""
         jumpHosts = h.jumpHosts.joined(separator: ", "); tags = h.tags.joined(separator: ", ")
-        tunnels = h.tunnels; x11Forwarding = h.x11Forwarding
+        tunnels = h.tunnels; x11Forwarding = h.x11Forwarding; startupCommand = h.startupCommand ?? ""
         switch h.auth {
         case .openSSHDefaults: authChoice = .defaults
         case .keyFile(let p): authChoice = .keyFile; keyPath = p
@@ -234,6 +237,7 @@ struct HostEditorSheet: View {
         h.folderID = folderID
         h.tunnels = tunnels
         h.x11Forwarding = x11Forwarding
+        h.startupCommand = StartupCommand.normalized(startupCommand)
         model.library.upsert(h)
         dismiss()
     }

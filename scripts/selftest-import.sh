@@ -22,6 +22,7 @@ src, dst = sys.argv[1], sys.argv[2]
 open(f"{dst}/moba.mxtsessions", "wb").write(open(f"{src}/moba.mxtsessions", encoding="utf-8").read().replace("\n", "\r\n").encode("cp1252"))
 open(f"{dst}/putty.reg", "wb").write(b"\xff\xfe" + open(f"{src}/putty.reg", encoding="utf-8").read().replace("\n", "\r\n").encode("utf-16-le"))
 open(f"{dst}/hosts.csv", "wb").write(open(f"{src}/hosts.csv", "rb").read())
+open(f"{dst}/MobaXterm.ini", "wb").write(open(f"{src}/MobaXterm.ini", encoding="utf-8").read().replace("\n", "\r\n").encode("cp1252"))
 PY
 
 cd "$ROOT"

@@ -27,19 +27,22 @@ public struct HostProfile: Codable, Hashable, Identifiable, Sendable {
     public var tunnels: [TunnelSpec]
     /// Redirection X11 via XQuartz (M5). Absent des bibliothèques antérieures : désactivée.
     public var x11Forwarding: Bool
+    /// Commande tapée dans le shell juste après son ouverture (import MobaXterm « Execute command », PuTTY `RemoteCommand`).
+    /// Voir `StartupCommand`. Absente des bibliothèques antérieures : `nil`.
+    public var startupCommand: String?
 
     public init(
         id: UUID = UUID(), name: String, host: String, port: Int? = nil, user: String? = nil,
         auth: Auth = .openSSHDefaults, jumpHosts: [String] = [], tags: [String] = [], folderID: UUID? = nil,
-        tunnels: [TunnelSpec] = [], x11Forwarding: Bool = false
+        tunnels: [TunnelSpec] = [], x11Forwarding: Bool = false, startupCommand: String? = nil
     ) {
         self.id = id; self.name = name; self.host = host; self.port = port; self.user = user
         self.auth = auth; self.jumpHosts = jumpHosts; self.tags = tags; self.folderID = folderID
-        self.tunnels = tunnels; self.x11Forwarding = x11Forwarding
+        self.tunnels = tunnels; self.x11Forwarding = x11Forwarding; self.startupCommand = startupCommand
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, host, port, user, auth, jumpHosts, tags, folderID, tunnels, x11Forwarding
+        case id, name, host, port, user, auth, jumpHosts, tags, folderID, tunnels, x11Forwarding, startupCommand
     }
 
     /// Décodage tolérant : les champs ajoutés après la première version ont une valeur par défaut,
@@ -57,6 +60,7 @@ public struct HostProfile: Codable, Hashable, Identifiable, Sendable {
         folderID = try c.decodeIfPresent(UUID.self, forKey: .folderID)
         tunnels = try c.decodeIfPresent([TunnelSpec].self, forKey: .tunnels) ?? []
         x11Forwarding = try c.decodeIfPresent(Bool.self, forKey: .x11Forwarding) ?? false
+        startupCommand = try c.decodeIfPresent(String.self, forKey: .startupCommand)
     }
 
     /// Cible passée à ssh (`user@host` ou `host`).

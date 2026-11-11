@@ -71,6 +71,40 @@ import Testing
         #expect(r.sessions.map(\.host) == ["h.example.com"])
     }
 
+    @Test func mobaXtermExecuteCommand() throws {
+        let r = MobaXtermImporter().parse(data: Self.cp1252(try Self.fixture("moba.mxtsessions")))
+        let byName = Dictionary(uniqueKeysWithValues: r.sessions.map { ($0.name, $0) })
+        #expect(byName["Maison NAS"]?.startupCommand == "uptime; df -h") // __PTVIRG__ → ;
+        #expect(byName["DB réplica"]?.startupCommand == "cd /var/lib/postgresql; exec bash -l")
+        #expect(byName["Web prod é €"]?.startupCommand == nil)
+    }
+
+    @Test func mobaXtermIniTunnelsAndCommand() throws {
+        let r = MobaXtermImporter().parse(data: Data(try Self.fixture("MobaXterm.ini").utf8))
+        #expect(r.sessions.count == 1)
+        let s = try #require(r.sessions.first)
+        #expect(s.name == "Bastion DB" && s.host == "db.internal.example" && s.port == 2200 && s.user == "dba")
+        #expect(s.startupCommand == "sudo -iu postgres; psql -c 'select 1%'") // __PTVIRG__ et __PERCENT__
+        // 3 tunnels rattachés (hôte insensible à la casse, utilisateur absent accepté) ; « Orphelin » et « Cassé » signalés.
+        #expect(s.tunnels.count == 3)
+        #expect(s.tunnels[0].kind == .local && s.tunnels[0].bindPort == 15432 && s.tunnels[0].destinationHost == "localhost"
+                && s.tunnels[0].destinationPort == 5432 && s.tunnels[0].bindAddress == "127.0.0.1")
+        #expect(s.tunnels[1].kind == .dynamic && s.tunnels[1].bindPort == 1080)
+        #expect(s.tunnels[2].kind == .remote && s.tunnels[2].bindPort == 8443 && s.tunnels[2].destinationPort == 443)
+        #expect(r.warnings.contains { $0.contains("Orphelin") && $0.contains("inconnu.example") })
+        #expect(r.warnings.contains { $0.contains("Cassé") })
+        // La section [LastSession] et [Passwords] ne produisent aucune session ; mot de passe compté, jamais repris.
+        #expect(r.ignoredPasswordCount == 1 && !String(describing: r).contains("ZmFrZWVuY3J5cHRlZA"))
+    }
+
+    @Test func mobaXtermTunnelFormats() {
+        #expect(MobaXtermImporter.parseTunnel("#0#L%80%h%81%s%22%u")?.spec.kind == .local)
+        #expect(MobaXtermImporter.parseTunnel("2%1080%%%s%22%u")?.spec.kind == .dynamic)
+        #expect(MobaXtermImporter.parseTunnel("0%0%h%81%s%22%u") == nil)       // port d'écoute invalide
+        #expect(MobaXtermImporter.parseTunnel("0%80%%81%s%22%u") == nil)       // destination vide (local)
+        #expect(MobaXtermImporter.parseTunnel("0%80%h%81") == nil)             // trop court
+    }
+
     // MARK: PuTTY
 
     @Test func puttyReg() throws {
@@ -186,5 +220,45 @@ import Testing
         let h = lib.hosts[0]
         #expect(h.tunnels.count == 1 && h.x11Forwarding && h.jumpHosts == ["j@b:22"] && h.port == 2200)
         if case .keychainPassword = h.auth { Issue.record("aucun secret ne doit être importé") }
+    }
+
+    @Test func puttyRemoteCommandAndSSHProxy() throws {
+        let r = PuTTYRegImporter().parse(data: Self.utf16le(try Self.fixture("putty.reg")))
+        let byName = Dictionary(uniqueKeysWithValues: r.sessions.map { ($0.name, $0) })
+        #expect(byName["Serveur Web été"]?.startupCommand == "tmux attach || tmux new -s main")
+        // ProxyMethod 6 + ProxyHost = nom d'une autre session du fichier → hôte/port de celle-ci, utilisateur du proxy.
+        #expect(byName["Derriere proxy"]?.jumpHosts == ["jump@10.0.0.5:2222"])
+        #expect(byName["DB"]?.jumpHosts == [] && byName["DB"]?.startupCommand == nil)
+    }
+
+    @Test func puttyOtherProxiesWarn() {
+        func reg(_ extra: String) -> String {
+            "Windows Registry Editor Version 5.00\n\n[HKEY_CURRENT_USER\\Software\\SimonTatham\\PuTTY\\Sessions\\s]\n\"HostName\"=\"h.example\"\n" + extra
+        }
+        let socks = PuTTYRegImporter().parse(text: reg("\"ProxyMethod\"=dword:00000002\n\"ProxyHost\"=\"p\"\n"))
+        #expect(socks.sessions.first?.jumpHosts == [] && socks.warnings.contains { $0.contains("SOCKS5") })
+        let exec = PuTTYRegImporter().parse(text: reg("\"ProxyMethod\"=dword:00000007\n\"ProxyHost\"=\"p\"\n"))
+        #expect(exec.sessions.first?.jumpHosts == [] && exec.warnings.contains { $0.contains("sans équivalent") })
+        let direct = PuTTYRegImporter().parse(text: reg("\"ProxyMethod\"=dword:00000006\n\"ProxyHost\"=\"bastion.example\"\n\"ProxyPort\"=dword:000008a0\n"))
+        #expect(direct.sessions.first?.jumpHosts == ["bastion.example:2208"])
+        let none = PuTTYRegImporter().parse(text: reg("\"ProxyMethod\"=dword:00000000\n"))
+        #expect(none.sessions.first?.jumpHosts == [] && none.warnings.isEmpty)
+    }
+
+    @Test func startupCommandRules() {
+        #expect(StartupCommand.normalized("  ls -l  ") == "ls -l")
+        #expect(StartupCommand.normalized("a\nb") == nil && StartupCommand.normalized("   ") == nil && StartupCommand.normalized(nil) == nil)
+        #expect(StartupCommand.input(for: "ls") == Data("ls\r".utf8))
+        #expect(StartupCommand.validationMessage("a\nb") != nil && StartupCommand.validationMessage("ls") == nil)
+    }
+
+    @Test func startupCommandSurvivesProfileAndMerge() throws {
+        var lib = HostLibrary()
+        SessionImportMerge.merge([ImportedSession(name: "n", host: "h", startupCommand: "uptime")], into: &lib)
+        #expect(lib.hosts.first?.startupCommand == "uptime")
+        let data = try JSONEncoder().encode(lib.hosts[0])
+        #expect(try JSONDecoder().decode(HostProfile.self, from: data).startupCommand == "uptime")
+        let old = #"{"id":"6F1D1B8E-3A74-4C55-9E0B-1A2B3C4D5E6F","name":"a","host":"h"}"#
+        #expect(try JSONDecoder().decode(HostProfile.self, from: Data(old.utf8)).startupCommand == nil)
     }
 }

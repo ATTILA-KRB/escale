@@ -14,10 +14,12 @@ mkdir -p "$OUT"
 SSHD_PID=""
 APP_PID=""
 FAKEX_PID=""
+FAKEXSEC_PID=""
 
 cleanup() {
   [ -n "$APP_PID" ] && kill -9 "$APP_PID" 2>/dev/null || true
   [ -n "$FAKEX_PID" ] && kill "$FAKEX_PID" 2>/dev/null || true
+  [ -n "$FAKEXSEC_PID" ] && kill "$FAKEXSEC_PID" 2>/dev/null || true
   if [ -n "$SSHD_PID" ]; then
     pkill -P "$SSHD_PID" 2>/dev/null || true
     kill "$SSHD_PID" 2>/dev/null || true
@@ -63,6 +65,19 @@ while True:
 PY
 python3 "$D/fakex.py" "$D/X0" "$D/x0.got" &
 FAKEX_PID=$!
+# Faux serveur X AVEC extension SECURITY + VRAI xauth (Homebrew, sans sudo : `brew install xauth`) : preuve de
+# ForwardX11Trusted=no avec un vrai cookie MIT-MAGIC-COOKIE « untrusted ». Le socket se termine par « :0 » comme celui
+# de XQuartz (org.xquartz:0) pour que ssh/xauth l'acceptent comme DISPLAY.
+REAL_XAUTH="${ESCALE_REAL_XAUTH:-/opt/homebrew/bin/xauth}"
+XSEC="$WORK/xsec"; mkdir -p "$XSEC"
+if [ -x "$REAL_XAUTH" ]; then
+  python3 "$ROOT/scripts/fixtures/x11/fakex_security.py" "$XSEC/org.fake:0" "$XSEC/x.log" "$XSEC/cookies.txt" &
+  FAKEXSEC_PID=$!
+  cp "$ROOT/scripts/fixtures/x11/xprobe.py" "$XSEC/xprobe.py"
+  for _ in $(seq 1 30); do [ -S "$XSEC/org.fake:0" ] && break; sleep 0.1; done
+else
+  echo "xauth réel absent ($REAL_XAUTH) : scénario X11 non fiable ignoré (brew install xauth)"
+fi
 cat > "$D/sshd_config" <<CONF
 Port $PORT
 ListenAddress 127.0.0.1
@@ -102,7 +117,8 @@ def host(name, x11=False):
          "auth": {"keyFile": {"path": key}}, "jumpHosts": [], "tags": ["test"], "folderID": folder}
     if x11: h["x11Forwarding"] = True
     return h
-lib = {"folders": [{"id": folder, "name": "Tests locaux"}], "hosts": [host("Hôte A"), host("Hôte X", True), host("Hôte Y", True)]}
+lib = {"folders": [{"id": folder, "name": "Tests locaux"}], "hosts": [host("Hôte A"), host("Hôte X", True), host("Hôte Y", True), host("Hôte Z", True), host("Hôte S")]}
+lib["hosts"][-1]["startupCommand"] = "echo STARTUP-$((6*7)); echo SECOND-$((8*9))"
 json.dump(lib, open(path, "w"), indent=2)
 PY
 
@@ -116,7 +132,7 @@ xcodebuild -project Escale.xcodeproj -scheme Escale -configuration Debug -derive
 
 # --- lancement
 set +e
-ESCALE_FAKEX_DIR="$D" ESCALE_FAKEX_GOT="$D/x0.got" ESCALE_SSHD_LOG="$D/sshd.log" "$DD/Build/Products/Debug/Escale.app/Contents/MacOS/Escale" \
+ESCALE_FAKEX_DIR="$D" ESCALE_FAKEX_GOT="$D/x0.got" ESCALE_XSEC_DIR="$XSEC" ESCALE_REAL_XAUTH="$REAL_XAUTH" ESCALE_SSHD_LOG="$D/sshd.log" "$DD/Build/Products/Debug/Escale.app/Contents/MacOS/Escale" \
   --library "$WORK/library.json" --ssh-config /dev/null --known-hosts "$D/known_hosts" \
   --ssh-option IdentityAgent=none --ssh-option GlobalKnownHostsFile=/dev/null \
   --selftest-macros "$OUT" &

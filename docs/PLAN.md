@@ -316,7 +316,7 @@ dossiers recréés sous le dossier cible, dossier existant réutilisé sans teni
 documentés en commentaire de tête avec leurs sources publiques.
 - Jamais de secret : mots de passe (champ MobaXterm, `[Passwords]`, `ProxyPassword`, colonne CSV `password`) ignorés et comptés (« n mots de passe non importés »).
 - Clés `.ppk` ou chemins Windows : non reprises, avertissement avec le chemin d'origine (OpenSSH ne lit pas le .ppk).
-- Non importés : sessions non SSH (Telnet, RDP, VNC, FTP, série…), tunnels MobaXterm (hors ligne de session), commandes de connexion.
+- Non importés : sessions non SSH (Telnet, RDP, VNC, FTP, série…). Tunnels et commandes de connexion : voir « Imports + X11 » ci-dessous.
 - App `Escale/Import/` : Fichier › Importer › MobaXterm / PuTTY / CSV (`NSOpenPanel`), feuille d'aperçu (cases, doublons grisés, avertissements,
   dossier cible, « garder les dossiers d'origine »). L'import `~/.ssh/config` reste celui d'`ImportSheet`/`ImportModel`.
 - Recette : `scripts/selftest-import.sh` (bibliothèque temporaire `--library`, fixtures `scripts/fixtures/import/` converties en cp1252 / UTF-16LE), `result.json`.
@@ -334,8 +334,31 @@ tunnels 31, multiexec 64, macros 62, import 28 controles : toutes `ok`.
 
 Restes (non verifiables ici ou hors perimetre) :
 - Mac vierge : telechargement reel (quarantaine), Gatekeeper, mise a jour Sparkle complete. Domaine et `ESCALE_FEED_URL` a decider.
-- XQuartz : `xeyes` en un clic a valider apres installation (sudo). Mode X11 non fiable avec vrai cookie xauth non teste.
+- XQuartz : `xeyes` en un clic a valider apres installation (sudo). (Mode X11 non fiable avec vrai cookie : fait, voir « Imports + X11 ».)
 - Gestes reels non pilotes : glisser-deposer Finder, clics menus, IME/VoiceOver (spike S3), lien distant a vraie latence.
 - SFTP UI : un transfert reessaye repart de zero (brancher la reprise verifiee du coeur) ; pas de tri par colonne.
 - Tunnels : IPv6, `-R 0`, modification d'un tunnel actif. Multi-exec : Echap ne sort pas de la diffusion (diffuse).
 - Icone de l'app absente. Dettes M1 inchangees (PaneMenu, troncatures, OSC 52).
+
+### Imports + X11 (branche v2-import-x11)
+
+- **`HostProfile.startupCommand: String?`** (decodage tolerant, absent des anciennes bibliotheques). Semantique choisie d'apres MobaXterm
+  (« Execute command ») : la commande est TAPEE dans le shell interactif 0,5 s apres son ouverture (`AppModel.sendStartupCommand`, une
+  ligne ajoutee dans `launchRemote`), suivie d'Entree ; le shell reste ouvert, profil/alias s'appliquent, rejouee a chaque ouverture
+  du shell (reconnexion comprise). Ce n'est pas un `remoteCommand` ssh (qui remplacerait le shell). Une seule ligne, 2000 car. au plus
+  (`StartupCommand`). Editable dans `HostEditorSheet` (section « Commande de connexion » : `StartupCommandEditorSection`).
+- **MobaXterm** : champ 7 de la ligne de session → `startupCommand` (`__PTVIRG__`→`;`, `__PERCENT__`→`%`). Tunnels : section `[SSH_Tunnels]`
+  (ou `[Tunnels]`, cles `MobaSSHTunnel*`), types L/R/D, rattaches a la session importee de meme hote:port (utilisateur de preference), sinon
+  avertissement. **ATTENTION : le format de stockage des tunnels dans `MobaXterm.ini` n'est documente par aucune source publique
+  trouvee** (Mobatek ne le publie pas) : le format `type%portEcoute%hoteDistant%portDistant%hoteSSH%portSSH%user` est SUPPOSE, non verifie sur un
+  vrai fichier ; fixture `scripts/fixtures/import/MobaXterm.ini` ecrite d'apres cette hypothese. A corriger des qu'un vrai fichier est disponible.
+- **PuTTY** : `RemoteCommand` → `startupCommand` ; `ProxyMethod`=6 (« SSH to proxy and use port forwarding », = `ssh -J`, valeurs de
+  putty.h/doc §4.15) → `jumpHosts` (`ProxyHost`/`ProxyPort`/`ProxyUsername`, ou session du meme fichier si `ProxyHost` la nomme) ;
+  tout autre proxy (SOCKS, HTTP, Telnet, commande, SSH+commande/sous-systeme) → avertissement. Royal TSX / SecureCRT : non faits (pas triviaux).
+- **X11 non fiable avec vrai cookie : VERIFIE.** `brew install xauth` fonctionne sans sudo (formule `xauth` 1.1.5 → `/opt/homebrew/bin/xauth`).
+  Pas de vrai serveur X (XQuartz absent) : `scripts/fixtures/x11/fakex_security.py` est un faux serveur X avec l'extension SECURITY
+  (repond a `GenerateAuthorization`). Recette `selftest-macros.sh` (hote Z, `ForwardX11Trusted=no`, vrai xauth) : le vrai `xauth generate … untrusted`
+  obtient un cookie MIT-MAGIC-COOKIE-1 du serveur ; sshd distant ne recoit qu'un cookie de substitution different ; la connexion X rapatriee
+  arrive au serveur avec le vrai cookie genere (`CONNECT … ok`). La detection connait `/opt/homebrew/bin/xauth` (apres `/opt/X11/bin/xauth`)
+  mais exige toujours XQuartz installe (`/opt/X11` ou XQuartz.app) : l'affichage reel reste a valider avec XQuartz.
+- Recettes : `selftest-import.sh` (+ MobaXterm.ini, RemoteCommand, proxy SSH), `selftest-macros.sh` (+ commande de connexion via sshd, X11 non fiable).

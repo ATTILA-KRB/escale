@@ -19,15 +19,18 @@ public struct ImportedSession: Hashable, Identifiable, Sendable {
     public var folderPath: [String]
     public var tunnels: [TunnelSpec]
     public var x11Forwarding: Bool
+    /// Commande de connexion (MobaXterm « Execute command », PuTTY `RemoteCommand`) → `HostProfile.startupCommand`.
+    public var startupCommand: String?
 
     public init(
         id: UUID = UUID(), name: String, host: String, port: Int? = nil, user: String? = nil,
         auth: HostProfile.Auth = .openSSHDefaults, jumpHosts: [String] = [], tags: [String] = [],
-        folderPath: [String] = [], tunnels: [TunnelSpec] = [], x11Forwarding: Bool = false
+        folderPath: [String] = [], tunnels: [TunnelSpec] = [], x11Forwarding: Bool = false,
+        startupCommand: String? = nil
     ) {
         self.id = id; self.name = name; self.host = host; self.port = port; self.user = user
         self.auth = auth; self.jumpHosts = jumpHosts; self.tags = tags; self.folderPath = folderPath
-        self.tunnels = tunnels; self.x11Forwarding = x11Forwarding
+        self.tunnels = tunnels; self.x11Forwarding = x11Forwarding; self.startupCommand = startupCommand
     }
 
     /// Clé de dédoublonnage : même hôte (insensible à la casse), même port (22 par défaut), même utilisateur.
@@ -38,7 +41,8 @@ public struct ImportedSession: Hashable, Identifiable, Sendable {
     /// Profil de bibliothèque correspondant (le dossier est résolu par la fusion).
     func profile(folderID: UUID?) -> HostProfile {
         HostProfile(name: name, host: host, port: port, user: user, auth: auth, jumpHosts: jumpHosts,
-                    tags: tags, folderID: folderID, tunnels: tunnels, x11Forwarding: x11Forwarding)
+                    tags: tags, folderID: folderID, tunnels: tunnels, x11Forwarding: x11Forwarding,
+                    startupCommand: startupCommand)
     }
 }
 
