@@ -225,4 +225,14 @@ final class LibraryStore {
         apply { added = SSHConfigImporter.merge(subset, into: &$0, folderID: folderID) }
         return added
     }
+
+    // MARK: Import de sessions (M5 : MobaXterm, PuTTY, CSV)
+
+    /// Fusionne des sessions importées (doublons host+port+user ignorés par le cœur) ; sauvegarde une seule fois.
+    @discardableResult
+    func importSessions(_ sessions: [ImportedSession], into folderID: UUID?, keepFolders: Bool) -> SessionImportReport {
+        var report = SessionImportReport(added: [], createdFolders: [], skippedDuplicates: 0)
+        apply { report = SessionImportMerge.merge(sessions, into: &$0, folderID: folderID, keepFolders: keepFolders) }
+        return report
+    }
 }
