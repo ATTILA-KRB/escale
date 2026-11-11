@@ -184,14 +184,22 @@ public actor SFTPClient {
         if serverExtensions["limits@openssh.com"] != nil { await applyLimits() }
     }
 
+    /// Taille des requêtes READ/WRITE : `configured` (32 Kio) tant que le serveur ne publie rien ; avec
+    /// `limits@openssh.com`, on monte à `preferred` (64 Kio) sans dépasser la limite annoncée (0 = aucune limite).
+    static func chunkSize(configured: Int, preferred: Int, announcedLimit: UInt64) -> Int {
+        let target = max(configured, preferred)
+        guard announcedLimit > 0 else { return target }
+        return max(1, min(target, Int(min(announcedLimit, UInt64(Int32.max)))))
+    }
+
     /// Respecte les limites annoncées par limits@openssh.com (échec silencieux : on garde les valeurs par défaut).
     func applyLimits() async {
         guard let resp = try? await call(SFTPPacket.extended, { $0.string("limits@openssh.com") }),
               resp.type == SFTPPacket.extendedReply else { return }
         var r = SFTPReader(resp.payload)
         guard let _ = try? r.u64(), let rl = try? r.u64(), let wl = try? r.u64() else { return }
-        if rl > 0 { readChunk = max(1, min(readChunk, Int(min(rl, UInt64(Int32.max))))) }
-        if wl > 0 { writeChunk = max(1, min(writeChunk, Int(min(wl, UInt64(Int32.max))))) }
+        readChunk = Self.chunkSize(configured: readChunk, preferred: configuration.limitsChunkSize, announcedLimit: rl)
+        writeChunk = Self.chunkSize(configured: writeChunk, preferred: configuration.limitsChunkSize, announcedLimit: wl)
     }
 
     func enqueue(_ body: Data) throws {

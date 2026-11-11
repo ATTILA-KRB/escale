@@ -336,6 +336,28 @@ Restes (non verifiables ici ou hors perimetre) :
 - Mac vierge : telechargement reel (quarantaine), Gatekeeper, mise a jour Sparkle complete. Domaine et `ESCALE_FEED_URL` a decider.
 - XQuartz : `xeyes` en un clic a valider apres installation (sudo). Mode X11 non fiable avec vrai cookie xauth non teste.
 - Gestes reels non pilotes : glisser-deposer Finder, clics menus, IME/VoiceOver (spike S3), lien distant a vraie latence.
-- SFTP UI : un transfert reessaye repart de zero (brancher la reprise verifiee du coeur) ; pas de tri par colonne.
+- SFTP : glisser distant -> distant entre deux hotes differents (non prevu : meme hote seulement) ; mode shell : noms non UTF-8 non adressables, listage `ls` (dernier recours) sans retour a la ligne dans les noms ; gestes reels (⌥ au drop) non pilotes.
 - Tunnels : IPv6, `-R 0`, modification d'un tunnel actif. Multi-exec : Echap ne sort pas de la diffusion (diffuse).
 - Icone de l'app absente. Dettes M1 inchangees (PaneMenu, troncatures, OSC 52).
+
+### M2 SFTP : reprise UI, mode shell, tri, deplacement distant (branche `v2-sftp`)
+
+- **Paquets 64 Kio** : `SFTPClient.chunkSize(configured:preferred:announcedLimit:)` ; avec `limits@openssh.com` les
+  READ/WRITE montent a 64 Kio (`SFTPClientConfiguration.limitsChunkSize`) sans depasser la limite annoncee ; sinon 32 Kio.
+- **`RemoteFileSystem`** (coeur) : liste, attributs, mkdir/rmdir/remove/rename, `readBlock`/`writeBlock`, `copyItem`,
+  `startDownload`/`startUpload` (reprise verifiee), `removeTree`. Implemente par `SFTPClient` et `ShellFileSystem`.
+- **`ShellFileSystem`** (sessions exec sur le maitre) : listage `find -printf` (GNU) -> boucle POSIX + `stat` (BSD/GNU)
+  -> `ls -lan [--time-style=+%s]`, methode retenue apres le premier succes ; telechargement `dd bs=64k skip=N`
+  (reprise alignee sur 64 Kio, prefixe verifie), envoi `cat > f.part` puis `chmod` + `mv` (reprise en `>>`), copie `cp -a`.
+  Chemins jamais interpoles : script constant + arguments positionnels entre apostrophes (`ShellQuote`), `env LC_ALL=C /bin/sh -c`.
+  `RemoteExecStream` + `OpenSSHTransport.openShellStream` = exec en flux binaire, compte dans `sessionCount` (invariants 2, 5, 13 ;
+  `batchStreamArguments`, sans `-n`). `RemoteFileSystemOpener.open` bascule sur le shell quand `openSFTPChannel` echoue
+  (`subsystemUnavailable`, canal ferme, negociation) et que `exec` repond ; le repli est memorise par session (pas de retentative SFTP).
+- **UI** : bandeau « Mode shell (SFTP indisponible) » + raison ; « repris a X % » (liste des transferts) ; reprise verifiee des la
+  2e tentative (« Reessayer ») ; transfert coupe par perte de lien : repart seul a la reconnexion (jusqu'a 5 fois, `resumeInterrupted`
+  appele a l'ouverture du canal) ; tri Nom/Taille/Date (en-tetes + menu, `SFTPSort`, UserDefaults `escale.sftp.sort*`, dossiers d'abord) ;
+  glisser distant -> distant dans un dossier du meme hote : deplacement (rename), ⌥ = copie (`cp -a` par exec, sinon lecture/ecriture),
+  jamais d'ecrasement, refus de deplacer un dossier dans lui-meme (`SFTPHostSession.move`).
+- Correctif : un `cd` rapide du terminal n'est plus ecrase par un `stat` plus lent (`followToken`).
+- Recettes : `scripts/selftest-sftp.sh` (reprise UI dl/up, coupure du maitre en plein transfert + reprise auto, tri, deplacement/copie
+  avec noms hostiles) et `scripts/selftest-sftp-shell.sh` (meme scenario, sshd sans `Subsystem sftp`). Tests coeur : `ShellFileSystemTests`.

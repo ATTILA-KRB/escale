@@ -74,6 +74,8 @@ public struct SFTPClientConfiguration: Sendable, Equatable {
     public var negotiationTimeout: Duration = .seconds(10)
     /// Taille d'une requête READ/WRITE (réduite si le serveur annonce une limite plus basse).
     public var chunkSize: Int = 32 * 1024
+    /// Taille visée quand le serveur publie `limits@openssh.com` (bornée par la limite annoncée) : 64 Kio.
+    public var limitsChunkSize: Int = 64 * 1024
     /// Nombre maximal de requêtes de transfert en vol.
     public var window: Int = 32
     /// Délai sans AUCUNE réponse du serveur au-delà duquel les requêtes en attente échouent en `requestTimeout`.

@@ -22,6 +22,8 @@ private final class SFTPSelfTestRunner {
     private var notes: [String: String] = [:]
     private var window: NSWindow?
     private let fm = FileManager.default
+    /// Recette en mode shell : le sshd n'a pas de `Subsystem sftp` (ESCALE_SFTP_SHELL=1).
+    private let shellMode = ProcessInfo.processInfo.environment["ESCALE_SFTP_SHELL"] == "1"
 
     init(directory: String, model: AppModel) {
         // Chemin canonique (/private/var…) : c'est celui que renvoie realpath côté serveur.
@@ -130,9 +132,13 @@ private final class SFTPSelfTestRunner {
         let s = feature.session(for: h1)
         await s.open()
         check("canal_sftp_ouvert", s.state == .ready, "\(s.state)")
+        check(shellMode ? "mode_shell_actif" : "mode_sftp_actif", s.isShellMode == shellMode, "\(s.fsKind) \(s.shellReason ?? "")")
+        if shellMode { check("mode_shell_raison_affichee", !(s.shellReason ?? "").isEmpty, s.shellReason ?? "nil") }
         let link = conn.links[0]
         check("un_seul_maitre", conn.links.count == 1 && s.link === link)
-        check("sessionCount_shell_plus_sftp", await link.transport.sessionCount == 2, "\(await link.transport.sessionCount)")
+        // SFTP : une session de plus (le canal). Shell : les commandes exec sont éphémères, rien ne reste ouvert.
+        let expectedSessions = shellMode ? 1 : 2
+        check("sessionCount_shell_plus_sftp", await link.transport.sessionCount == expectedSessions, "\(await link.transport.sessionCount)")
         check("une_seule_authentification", acceptedCount == 1, "\(acceptedCount)")
 
         // 2. Liste du home
@@ -261,6 +267,126 @@ private final class SFTPSelfTestRunner {
         if let it = s.items.first(where: { $0.name == "arbre" }) { await s.delete([it]) }
         check("supprimer_dossier_non_vide", !fm.fileExists(atPath: "\(dest)/arbre") && !s.items.contains { $0.name == "arbre" })
 
+        // 7b. Tri par colonne (persistant, dossiers d'abord)
+        let defaults = UserDefaults.standard
+        let savedKey = defaults.object(forKey: "escale.sftp.sortKey"), savedOrder = defaults.object(forKey: "escale.sftp.sortAscending")
+        defer {
+            defaults.set(savedKey, forKey: "escale.sftp.sortKey"); defaults.set(savedOrder, forKey: "escale.sftp.sortAscending")
+        }
+        let sortDir = "\(work)/tri"
+        try? fm.createDirectory(atPath: "\(sortDir)/dir-b", withIntermediateDirectories: true)
+        try? fm.createDirectory(atPath: "\(sortDir)/dir-a", withIntermediateDirectories: true)
+        for (n, size, age) in [("m.txt", 10, 300.0), ("z.txt", 5000, 100.0), ("a.txt", 300, 200.0)] {
+            fm.createFile(atPath: "\(sortDir)/\(n)", contents: Data(count: size))
+            try? fm.setAttributes([.modificationDate: Date().addingTimeInterval(-age * 1000)], ofItemAtPath: "\(sortDir)/\(n)")
+        }
+        await s.navigate(to: sortDir)
+        func order() -> String { s.items.map(\.name).joined(separator: ",") }
+        s.sort = SFTPSort(key: .name, ascending: true)
+        check("tri_nom_croissant_dossiers_d_abord", order() == "dir-a,dir-b,a.txt,m.txt,z.txt", order())
+        s.sort = SFTPSort(key: .name, ascending: false)
+        check("tri_nom_decroissant_dossiers_d_abord", order() == "dir-b,dir-a,z.txt,m.txt,a.txt", order())
+        s.sort = SFTPSort(key: .size, ascending: false)
+        check("tri_taille_decroissante", order() == "dir-a,dir-b,z.txt,a.txt,m.txt", order())
+        s.sort = SFTPSort(key: .size, ascending: true)
+        check("tri_taille_croissante", order() == "dir-a,dir-b,m.txt,a.txt,z.txt", order())
+        s.sort = SFTPSort(key: .date, ascending: false)
+        check("tri_date_recent_d_abord", order() == "dir-a,dir-b,z.txt,a.txt,m.txt", order())
+        s.sort = SFTPSort(key: .date, ascending: true)
+        check("tri_date_ancien_d_abord", order() == "dir-a,dir-b,m.txt,a.txt,z.txt", order())
+        check("tri_persistant", SFTPSort.stored == SFTPSort(key: .date, ascending: true))
+        s.sort = SFTPSort(key: .size, ascending: false)
+        await s.refresh()
+        check("tri_conserve_apres_rafraichissement", order() == "dir-a,dir-b,z.txt,a.txt,m.txt", order())
+        var toggled = SFTPSort(key: .name, ascending: true); toggled.toggle(.name)
+        check("tri_clic_inverse_l_ordre", toggled == SFTPSort(key: .name, ascending: false))
+        s.sort = SFTPSort(key: .name, ascending: true)
+
+        // 7c. Glisser distant → distant : déplacer (rename) / copier, noms hostiles compris
+        let mv = "\(work)/deplacer"
+        let hostile = ["avec espace.txt", "it's.txt", "$(touch PWNED).txt", "`touch PWNED2`.txt", "a;b&c.txt"]
+        try? fm.createDirectory(atPath: "\(mv)/cible", withIntermediateDirectories: true)
+        try? fm.createDirectory(atPath: "\(mv)/dossier/profond", withIntermediateDirectories: true)
+        try? "profond".write(toFile: "\(mv)/dossier/profond/f.txt", atomically: true, encoding: .utf8)
+        for n in hostile { try? "contenu-\(n)".write(toFile: "\(mv)/\(n)", atomically: true, encoding: .utf8) }
+        await s.navigate(to: mv)
+        let payload = SFTPDragPayload.encode(session: s.id, paths: s.items.map(\.path))
+        check("glisser_charge_aller_retour", SFTPDragPayload.decode(payload)?.session == s.id && SFTPDragPayload.decode(payload)?.paths == s.items.map(\.path))
+        check("glisser_charge_etrangere_ignoree", SFTPDragPayload.decode("texte quelconque") == nil)
+        s.errorMessage = nil
+        let toMove = s.items.filter { hostile.contains($0.name) }
+        check("deplacer_liste_hostile_complete", toMove.count == hostile.count, "\(toMove.count)")
+        let moved = await s.move(toMove, into: Data("\(mv)/cible".utf8), copy: false)
+        check("deplacer_nombre", moved == hostile.count && s.errorMessage == nil, "\(moved) \(s.errorMessage ?? "")")
+        check("deplacer_present_a_destination", hostile.allSatisfy { read("\(mv)/cible/\($0)") == "contenu-\($0)" })
+        check("deplacer_absent_de_la_source", hostile.allSatisfy { !fm.fileExists(atPath: "\(mv)/\($0)") })
+        check("deplacer_aucune_injection", ![NSHomeDirectory(), "/", work, mv].contains { fm.fileExists(atPath: "\($0)/PWNED") || fm.fileExists(atPath: "\($0)/PWNED2") })
+        check("deplacer_liste_rafraichie", !s.items.contains { hostile.contains($0.name) })
+        // Copier (⌥) : la source reste, un dossier est copié en entier
+        if let d = s.items.first(where: { $0.name == "dossier" }) {
+            let copied = await s.move([d], into: Data("\(mv)/cible".utf8), copy: true)
+            check("copier_dossier", copied == 1 && read("\(mv)/cible/dossier/profond/f.txt") == "profond" && read("\(mv)/dossier/profond/f.txt") == "profond", s.errorMessage ?? "")
+            let again = await s.move([d], into: Data("\(mv)/cible".utf8), copy: true)
+            check("copier_refuse_ecrasement", again == 0 && s.errorMessage?.contains("existe déjà") == true, s.errorMessage ?? "nil")
+            s.errorMessage = nil
+            let inside = await s.move([d], into: Data("\(mv)/dossier/profond".utf8), copy: false)
+            check("deplacer_dans_soi_meme_refuse", inside == 0 && s.errorMessage != nil && fm.fileExists(atPath: "\(mv)/dossier"), s.errorMessage ?? "nil")
+            s.errorMessage = nil
+        } else { check("copier_dossier", false, "dossier absent") }
+        if let d = s.items.first(where: { $0.name == "dossier" }) {
+            _ = await s.move([d], into: Data("\(mv)/cible/dossier".utf8), copy: false)
+            check("deplacer_dossier_dans_dossier", fm.fileExists(atPath: "\(mv)/cible/dossier/dossier/profond/f.txt") && !fm.fileExists(atPath: "\(mv)/dossier"), s.errorMessage ?? "")
+            s.errorMessage = nil
+        }
+
+        // 7d. Reprise dans l'UI : « Réessayer » reprend (vérifié) au lieu de repartir de zéro
+        let resumeRemote = "\(work)/reprise-dl.bin", resumeLocal = "\(dl)/reprise-dl.bin"
+        let rt = SFTPTransfer(direction: .download, name: "reprise-dl.bin", local: URL(fileURLWithPath: resumeLocal),
+                              remote: Data(resumeRemote.utf8), session: s)
+        q.enqueue(rt)
+        var rtFailed = false
+        _ = await wait(10) { if case .failed = rt.state { rtFailed = true }; return rtFailed }
+        check("reprise_dl_premier_essai_echoue", rtFailed, "\(rt.state)")
+        randomFile(resumeRemote, megabytes: 6)
+        if let full = fm.contents(atPath: resumeRemote) { fm.createFile(atPath: resumeLocal, contents: full.prefix(2_500_000)) }
+        q.retry(rt)
+        check("reprise_dl_terminee", await wait(30) { rt.state == .done }, "\(rt.state)")
+        check("reprise_dl_contenu_identique", fm.contentsEqual(atPath: resumeRemote, andPath: resumeLocal))
+        check("reprise_dl_repris_a_un_pourcentage", rt.resumedFrom > 0 && rt.resumedFrom <= 2_500_000 && rt.resumeText?.hasPrefix("repris à ") == true && rt.resumeText?.hasSuffix(" %") == true,
+              "\(rt.resumedFrom) \(rt.resumeText ?? "nil")")
+        // Début local différent : pas de reprise, on repart de zéro et le fichier est correct
+        try? fm.removeItem(atPath: resumeLocal)
+        if var full = fm.contents(atPath: resumeRemote) {
+            full[1000] ^= 0xFF
+            fm.createFile(atPath: resumeLocal, contents: full.prefix(2_000_000))
+        }
+        let rt2 = SFTPTransfer(direction: .download, name: "reprise-dl.bin", local: URL(fileURLWithPath: resumeLocal),
+                               remote: Data(resumeRemote.utf8), session: s)
+        q.enqueue(rt2)
+        _ = await wait(30) { rt2.isFinished }
+        q.retry(rt2)
+        check("reprise_dl_debut_different_repart_de_zero", await wait(30) { rt2.state == .done && rt2.resumedFrom == 0 && fm.contentsEqual(atPath: resumeRemote, andPath: resumeLocal) },
+              "\(rt2.state) \(rt2.resumedFrom)")
+        // Envoi : un fichier distant partiel (SFTP) ou `.part` (shell) est prolongé
+        randomFile("\(src)/reprise-up.bin", megabytes: 6)
+        let upDir = "\(work)/reprise-up", upRemote = "\(work)/reprise-up/reprise-up.bin"
+        let ut = SFTPTransfer(direction: .upload, name: "reprise-up.bin", local: URL(fileURLWithPath: "\(src)/reprise-up.bin"),
+                              remote: Data(upRemote.utf8), session: s)
+        q.enqueue(ut) // le dossier distant n'existe pas encore : premier essai en échec
+        var utFailed = false
+        _ = await wait(15) { if case .failed = ut.state { utFailed = true }; return utFailed }
+        check("reprise_up_premier_essai_echoue", utFailed, "\(ut.state)")
+        try? fm.createDirectory(atPath: upDir, withIntermediateDirectories: true)
+        if let full = fm.contents(atPath: "\(src)/reprise-up.bin") {
+            fm.createFile(atPath: shellMode ? upRemote + ".part" : upRemote, contents: full.prefix(2_000_000))
+        }
+        q.retry(ut)
+        check("reprise_up_terminee", await wait(30) { ut.state == .done }, "\(ut.state)")
+        check("reprise_up_contenu_identique", fm.contentsEqual(atPath: "\(src)/reprise-up.bin", andPath: upRemote))
+        check("reprise_up_repris_a_un_pourcentage", ut.resumedFrom > 0 && ut.resumeText?.hasPrefix("repris à ") == true, "\(ut.resumedFrom) \(ut.resumeText ?? "nil")")
+        q.clearFinished()
+        await s.navigate(to: work)
+
         // 8. Suivi du dossier du terminal (OSC 7)
         model.workspace.select(tab.id)
         try? fm.createDirectory(atPath: "\(work)/avec espace", withIntermediateDirectories: true)
@@ -337,12 +463,30 @@ private final class SFTPSelfTestRunner {
         model.workspace.select(tab.id)
         check("hote_courant_suit_onglet_actif", feature.currentSession() === s)
 
-        // 11. Perte du maître : le navigateur se rouvre seul
+        // 11. Perte du maître : le navigateur se rouvre seul, et le transfert coupé reprend tout seul
         let opened1 = s.channelsOpened
+        let bigPath = "\(src)/coupure.bin"
+        fm.createFile(atPath: bigPath, contents: nil)
+        if let h = try? FileHandle(forWritingTo: URL(fileURLWithPath: bigPath)) {
+            var chunk = Data(count: 1 << 20)
+            chunk.withUnsafeMutableBytes { b in var g = SystemRandomNumberGenerator(); for i in stride(from: 0, to: b.count, by: 8) { b.storeBytes(of: g.next(), toByteOffset: i, as: UInt64.self) } }
+            for _ in 0..<(shellMode ? 120 : 400) { try? h.write(contentsOf: chunk) }
+            try? h.close()
+        }
+        q.maxConcurrent = 3
+        let cut = SFTPTransfer(direction: .upload, name: "coupure.bin", local: URL(fileURLWithPath: bigPath),
+                               remote: Data("\(work)/coupure.bin".utf8), session: s)
+        q.enqueue(cut)
+        check("coupure_transfert_demarre", await wait(20) { cut.state == .running && cut.bytes > 4_000_000 }, "\(cut.state) \(cut.bytes)")
         let pid = await link.transport.masterProcessIdentifier
         if let pid { kill(pid, SIGKILL) }
+        check("coupure_transfert_interrompu", await wait(30) { if case .failed = cut.state { return true }; return cut.state == .running && cut.resumedFrom > 0 }, "\(cut.state)")
         check("perte_detectee_par_navigateur", await wait(20) { s.state == .lost || s.state != .ready }, "\(s.state)")
         check("navigateur_rouvert_apres_reconnexion", await wait(60) { s.state == .ready && s.channelsOpened == opened1 + 1 }, "\(s.state), canaux \(s.channelsOpened - opened1)")
+        check("coupure_reprise_automatique", await wait(120) { cut.state == .done }, "\(cut.state) \(cut.bytes)")
+        check("coupure_contenu_identique", fm.contentsEqual(atPath: bigPath, andPath: "\(work)/coupure.bin"))
+        check("coupure_repris_a_un_pourcentage", cut.resumedFrom > 0 && cut.resumeText?.hasPrefix("repris à ") == true && cut.autoResumeCount >= 1,
+              "\(cut.resumedFrom) \(cut.resumeText ?? "nil") auto=\(cut.autoResumeCount)")
         check("liste_apres_reconnexion", s.pathString == work && s.items.contains { $0.name == "edit.txt" }, s.pathString)
         check("reconnexion_une_authentification_de_plus", acceptedCount == 3, "\(acceptedCount)") // h1, h2, h1 reconnecté
         await capture("05-apres-reconnexion")
