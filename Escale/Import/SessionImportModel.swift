@@ -4,12 +4,13 @@ import EscaleCore
 
 /// Source d'import de sessions d'un autre client (M5).
 enum SessionImportKind: String, CaseIterable, Sendable {
-    case mobaXterm, putty, csv
+    case mobaXterm, putty, termius, csv
 
     var importer: any SessionImporter {
         switch self {
         case .mobaXterm: MobaXtermImporter()
         case .putty: PuTTYRegImporter()
+        case .termius: TermiusImporter()
         case .csv: CSVSessionImporter()
         }
     }
@@ -18,6 +19,7 @@ enum SessionImportKind: String, CaseIterable, Sendable {
         switch self {
         case .mobaXterm: "Depuis MobaXterm…"
         case .putty: "Depuis PuTTY (.reg)…"
+        case .termius: "Depuis Termius (CSV)…"
         case .csv: "Depuis un CSV…"
         }
     }
@@ -26,6 +28,7 @@ enum SessionImportKind: String, CaseIterable, Sendable {
         switch self {
         case .mobaXterm: "Importer depuis MobaXterm"
         case .putty: "Importer depuis PuTTY"
+        case .termius: "Importer depuis Termius"
         case .csv: "Importer depuis un CSV"
         }
     }
@@ -34,6 +37,7 @@ enum SessionImportKind: String, CaseIterable, Sendable {
         switch self {
         case .mobaXterm: ["mxtsessions", "ini", "txt"]
         case .putty: ["reg"]
+        case .termius: ["csv", "txt"]
         case .csv: ["csv", "txt"]
         }
     }
@@ -42,6 +46,7 @@ enum SessionImportKind: String, CaseIterable, Sendable {
         switch self {
         case .mobaXterm: "Choisissez un export MobaXterm (.mxtsessions) ou MobaXterm.ini."
         case .putty: "Choisissez l'export .reg de HKCU\\Software\\SimonTatham\\PuTTY\\Sessions."
+        case .termius: "Choisissez un CSV au format du modèle Termius (Groups, Label, Tags, Hostname/IP, Protocol, Port, Username, Password). Termius n'a pas d'export natif : modèle rempli ou exporteur tiers."
         case .csv: "Choisissez un CSV (colonnes : name, host, port, user, folder, tags)."
         }
     }

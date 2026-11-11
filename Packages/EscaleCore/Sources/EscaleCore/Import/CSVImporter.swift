@@ -57,7 +57,7 @@ public struct CSVSessionImporter: SessionImporter {
         return result
     }
 
-    private static func delimiter(of text: String) -> Character {
+    static func delimiter(of text: String) -> Character {
         let first = text.prefix { !$0.isNewline }
         let counts: [(Character, Int)] = [",", ";", "\t"].map { c in (c, first.filter { $0 == c }.count) }
         return counts.max { $0.1 < $1.1 }.flatMap { $0.1 > 0 ? $0.0 : nil } ?? ","

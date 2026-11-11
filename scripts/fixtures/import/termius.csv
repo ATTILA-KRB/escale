@@ -1,0 +1,9 @@
+Groups,Label,Tags,Hostname/IP,Protocol,Port,Username,Password
+Production/Web,web-01,"prod,nginx",203.0.113.11,ssh,22,deploy,
+Production/Web,web-02,prod,203.0.113.12,ssh,2222,deploy,"t3rm1us,secret"
+Lab,Routeur labo,"lab,reseau",198.51.100.7,telnet,,admin,
+Lab,Pi mosh,,raspberrypi.local,mosh,,pi,
+,sans-groupe,,bare-termius.example.com,,,,
+,Serveur FTP,,ftp.example.com,ftp,21,anon,
+,,,,,,,
+,Sans hote,,,ssh,,,

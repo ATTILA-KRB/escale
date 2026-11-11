@@ -21,28 +21,38 @@ public struct ImportedSession: Hashable, Identifiable, Sendable {
     public var x11Forwarding: Bool
     /// Commande de connexion (MobaXterm « Execute command », PuTTY `RemoteCommand`) → `HostProfile.startupCommand`.
     public var startupCommand: String?
+    /// Protocole de la session (SSH par défaut). Pour la série, `host` est le chemin du périphérique (vide si l'export
+    /// ne donne qu'un port Windows `COMx`, à choisir après l'import).
+    public var connectionProtocol: ConnectionProtocol
+    public var serial: SerialSettings?
 
     public init(
         id: UUID = UUID(), name: String, host: String, port: Int? = nil, user: String? = nil,
         auth: HostProfile.Auth = .openSSHDefaults, jumpHosts: [String] = [], tags: [String] = [],
         folderPath: [String] = [], tunnels: [TunnelSpec] = [], x11Forwarding: Bool = false,
-        startupCommand: String? = nil
+        startupCommand: String? = nil, connectionProtocol: ConnectionProtocol = .ssh, serial: SerialSettings? = nil
     ) {
+        self.connectionProtocol = connectionProtocol; self.serial = serial
         self.id = id; self.name = name; self.host = host; self.port = port; self.user = user
         self.auth = auth; self.jumpHosts = jumpHosts; self.tags = tags; self.folderPath = folderPath
         self.tunnels = tunnels; self.x11Forwarding = x11Forwarding; self.startupCommand = startupCommand
     }
 
     /// Clé de dédoublonnage : même hôte (insensible à la casse), même port (22 par défaut), même utilisateur.
+    /// Hors SSH, le protocole entre dans la clé ; pour la série (hôte = périphérique, souvent vide à l'import) le nom aussi.
     public var identityKey: String {
-        "\(host.lowercased()):\(port ?? 22):\(user ?? "")"
+        SessionImportMerge.identityKey(connectionProtocol: connectionProtocol, name: name, host: host, port: port, user: user)
     }
 
     /// Profil de bibliothèque correspondant (le dossier est résolu par la fusion).
     func profile(folderID: UUID?) -> HostProfile {
         HostProfile(name: name, host: host, port: port, user: user, auth: auth, jumpHosts: jumpHosts,
                     tags: tags, folderID: folderID, tunnels: tunnels, x11Forwarding: x11Forwarding,
-                    startupCommand: startupCommand)
+                    startupCommand: startupCommand, connectionProtocol: connectionProtocol,
+                    serial: connectionProtocol == .serial ? (serial ?? SerialSettings(devicePath: host)) : nil,
+                    telnet: connectionProtocol == .telnet ? TelnetSettings() : nil,
+                    vnc: connectionProtocol == .vnc ? VNCSettings() : nil,
+                    rdp: connectionProtocol == .rdp ? RDPSettings() : nil)
     }
 }
 
@@ -122,9 +132,10 @@ enum ImportSupport {
         return .keyFile(path: path)
     }
 
-    static func port(_ s: String?) -> Int? {
+    /// Port valide, ou `nil` s'il est invalide ou égal au port par défaut du protocole (22 pour SSH).
+    static func port(_ s: String?, protocol proto: ConnectionProtocol = .ssh) -> Int? {
         guard let s = s?.trimmingCharacters(in: .whitespaces), let p = Int(s), (1...65535).contains(p) else { return nil }
-        return p == 22 ? nil : p
+        return p == proto.defaultPort ? nil : p
     }
 
     /// `user@host:port` pour ProxyJump.
@@ -194,5 +205,16 @@ public enum SessionImportMerge {
         return report
     }
 
-    private static func identityKey(of h: HostProfile) -> String { "\(h.host.lowercased()):\(h.port ?? 22):\(h.user ?? "")" }
+    private static func identityKey(of h: HostProfile) -> String {
+        identityKey(connectionProtocol: h.connectionProtocol, name: h.name, host: h.host, port: h.port, user: h.user)
+    }
+
+    static func identityKey(connectionProtocol proto: ConnectionProtocol, name: String, host: String, port: Int?, user: String?) -> String {
+        let base = "\(host.lowercased()):\(port ?? proto.defaultPort ?? 0):\(user ?? "")"
+        switch proto {
+        case .ssh: return base
+        case .serial: return "serial:\(base):\(host.isEmpty ? name.lowercased() : "")"
+        default: return "\(proto.rawValue):\(base)"
+        }
+    }
 }

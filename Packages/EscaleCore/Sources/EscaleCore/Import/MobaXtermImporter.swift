@@ -15,7 +15,22 @@ import Foundation
 /// un mot de passe : jamais repris) · 5 X11 (`-1` actif) · 6 compression · 7 commande de connexion · 8/9/10 passerelles SSH
 /// (hôtes/ports/utilisateurs séparés par `__PIPE__`) · 11 · 12 · 13 environnement distant · 14 clé privée
 /// (`C:` écrit `_CurrentDrive_`) · 15 clés des passerelles.
-/// Types non SSH (Telnet #98 type 1, RDP, VNC, FTP, SFTP, série…) : ignorés avec un avertissement.
+/// Autres types de session (champ 0 ; icône par défaut entre parenthèses ; table « Default icons per session type » du même
+/// document et `parse_bookmarks` de Metasploit, modules/post/windows/gather/credentials/moba_xterm.rb, qui associe
+/// `#109#0` ssh · `#98#1` telnet · `#100#2` rsh · `#91#4` rdp · `#128#5` vnc · `#130#6` ftp · `#140#7` sftp) :
+/// - 1 Telnet (98) : 1 hôte · 2 port · 3 utilisateur (gabarit du convertisseur Xshell→MobaXterm,
+///   https://gist.github.com/findix/0625591aa6d3452d2d5ea124de34d97c, `#98#1%hôte%port%%%2…`) → `.telnet` ;
+/// - 4 RDP (91) : 1 hôte · 2 port (3389) · 3 utilisateur (tableau « RDP Session lines » du document) → `.rdp` ;
+/// - 5 VNC (128) : 1 hôte · 2 port (5900), pas d'utilisateur ; 5/6/7 = passerelle SSH, non reprise (tableau « VNC Session
+///   lines ») → `.vnc` ;
+/// - 8 Série (131) : format NON documenté par l'éditeur ni par le document ci-dessus ; déduit de deux lignes publiques :
+///   `#131#8%1%1115200%3%0%0%1%2%COM9 (USB Serial Port (COM9))#…` (https://superuser.com/questions/1873359, session réelle
+///   d'une version 23.x) et le gabarit du convertisseur Xshell (`#131#8%-2%100{vitesse}%3%0%0%1%2%{port}#…`, gist ci-dessus,
+///   où `100`+`9600` donne `1009600`). Champ 2 = 1 000 000 + débit (1115200 → 115200 bauds ; 1009600 → 9600), champ 8 = port
+///   (`COMx`). Les positions des bits de données, parité, arrêt et contrôle de flux n'ont pas de source : valeurs par défaut
+///   d'Escale (8N1, sans contrôle de flux) et avertissement. Un port `COMx` n'a pas d'équivalent macOS : `devicePath` vide +
+///   avertissement « choisir le port » ; un chemin `/dev/…` est repris tel quel ;
+/// - tout le reste (Rsh, Xdmcp, FTP, SFTP, fichier, shell, navigateur, Mosh, S3, WSL…) : ignoré avec un avertissement.
 /// Champ 7 « Execute command » → `HostProfile.startupCommand` (`;` écrit `__PTVIRG__`, `%` écrit `__PERCENT__` ;
 /// source : même document, tableau « SSH Session lines », index 7). Sémantique : voir `StartupCommand`.
 ///
@@ -129,11 +144,18 @@ public struct MobaXtermImporter: SessionImporter {
         guard parts.count >= 3 else { return }
         let f = parts[2].components(separatedBy: "%")
         guard let type = Int(f[0]) else { return }
+        func field(_ i: Int) -> String { i < f.count ? f[i].trimmingCharacters(in: .whitespaces) : "" }
         guard type == 0 else {
-            result.warnings.append("« \(name) » : type de session MobaXterm \(type) (icône \(parts[1])) non SSH, ignoré.")
+            switch type {
+            case 1: networkSession(.telnet, name: name, field: field, folder: folder, into: &result)
+            case 4: networkSession(.rdp, name: name, field: field, folder: folder, into: &result)
+            case 5: networkSession(.vnc, name: name, field: field, folder: folder, into: &result)
+            case 8: serialSession(name: name, field: field, folder: folder, into: &result)
+            default:
+                result.warnings.append("« \(name) » : type de session MobaXterm \(type) (icône \(parts[1])) non pris en charge, ignoré.")
+            }
             return
         }
-        func field(_ i: Int) -> String { i < f.count ? f[i].trimmingCharacters(in: .whitespaces) : "" }
         let host = field(1)
         guard !host.isEmpty else {
             result.warnings.append("« \(name) » : hôte vide, ignoré.")
@@ -160,5 +182,43 @@ public struct MobaXtermImporter: SessionImporter {
             jumpHosts: jumps, folderPath: folder, x11Forwarding: field(5) == "-1",
             startupCommand: StartupCommand.normalized(
                 field(7).replacingOccurrences(of: "__PTVIRG__", with: ";").replacingOccurrences(of: "__PERCENT__", with: "%"))))
+    }
+
+    /// Telnet, RDP, VNC : hôte (1), port (2), utilisateur (3, sauf VNC). `<default>` = utilisateur de l'application.
+    private func networkSession(_ proto: ConnectionProtocol, name: String, field: (Int) -> String, folder: [String],
+                                into result: inout SessionImportResult) {
+        let host = field(1)
+        guard !host.isEmpty else {
+            result.warnings.append("« \(name) » : hôte vide, ignoré.")
+            return
+        }
+        var user: String? = proto == .vnc ? nil : field(3)
+        if user == "" || user == "<default>" { user = nil }
+        if proto == .vnc, !field(5).isEmpty {
+            result.warnings.append("« \(name) » : passerelle SSH VNC (\(field(5))) non reprise, ajoutez un tunnel à la main si besoin.")
+        }
+        result.sessions.append(ImportedSession(
+            name: name.isEmpty ? host : name, host: host, port: ImportSupport.port(field(2), protocol: proto), user: user,
+            folderPath: folder, connectionProtocol: proto))
+    }
+
+    /// Série : débit (champ 2, 1 000 000 + débit), port (champ 8). Voir l'en-tête du fichier pour les sources.
+    private func serialSession(name: String, field: (Int) -> String, folder: [String], into result: inout SessionImportResult) {
+        let rawPort = field(8)
+        var settings = SerialSettings()
+        if let code = Int(field(2)) {
+            let baud = code >= 1_000_000 ? code - 1_000_000 : code
+            if baud > 0 { settings.baudRate = baud }
+        }
+        if rawPort.hasPrefix("/dev/") {
+            settings.devicePath = rawPort
+        } else {
+            let shown = rawPort.isEmpty ? "port inconnu" : rawPort
+            result.warnings.append("« \(name) » : port série MobaXterm « \(shown) » sans équivalent macOS, choisir le port (/dev/cu.…) après l'import.")
+        }
+        result.warnings.append("« \(name) » : bits de données, parité, arrêt et contrôle de flux non lus dans l'export MobaXterm (8N1 sans contrôle de flux par défaut, à vérifier).")
+        result.sessions.append(ImportedSession(
+            name: name.isEmpty ? (rawPort.isEmpty ? "Série" : rawPort) : name, host: settings.devicePath, folderPath: folder,
+            connectionProtocol: .serial, serial: settings))
     }
 }

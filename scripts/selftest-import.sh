@@ -1,5 +1,5 @@
 #!/bin/bash
-# Recette de l'import de sessions (MobaXterm, PuTTY, CSV) : lance l'app avec une bibliothèque TEMPORAIRE (--library) et
+# Recette de l'import de sessions (MobaXterm, PuTTY, Termius, CSV ; protocoles SSH, Telnet, série, VNC, RDP) : lance l'app avec une bibliothèque TEMPORAIRE (--library) et
 # le scénario --selftest-import (aucun clic, aucune boîte de dialogue). Les fixtures sources sont dans
 # scripts/fixtures/import (UTF-8) et converties ici en encodages Windows : cp1252 (.mxtsessions), UTF-16LE + BOM (.reg).
 # Sortie : code de l'app ; résultats dans $OUT (result.json). Ne touche jamais à ~/.ssh ni à Application Support/Escale.
@@ -22,6 +22,9 @@ src, dst = sys.argv[1], sys.argv[2]
 open(f"{dst}/moba.mxtsessions", "wb").write(open(f"{src}/moba.mxtsessions", encoding="utf-8").read().replace("\n", "\r\n").encode("cp1252"))
 open(f"{dst}/putty.reg", "wb").write(b"\xff\xfe" + open(f"{src}/putty.reg", encoding="utf-8").read().replace("\n", "\r\n").encode("utf-16-le"))
 open(f"{dst}/hosts.csv", "wb").write(open(f"{src}/hosts.csv", "rb").read())
+open(f"{dst}/moba-protocols.mxtsessions", "wb").write(open(f"{src}/moba-protocols.mxtsessions", encoding="utf-8").read().replace("\n", "\r\n").encode("cp1252"))
+open(f"{dst}/putty-protocols.reg", "wb").write(b"\xff\xfe" + open(f"{src}/putty-protocols.reg", encoding="utf-8").read().replace("\n", "\r\n").encode("utf-16-le"))
+open(f"{dst}/termius.csv", "wb").write(open(f"{src}/termius.csv", "rb").read())
 open(f"{dst}/MobaXterm.ini", "wb").write(open(f"{src}/MobaXterm.ini", encoding="utf-8").read().replace("\n", "\r\n").encode("cp1252"))
 PY
 

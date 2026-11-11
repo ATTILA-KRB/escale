@@ -32,7 +32,7 @@ import Testing
     @Test func mobaXterm() throws {
         let r = MobaXtermImporter().parse(data: Self.cp1252(try Self.fixture("moba.mxtsessions")))
         let byName = Dictionary(uniqueKeysWithValues: r.sessions.map { ($0.name, $0) })
-        #expect(r.sessions.count == 4) // le Telnet est ignoré
+        #expect(r.sessions.count == 5) // dont le Telnet « Switch coeur »
 
         let nas = try #require(byName["Maison NAS"])
         #expect(nas.host == "nas.local" && nas.port == nil && nas.user == nil && nas.folderPath.isEmpty && !nas.x11Forwarding)
@@ -47,9 +47,10 @@ import Testing
         #expect(db.port == 2222 && db.user == "postgres" && db.folderPath == ["Production", "Base de données"])
         #expect(db.auth == .keyFile(path: "/Users/rayan/.ssh/id_ed25519"))
 
-        // Avertissements : .ppk et Telnet ; mots de passe : champ 4 + [Passwords], jamais repris.
+        let telnet = try #require(byName["Switch coeur"])
+        #expect(telnet.connectionProtocol == .telnet && telnet.host == "10.0.0.1" && telnet.port == nil && telnet.user == nil)
+        // Avertissements : .ppk ; mots de passe : champ 4 + [Passwords], jamais repris.
         #expect(r.warnings.contains { $0.contains(".ppk") && $0.contains("Web prod") })
-        #expect(r.warnings.contains { $0.contains("Switch coeur") })
         #expect(r.ignoredPasswordCount == 2)
         #expect(r.passwordNotice == "2 mots de passe non importés")
         #expect(!String(describing: r).contains("s3cret") && !String(describing: r).contains("encrypted"))
@@ -110,7 +111,8 @@ import Testing
     @Test func puttyReg() throws {
         let r = PuTTYRegImporter().parse(data: Self.utf16le(try Self.fixture("putty.reg")))
         let byName = Dictionary(uniqueKeysWithValues: r.sessions.map { ($0.name, $0) })
-        #expect(Set(byName.keys) == ["Serveur Web été", "DB", "Derriere proxy"]) // Default Settings et Telnet ignorés
+        #expect(Set(byName.keys) == ["Serveur Web été", "DB", "Derriere proxy", "Routeur Telnet"]) // Default Settings ignoré
+        #expect(byName["Routeur Telnet"]?.connectionProtocol == .telnet && byName["Routeur Telnet"]?.port == nil)
 
         let web = try #require(byName["Serveur Web été"])
         #expect(web.host == "web.example.com" && web.port == nil && web.user == "deploy" && web.x11Forwarding)
@@ -126,7 +128,6 @@ import Testing
 
         let db = try #require(byName["DB"])
         #expect(db.host == "10.0.0.5" && db.user == "admin" && db.port == 2222 && db.folderPath == ["Prod"])
-        #expect(r.warnings.contains { $0.contains("telnet") })
         #expect(r.ignoredPasswordCount == 1)
         #expect(!String(describing: r).contains("hunter2"))
     }
