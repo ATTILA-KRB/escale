@@ -339,17 +339,16 @@ Sept branches fusionnees dans `main` (squelette `AppFeature` pose avant, un work
 Verifie sur `main` : `scripts/test.sh` vert (218 tests coeur + build), recettes ssh 65, auth, panes 138, sftp 78,
 tunnels 31, multiexec 64, macros 62, import 28 controles : toutes `ok`.
 
-Restes (non verifiables ici ou hors perimetre) :
-- Mac vierge : telechargement reel (quarantaine), Gatekeeper, mise a jour Sparkle complete. Domaine et `ESCALE_FEED_URL` a decider.
-- XQuartz : `xeyes` en un clic a valider apres installation (sudo). Mode X11 non fiable avec vrai cookie xauth non teste.
-- Gestes reels non pilotes : glisser-deposer Finder, clics menus, lien distant a vraie latence. IME/VoiceOver : voir spike S3 (reste le test humain AZERTY/CJK/VoiceOver reels).
-- XQuartz : `xeyes` en un clic a valider apres installation (sudo). (Mode X11 non fiable avec vrai cookie : fait, voir « Imports + X11 ».)
-- Gestes reels non pilotes : glisser-deposer Finder, clics menus, IME/VoiceOver (spike S3), lien distant a vraie latence.
-- SFTP UI : un transfert reessaye repart de zero (brancher la reprise verifiee du coeur) ; pas de tri par colonne.
-- Gestes reels non pilotes : glisser-deposer Finder, clics menus, IME/VoiceOver (spike S3), lien distant a vraie latence.
-- SFTP : glisser distant -> distant entre deux hotes differents (non prevu : meme hote seulement) ; mode shell : noms non UTF-8 non adressables, listage `ls` (dernier recours) sans retour a la ligne dans les noms ; gestes reels (⌥ au drop) non pilotes.
-- Tunnels : IPv6, `-R 0`, modification d'un tunnel actif. Multi-exec : Echap ne sort pas de la diffusion (diffuse).
-- Icone de l'app absente. (Dettes M1 PaneMenu, troncatures, OSC 52 : soldees, voir « Dettes techniques M1 ».)
+Restes (au 2026-11-11, apres la vague v2 ; toutes les fonctionnalites prevues sont livrees) :
+- Decisions : domaine, donc `ESCALE_FEED_URL` (Sparkle) ; modele de distribution (perso, open source, vente).
+- Mac vierge : telechargement reel (quarantaine), Gatekeeper, mise a jour Sparkle complete.
+- XQuartz : `xeyes` en un clic a valider apres installation (sudo).
+- Gestes humains non pilotables ici : glisser-deposer Finder, raccourcis au vrai clavier, AZERTY/IME systeme, VoiceOver reel,
+  lien distant a vraie latence (dont PROMETHEUS en mode shell).
+- SFTP : glisser distant -> distant entre deux hotes differents (meme hote seulement) ; mode shell : noms non UTF-8,
+  listage `find -printf` verifie par son analyseur seulement (pas de find GNU local).
+- Tunnels : zones IPv6 (`%en0`). Multi-exec : variables `{host}` non substituees dans les macros.
+- Icone de l'app (design).
 
 ### Dettes techniques M1 (2026-11-11, branche `v2-tech`)
 

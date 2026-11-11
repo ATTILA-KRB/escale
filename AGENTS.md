@@ -12,7 +12,7 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 
 ## Commandes
 - `scripts/test.sh` : tests du coeur + build de l'app. A lancer avant tout commit.
-- `scripts/selftest-{ssh,auth,panes,sftp,tunnels,multiexec,macros,import}.sh` : recettes de l'app contre un sshd local
+- `scripts/selftest-{ssh,auth,panes,terminal,sftp,sftp-shell,tunnels,multiexec,macros,import}.sh` : recettes de l'app contre un sshd local
   (ouvrent une fenetre, sans prendre le focus). Resultats dans `$OUT` (result.json + captures).
   A lancer apres tout changement dans `Escale/`, une a la fois (meme dossier `build/`). Sortie vers un fichier,
   pas `| tail` (le garde-fou `sleep` en arriere-plan garde la pipe ouverte).
