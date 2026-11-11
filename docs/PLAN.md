@@ -258,3 +258,28 @@ A faire : test sur un Mac vierge ; choix du domaine et publication du flux (voir
 - **App** (`Escale/Tunnels/`) : `TunnelFeature` (observateur `linkObservers["tunnels"]` : `.connected` rouvre les tunnels voulus + `autoStart`, `.lost/.disconnected` les marque arrêtés ; surveillance périodique du maître ; un tunnel voulu retient le lien, la connexion survit à la fermeture du dernier onglet). UI : `TunnelEditorSection` (fiche d'hôte), gestionnaire en feuille ⇧⌘T (`activeFeatureSheet = "tunnels"`), « Tunnels… » dans le menu d'hôte, copie d'URL.
 - **Preuves** : `swift test` (tunnels L/D/R par curl, port occupé, `AllowTcpForwarding no`, cancel effectif, coupure du maître) ; `scripts/selftest-tunnels.sh` (connexion, autoStart, L/R/D par curl, port occupé, arrêt, SIGKILL du maître, rétablissement auto, 30 contrôles).
 - **Limites** : IPv6 non pris en charge dans les adresses de tunnel ; pas de modification d'un tunnel actif (arrêter puis relancer) ; R sans bash côté serveur = confiance au serveur ; `-R 0` (port attribué) non géré.
+
+### M3 multi-execution
+
+Dossier `Escale/MultiExec/` + coeur `Packages/EscaleCore/Sources/EscaleCore/MultiExec/`.
+- **Diffusion de saisie** (`MultiExecFeature`) : portee = panneaux de l'onglet, tous les onglets, ou selection (feuille).
+  Chaque panneau du groupe porte l'observateur `inputObservers["multiexec"]` qui rejoue les octets bruts vers les autres
+  par `TerminalSession.write` (sans re-notification : pas de boucle). Un minuteur (0,4 s) resynchronise le groupe
+  (panneaux crees/fermes). `BroadcastFilter` ecarte les reponses automatiques du terminal (position du curseur, DA,
+  focus, souris, OSC) qui ne sont pas des frappes. Collage = un seul envoi par destinataire. Indicateur : bordure rouge
+  sur la vue du moteur + bandeau rouge (boutons Choisir / Arreter). Menu « Multi-execution » : ⌥⌘I bascule. Pas de
+  raccourci Echap (il serait diffuse comme une touche) : sortie par ⌥⌘I ou le bandeau.
+- **Execution groupee** : menu de la selection multiple (barre laterale) ou menu Multi-execution (hotes connectes) →
+  feuille (commande, delai 10 s a 5 min) → `GroupExec` en parallele (16 max) ; `OpenSSHTransport.exec` =
+  `ssh -T -n -o BatchMode=yes` avec le prefixe secondaire (invariant 2), compte dans le plafond de sessions
+  (invariant 5), sortie bornee a 64 Kio par flux (le reste est lu puis jete), delai = SIGTERM puis SIGKILL.
+  Hotes non connectes : connectes d'abord par le lien partage (dialogues d'authentification habituels), puis lien
+  relache (deconnexion apres le delai de grace si aucun onglet). Resultats dans un panneau bas : etat, code, duree,
+  stdout/stderr, Relancer, Copier tout / par hote.
+- **Preuves** : `swift test --filter MultiExec` (9 tests : filtre, exec, troncature, plafond, delai, 3 hotes codes 0/3/7,
+  parallelisme, rapport) ; `scripts/selftest-multiexec.sh` (64 verifications : diffusion sur 3 panneaux, collage, Ctrl-C,
+  nouveau panneau, arret, selection, tous onglets, menu ⌥⌘I, commande sur 3 hotes dont 2 a connecter, code 3, relancer,
+  delai, hote injoignable).
+- **Non teste / limites** : frappes clavier reelles (la recette injecte par `engine.sendInput`, chemin du delegue) ;
+  la bordure rouge est sur la vue du moteur (pas dans `PaneHostView`) ; pas de commande par hote dans l'UI (le coeur
+  l'accepte via `GroupExecTarget.command`) ; menu « hotes connectes » seulement, pas de choix par dossier.

@@ -46,6 +46,8 @@ public actor OpenSSHTransport: SSHTransport {
     private var paths: (socket: String, log: String, ownedDirectory: String?)?
     private var channels: [UUID: OpenSSHProcessChannel] = [:]
     private var shellSessions = 0
+    /// Commandes non interactives en cours (module multi-exécution) : comptées pour le plafond, voir `exec`.
+    var execSessions = 0
     private var tunnels: Set<TunnelSpec> = []
     private var askpassServer: AskpassServer?
 
@@ -358,7 +360,7 @@ public actor OpenSSHTransport: SSHTransport {
 
     // MARK: - Interne
 
-    private func makeBuilder() throws -> OpenSSHCommandBuilder {
+    func makeBuilder() throws -> OpenSSHCommandBuilder {
         let p = try preparePaths()
         do { return try OpenSSHCommandBuilder(profile: profile, controlPath: p.socket, options: configuration.ssh) }
         catch { throw SSHTransportError.masterFailed("paramètres invalides : \(error)") }
