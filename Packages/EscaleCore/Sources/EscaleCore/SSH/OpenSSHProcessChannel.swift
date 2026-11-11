@@ -163,10 +163,12 @@ final class OpenSSHProcessChannel: ByteChannel, @unchecked Sendable {
 
     func write(_ data: Data) async throws {
         if data.isEmpty { return }
-        let fd = stdinPipe.fileHandleForWriting.fileDescriptor
         let err: Int32 = await withCheckedContinuation { (cont: CheckedContinuation<Int32, Never>) in
             writeQueue.async { [self] in
                 if stdinClosed { cont.resume(returning: EPIPE); return }
+                // Descripteur lu ici, sur la file qui ferme aussi : sur un FileHandle fermé, `fileDescriptor` lève une
+                // exception Objective-C (crash) quand close() passe entre la lecture et l'écriture.
+                let fd = stdinPipe.fileHandleForWriting.fileDescriptor
                 var result: Int32 = 0
                 data.withUnsafeBytes { raw in
                     var off = 0

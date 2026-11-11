@@ -46,6 +46,10 @@ public final class RemoteExecStream: @unchecked Sendable {
     deinit {
         if process.isRunning { process.terminate() }
         try? stdinPipe.fileHandleForWriting.close()
+        // `terminationHandler` ne tient `self` que faiblement : un flux libéré avant la fin du processus n'appellerait jamais
+        // `onEnd`, et la place réservée sur le maître (`sessionCount`) resterait comptée. `onEnd` ne part qu'une fois.
+        let cb = lock.withLock { () -> (@Sendable () -> Void)? in let c = onEnd; onEnd = nil; return c }
+        cb?()
     }
 
     private func appendStderr(_ d: Data) {

@@ -9,18 +9,57 @@ public enum ShellQuote {
         "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
-    /// Chemin sous forme de texte. Le mode shell ne sait pas adresser un nom non UTF-8 ni contenant NUL.
+    /// Préfixe interne d'un argument « octets » (nom non UTF-8) : `command` le décode côté serveur. Le contrôle U+0001 ne
+    /// figure jamais dans un chemin ordinaire ; si c'était le cas, `path` passe quand même par l'encodage (pas d'ambiguïté).
+    static let rawMarker = "\u{1}octets:"
+
+    /// Chemin prêt à servir d'argument. Un chemin UTF-8 reste du texte ; un nom non UTF-8 (octets invalides) est encodé en
+    /// `\ooo` octal derrière `rawMarker`, car un argument de ligne de commande ssh est une chaîne et ne sait pas porter
+    /// ces octets. Seul un NUL est refusé (inexprimable dans un chemin POSIX).
     static func path(_ d: Data) throws -> String {
-        guard let s = String(data: d, encoding: .utf8), !d.contains(0) else {
-            throw SFTPError.status(.opUnsupported, message: "nom non UTF-8 non pris en charge en mode shell")
+        guard !d.contains(0) else {
+            throw SFTPError.status(.opUnsupported, message: "nom contenant un octet nul non pris en charge en mode shell")
         }
-        return s
+        if let s = String(data: d, encoding: .utf8), !s.hasPrefix(rawMarker) { return s }
+        return rawMarker + escaped(d)
     }
+
+    /// Octets en ASCII sûr : tout sauf `[A-Za-z0-9/._]` devient `\ooo` (le tiret aussi : jamais pris pour une option par
+    /// `printf`, `%` et `\` non plus).
+    static func escaped(_ d: Data) -> String {
+        var out = ""
+        for b in d {
+            switch b {
+            case UInt8(ascii: "a")...UInt8(ascii: "z"), UInt8(ascii: "A")...UInt8(ascii: "Z"), UInt8(ascii: "0")...UInt8(ascii: "9"),
+                 UInt8(ascii: "/"), UInt8(ascii: "."), UInt8(ascii: "_"):
+                out.unicodeScalars.append(Unicode.Scalar(b))
+            default:
+                let o = String(b, radix: 8)
+                out += "\\" + String(repeating: "0", count: 3 - o.count) + o
+            }
+        }
+        return out
+    }
+
+    /// Retour des arguments encodés : `printf` (format = l'argument) restitue les octets ; un `x` ajouté puis retiré
+    /// protège les retours à la ligne finaux que `$(...)` supprimerait. Constant, ajouté seulement si un argument en a besoin.
+    static let decodePrelude = #"""
+    n=$#
+    while [ "$n" -gt 0 ]; do a=$1; shift; d=$(printf "$a"; printf x); set -- "$@" "${d%x}"; n=$((n-1)); done
+
+    """#
 
     /// `env LC_ALL=C /bin/sh -c '<script>' sh '<arg1>' …` : `env` (et non `LC_ALL=C cmd`) pour rester valable quel que soit
     /// le shell de connexion distant (csh, fish…). Le script est constant, seuls les arguments varient.
     static func command(script: String, args: [String]) -> String {
-        (["env", "LC_ALL=C", "/bin/sh", "-c", word(script), "sh"] + args.map(word)).joined(separator: " ")
+        var script = script
+        var args = args
+        if args.contains(where: { $0.hasPrefix(rawMarker) }) {
+            // Au moins un nom en octets : tous les arguments passent en ASCII échappé, décodés par le prélude.
+            args = args.map { $0.hasPrefix(rawMarker) ? String($0.dropFirst(rawMarker.count)) : escaped(Data($0.utf8)) }
+            script = decodePrelude + script
+        }
+        return (["env", "LC_ALL=C", "/bin/sh", "-c", word(script), "sh"] + args.map(word)).joined(separator: " ")
     }
 }
 
@@ -199,20 +238,31 @@ enum ShellScripts {
     """
 
     static let writeBlockTruncate = "exec cat > \"$1\"\n"
-    static let writeBlockAt = "exec dd of=\"$1\" bs=1 seek=\"$2\" conv=notrunc 2>/dev/null\n"
+    /// Écriture à un offset. Aligné sur 4 Kio : `dd` par blocs de 4 Kio (un octet par appel système, `bs=1`, rendait un bloc
+    /// de 1 Mio interminable) ; une lecture courte du tube est écrite telle quelle à la suite, `seek` ne vaut que pour le départ.
+    static let writeBlockAt = """
+    if [ $(($2 % 4096)) -eq 0 ]; then exec dd of="$1" bs=4096 seek=$(($2 / 4096)) conv=notrunc 2>/dev/null; fi
+    exec dd of="$1" bs=1 seek="$2" conv=notrunc 2>/dev/null
+
+    """
 }
 
 enum ShellParsers {
     /// Découpe en champs séparés par NUL (octets exacts, pas de décodage).
-    static func fields(_ text: String) -> [Data] {
+    static func fields(_ bytes: Data) -> [Data] {
         var out: [Data] = []
         var cur = Data()
-        for b in text.utf8 { if b == 0 { out.append(cur); cur = Data() } else { cur.append(b) } }
+        for b in bytes { if b == 0 { out.append(cur); cur = Data() } else { cur.append(b) } }
         if !cur.isEmpty { out.append(cur) }
         return out
     }
+    static func fields(_ text: String) -> [Data] { fields(Data(text.utf8)) }
 
-    static func gnuFind(_ stdout: String) throws -> [ShellRecord] {
+    static func gnuFind(_ stdout: String) throws -> [ShellRecord] { try gnuFind(Data(stdout.utf8)) }
+    static func statLoop(_ stdout: String) throws -> [ShellRecord] { try statLoop(Data(stdout.utf8)) }
+    static func ls(_ stdout: String, now: Date = Date()) -> [ShellRecord] { ls(Data(stdout.utf8), now: now) }
+
+    static func gnuFind(_ stdout: Data) throws -> [ShellRecord] {
         let f = fields(stdout)
         guard f.count % 6 == 0 else { throw SFTPError.protocolViolation("listage find incohérent (\(f.count) champs)") }
         var out: [ShellRecord] = []
@@ -230,7 +280,7 @@ enum ShellParsers {
         return out
     }
 
-    static func statLoop(_ stdout: String) throws -> [ShellRecord] {
+    static func statLoop(_ stdout: Data) throws -> [ShellRecord] {
         let f = fields(stdout)
         guard f.count % 4 == 0 else { throw SFTPError.protocolViolation("listage stat incohérent (\(f.count) champs)") }
         var out: [ShellRecord] = []
@@ -249,9 +299,12 @@ enum ShellParsers {
     }
 
     /// Sortie de `ls -lan` (avec ou sans `--time-style=+%s`). Les noms avec retour à la ligne ne sont pas gérés.
-    static func ls(_ stdout: String, now: Date = Date()) -> [ShellRecord] {
+    /// Décodée en Latin-1 (un octet = un caractère, sans perte) : les champs sont ASCII et le nom retrouve ses octets exacts.
+    static func ls(_ stdout: Data, now: Date = Date()) -> [ShellRecord] {
         var out: [ShellRecord] = []
-        for line in stdout.split(separator: "\n", omittingEmptySubsequences: true) {
+        var text = ""
+        text.unicodeScalars.append(contentsOf: stdout.map { Unicode.Scalar($0) })
+        for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
             guard let first = line.first, "-dlcbps".contains(first), !line.hasPrefix("total ") else { continue }
             var tokens: [Substring] = []
             var rest = Substring(line)
@@ -284,7 +337,7 @@ enum ShellParsers {
             if name == "." || name == ".." || name.isEmpty { continue }
             let type: Character = switch first { case "d": "d"; case "-": "f"; case "l": "l"; default: "o" }
             out.append(ShellRecord(type: type, size: UInt64(sizeToken) ?? 0, mtime: mtime,
-                                   permissions: lsPermissions(String(mode)), link: link, name: Data(name.utf8)))
+                                   permissions: lsPermissions(String(mode)), link: link, name: Data(name.unicodeScalars.map { UInt8(truncatingIfNeeded: $0.value) })))
         }
         return out
     }

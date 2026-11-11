@@ -6,7 +6,7 @@ import EscaleCore
 @MainActor
 @Observable
 final class SFTPTransfer: Identifiable {
-    enum Direction { case upload, download }
+    enum Direction { case upload, download, relay }
     enum State: Equatable { case queued, running, done, failed(String), cancelled }
 
     let id = UUID()
@@ -14,7 +14,11 @@ final class SFTPTransfer: Identifiable {
     let name: String
     let local: URL
     let remote: Data
+    /// Hôte de destination (envoi, réception : l'hôte du transfert ; relais : l'hôte qui reçoit).
     let session: SFTPHostSession
+    /// Relais d'un hôte à l'autre : hôte et chemin d'origine (nil sinon).
+    let source: SFTPHostSession?
+    let sourcePath: Data?
 
     private(set) var state: State = .queued
     private(set) var bytes: UInt64 = 0
@@ -46,6 +50,13 @@ final class SFTPTransfer: Identifiable {
 
     init(direction: Direction, name: String, local: URL, remote: Data, session: SFTPHostSession) {
         self.direction = direction; self.name = name; self.local = local; self.remote = remote; self.session = session
+        self.source = nil; self.sourcePath = nil
+    }
+
+    /// Copie d'un fichier de l'hôte `source` vers l'hôte `session`, en flux (rien n'est écrit sur le disque local).
+    init(relayFrom source: SFTPHostSession, path sourcePath: Data, name: String, to remote: Data, on session: SFTPHostSession) {
+        self.direction = .relay; self.name = name; self.local = URL(fileURLWithPath: "/dev/null")
+        self.remote = remote; self.session = session; self.source = source; self.sourcePath = sourcePath
     }
 
     var fraction: Double? {
@@ -60,6 +71,7 @@ final class SFTPTransfer: Identifiable {
         state = .running; attempts += 1
         bytes = 0; speed = 0; resumedFrom = 0; restartReason = nil; interrupted = false
         awaitingFirstSnapshot = true
+        sampleDate = Date(); sampleBytes = 0
     }
 
     /// Le cœur émet d'abord un instantané à l'offset de reprise : c'est lui qui donne « repris à X % ».
@@ -78,6 +90,18 @@ final class SFTPTransfer: Identifiable {
         resumedFrom = o.resumedFrom
         restartReason = o.restartReason
         total = o.totalBytes
+    }
+
+    /// Progression d'un relais (pas d'instantané du cœur : débit lissé calculé ici).
+    fileprivate func relayProgress(bytes b: UInt64, total t: UInt64) {
+        guard state == .running else { return }
+        let now = Date(), dt = now.timeIntervalSince(sampleDate)
+        if dt >= 0.5 {
+            let inst = b >= sampleBytes ? Double(b - sampleBytes) / dt : 0
+            speed = speed == 0 ? inst : speed * 0.6 + inst * 0.4
+            sampleDate = now; sampleBytes = b
+        }
+        bytes = b; total = t
     }
 
     fileprivate func markInterrupted() { interrupted = true }
@@ -125,6 +149,7 @@ final class SFTPTransferQueue {
 
     private func run(_ t: SFTPTransfer) async {
         let client = t.session.client
+        let relaySource = t.source
         do {
             try await perform(t)
             t.finish(.done)
@@ -140,7 +165,9 @@ final class SFTPTransferQueue {
                 // Échec : les octets déjà transférés restent en place, « Réessayer » reprend après vérification.
                 if SFTPMessages.isChannelLoss(error) {
                     t.markInterrupted()
-                    t.session.channelLost()
+                    // Relais : la perte peut venir de l'un ou l'autre hôte ; on prévient celui dont le canal est mort.
+                    if let src = relaySource, src.state != .ready { src.channelLost() }
+                    if t.session.state != .ready || relaySource == nil { t.session.channelLost() }
                 }
                 t.finish(.failed(SFTPMessages.describe(error)))
             }
@@ -154,10 +181,12 @@ final class SFTPTransferQueue {
     /// toujours complète, pour ne jamais « reprendre » un fichier distant qu'on a choisi de remplacer.
     private func perform(_ t: SFTPTransfer) async throws {
         guard let client = t.session.client else { throw SFTPError.channelClosed("canal SFTP non ouvert") }
+        if t.direction == .relay { try await relay(t, to: client); return }
         let resume = t.attempts > 1
         let task: SFTPTransferTask = switch t.direction {
         case .download: client.startDownload(remotePath: t.remote, to: t.local, resume: resume, verification: .default)
         case .upload: client.startUpload(localURL: t.local, to: t.remote, resume: resume, verification: .default)
+        case .relay: throw SFTPError.localIO("relais traité à part")
         }
         let pump = Task { @MainActor [weak t] in for await s in task.progress { t?.update(s) } }
         defer { pump.cancel() }
@@ -165,9 +194,51 @@ final class SFTPTransferQueue {
         t.noteOutcome(outcome)
     }
 
+    /// Taille des blocs d'un relais : lecture du bloc suivant pendant l'écriture du courant (deux blocs en mémoire au plus).
+    static let relayBlock = 1 << 20
+
+    /// Lecture SFTP/shell de l'hôte A puis écriture vers l'hôte B, bloc par bloc. Une nouvelle tentative repart de zéro
+    /// (le fichier de destination est tronqué) ; l'annulation est testée à chaque bloc.
+    private func relay(_ t: SFTPTransfer, to dest: any RemoteFileSystem) async throws {
+        guard let src = t.source?.client, let from = t.sourcePath else { throw SFTPError.channelClosed("canal SFTP source non ouvert") }
+        let total = try await src.attributes(of: from).size ?? 0
+        t.relayProgress(bytes: 0, total: total)
+        var offset: UInt64 = 0
+        var truncate = true
+        var pending: Task<Data, Error>? = total > 0 ? Task { try await src.readBlock(from, offset: 0, length: Self.relayBlock) } : nil
+        var wrote = false
+        defer { pending?.cancel() }
+        do {
+            if total == 0 { wrote = true; try await dest.writeBlock(t.remote, offset: 0, data: Data(), truncate: true) }
+            while let task = pending {
+                let block = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+                try Task.checkCancellation()
+                guard !block.isEmpty else { pending = nil; break }
+                let next = offset + UInt64(block.count)
+                pending = next < total ? Task { try await src.readBlock(from, offset: next, length: Self.relayBlock) } : nil
+                wrote = true
+                try await dest.writeBlock(t.remote, offset: offset, data: block, truncate: truncate)
+                truncate = false
+                offset = next
+                t.relayProgress(bytes: offset, total: total)
+            }
+            if offset != total { throw SFTPError.localIO("fichier source modifié pendant la copie (\(offset) sur \(total) octets lus)") }
+        } catch {
+            // Un relais ne reprend pas : le fichier partiel ne sert à rien. Suppression hors de la tâche (déjà annulée
+            // en cas d'annulation, ce qui couperait aussi la commande de nettoyage en mode shell).
+            // La lecture d'avance est attendue : sa commande exec (mode shell) doit être refermée avant de rendre la main,
+            // sinon `sessionCount` du maître garde une session fantôme un instant.
+            pending?.cancel()
+            _ = await pending?.result
+            pending = nil
+            if wrote { await Task { try? await dest.removeFile(t.remote) }.value }
+            throw error
+        }
+    }
+
     /// Le canal d'un hôte est de retour : les transferts coupés par la perte du lien repartent (cinq fois au plus).
     func resumeInterrupted(for session: SFTPHostSession) {
-        for t in items where t.session === session && t.interrupted && t.isFinished && t.autoResumes < 5 {
+        for t in items where (t.session === session || t.source === session) && t.interrupted && t.isFinished && t.autoResumes < 5 {
             t.countAutoResume()
             t.resetForRetry()
         }

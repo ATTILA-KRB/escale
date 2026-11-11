@@ -5,7 +5,8 @@ import Foundation
 /// sous-système SFTP. Hypothèse : le serveur distant offre un `/bin/sh` POSIX et les outils usuels (`ls`/`find`/`stat`,
 /// `cat`, `dd`, `mv`, `cp`, `mkdir`, `rm`). Aucun chemin n'est jamais interpolé dans un script (voir `ShellQuote`).
 ///
-/// Limites : noms non UTF-8 non adressables ; listage `ls` (dernier recours) sans retour à la ligne dans les noms ;
+/// Noms non UTF-8 : listés en octets exacts (flux binaire) et adressables (arguments encodés, voir `ShellQuote.path`).
+/// Limites : listage `ls` (dernier recours) sans retour à la ligne dans les noms ;
 /// reprise d'un téléchargement alignée sur 64 Kio ; un envoi s'écrit dans `<fichier>.part`, renommé à la fin.
 public actor ShellFileSystem: RemoteFileSystem {
     public nonisolated var kind: RemoteFileSystemKind { .shell }
@@ -69,16 +70,41 @@ public actor ShellFileSystem: RemoteFileSystem {
         return ShellListingTier.allCases
     }
 
+    /// Exécute une commande dont la sortie doit rester exacte (noms non UTF-8) : lue en flux binaire, jamais décodée.
+    /// `RemoteExecResult` ne sert ici qu'à porter code de sortie et erreur (sa sortie texte reste vide).
+    private func runExact(_ command: String) async throws -> (stdout: Data, result: RemoteExecResult) {
+        let started = Date()
+        let stream = try await executor.openShellStream(command)
+        let limit = 64 * 1024 * 1024
+        let watchdog = Task { [commandTimeout] in
+            try await Task.sleep(for: .seconds(commandTimeout))
+            stream.cancel()
+        }
+        let data: Data
+        do {
+            data = try await withTaskCancellationHandler { try await stream.readAll(limit: limit) } onCancel: { stream.cancel() }
+        } catch {
+            watchdog.cancel()
+            _ = await stream.finish(timeout: 5)
+            if error is CancellationError || Task.isCancelled { throw error }
+            let timedOut = Date().timeIntervalSince(started) >= commandTimeout
+            return (Data(), RemoteExecResult(duration: Date().timeIntervalSince(started), timedOut: timedOut,
+                                             failure: timedOut ? nil : "flux de listage interrompu : \(error)"))
+        }
+        let (code, err) = await stream.finish(timeout: 30)
+        watchdog.cancel()
+        let elapsed = Date().timeIntervalSince(started)
+        return (data, RemoteExecResult(exitCode: code, stderr: err, duration: elapsed, timedOut: code == nil && elapsed >= commandTimeout))
+    }
+
     /// Essaie chaque méthode de listage jusqu'à ce que l'une soit comprise du serveur, puis la retient.
     private func withTier<T>(script: (ShellListingTier) -> String, args: [String],
-                             parse: (ShellListingTier, RemoteExecResult) throws -> T) async throws -> T {
+                             parse: (ShellListingTier, Data) throws -> T) async throws -> T {
         var last: SFTPError = .status(.opUnsupported, message: "aucune méthode de listage disponible")
         for t in candidates() {
-            let r = try await executor.runShell(ShellQuote.command(script: script(t), args: args),
-                                                timeout: commandTimeout, maxOutputBytes: 64 * 1024 * 1024)
+            let (out, r) = try await runExact(ShellQuote.command(script: script(t), args: args))
             if r.isSuccess {
-                if r.stdoutTruncated { throw SFTPError.protocolViolation("listage trop volumineux") }
-                let value = try parse(t, r)
+                let value = try parse(t, out)
                 tier = t
                 return value
             }
@@ -88,11 +114,11 @@ public actor ShellFileSystem: RemoteFileSystem {
         throw last
     }
 
-    private static func records(_ t: ShellListingTier, _ r: RemoteExecResult) throws -> [ShellRecord] {
+    private static func records(_ t: ShellListingTier, _ out: Data) throws -> [ShellRecord] {
         switch t {
-        case .gnuFind: try ShellParsers.gnuFind(r.stdout)
-        case .statLoop: try ShellParsers.statLoop(r.stdout)
-        case .ls: ShellParsers.ls(r.stdout)
+        case .gnuFind: try ShellParsers.gnuFind(out)
+        case .statLoop: try ShellParsers.statLoop(out)
+        case .ls: ShellParsers.ls(out)
         }
     }
 

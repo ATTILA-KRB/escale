@@ -310,8 +310,16 @@ private struct SFTPSessionView: View {
     }
 
     private func handleRemoteDrop(_ texts: [String], into directory: Data) -> Bool {
-        guard let d = texts.compactMap(SFTPDragPayload.decode).first, d.session == session.id else { return false }
+        guard let d = texts.compactMap(SFTPDragPayload.decode).first else { return false }
         let wanted = Set(d.paths)
+        if d.session != session.id {
+            // Autre hôte : copie en flux vers ce dossier (jamais un déplacement : la source reste intacte).
+            guard let origin = feature.existingSession(d.session) else { return false }
+            let items = origin.items.filter { wanted.contains($0.id) }
+            guard !items.isEmpty else { return false }
+            Task { await session.copy(items, from: origin, into: directory) }
+            return true
+        }
         let items = session.items.filter { wanted.contains($0.id) }
         guard !items.isEmpty else { return false }
         let copy = NSEvent.modifierFlags.contains(.option)
@@ -400,7 +408,7 @@ private struct SFTPActivityView: View {
     private func transferRow(_ t: SFTPTransfer, queue: SFTPTransferQueue) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Image(systemName: t.direction == .upload ? "arrow.up.circle" : "arrow.down.circle")
+                Image(systemName: t.direction == .upload ? "arrow.up.circle" : (t.direction == .relay ? "arrow.left.arrow.right.circle" : "arrow.down.circle"))
                 Text(t.name).lineLimit(1).truncationMode(.middle)
                 Spacer()
                 switch t.state {

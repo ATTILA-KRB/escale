@@ -1,4 +1,5 @@
 import AppKit
+import CryptoKit
 import Foundation
 import EscaleCore
 
@@ -48,6 +49,9 @@ private final class SFTPSelfTestRunner {
     }
 
     private func sleep(_ s: Double) async { try? await Task.sleep(nanoseconds: UInt64(s * 1e9)) }
+    private func sha256(_ path: String) -> String? {
+        fm.contents(atPath: path).map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() }
+    }
     private func read(_ path: String) -> String? { fm.contents(atPath: path).flatMap { String(data: $0, encoding: .utf8) } }
     private func type(_ t: TerminalTab, _ s: String) { t.session.engine.sendInput(Data(s.utf8)) }
     private func text(_ t: TerminalTab) -> String { t.session.engine.text(includingScrollback: true) }
@@ -462,6 +466,56 @@ private final class SFTPSelfTestRunner {
         check("parcourir_hote_courant", feature.currentSession() === s2)
         model.workspace.select(tab.id)
         check("hote_courant_suit_onglet_actif", feature.currentSession() === s)
+
+        // 10b. Glisser distant → distant entre DEUX hôtes (h1 → h2) : copie en flux dans la file, contenu identique (SHA-256)
+        let relaySrc = "\(work)/relais-src", relayDst = "\(work)/relais-dst"
+        for d in [relaySrc, "\(relaySrc)/arbre/sous", relayDst] { try? fm.createDirectory(atPath: d, withIntermediateDirectories: true) }
+        randomFile("\(relaySrc)/cinq mo's.bin", megabytes: 5)
+        try? "profond".write(toFile: "\(relaySrc)/arbre/sous/f.txt", atomically: true, encoding: .utf8)
+        try? "".write(toFile: "\(relaySrc)/arbre/vide.txt", atomically: true, encoding: .utf8)
+        await s.navigate(to: relaySrc)
+        await s2.navigate(to: relayDst)
+        check("relais_deux_hotes_distincts", s !== s2 && s.profile.id != s2.profile.id && s.state == .ready && s2.state == .ready)
+        let relayFiles = s.items.filter { $0.name == "cinq mo's.bin" || $0.name == "arbre" }
+        check("relais_elements_listes", relayFiles.count == 2, "\(relayFiles.count)")
+        let relayed = await s2.copy(relayFiles, from: s, into: Data(relayDst.utf8))
+        check("relais_3_transferts_crees", relayed.count == 3 && relayed.allSatisfy { $0.direction == .relay && $0.source === s && $0.session === s2 }, "\(relayed.count)")
+        check("relais_termine", await feature.transfers.waitIdle(timeout: 60) && relayed.allSatisfy { $0.state == .done }, relayed.map { "\($0.state)" }.joined(separator: ","))
+        check("relais_5mo_sha256_identique", sha256("\(relaySrc)/cinq mo's.bin") != nil && sha256("\(relaySrc)/cinq mo's.bin") == sha256("\(relayDst)/cinq mo's.bin"))
+        check("relais_progression_complete", relayed.first { $0.name == "cinq mo's.bin" }.map { $0.bytes == 5 * 1024 * 1024 && $0.fraction == 1 } == true)
+        check("relais_arbre_identique", read("\(relayDst)/arbre/sous/f.txt") == "profond" && read("\(relayDst)/arbre/vide.txt") == "")
+        check("relais_source_intacte", fm.fileExists(atPath: "\(relaySrc)/cinq mo's.bin") && fm.fileExists(atPath: "\(relaySrc)/arbre/sous/f.txt"))
+        check("relais_liste_destination_rafraichie", await wait(5) { s2.items.contains { $0.name == "cinq mo's.bin" } && s2.items.contains { $0.name == "arbre" } })
+        let relayAgain = await s2.copy(relayFiles, from: s, into: Data(relayDst.utf8))
+        check("relais_refuse_ecrasement", relayAgain.isEmpty && s2.errorMessage?.contains("existe déjà") == true, s2.errorMessage ?? "nil")
+        s2.errorMessage = nil
+        // Annulation en cours de route : état annulé, aucun fichier partiel à destination
+        randomFile("\(relaySrc)/gros-relais.bin", megabytes: 60)
+        await s.refresh()
+        if let big = s.items.first(where: { $0.name == "gros-relais.bin" }) {
+            let t = await s2.copy([big], from: s, into: Data(relayDst.utf8))
+            check("relais_annulation_demarre", await wait(20) { t.first?.state == .running && (t.first?.bytes ?? 0) > 0 }, "\(t.first?.state as Any) \(t.first?.bytes ?? 0)")
+            if let r = t.first { feature.transfers.cancel(r) }
+            check("relais_annulation_etat", await wait(20) { t.first?.state == .cancelled }, "\(t.first?.state as Any)")
+            await sleep(0.5)
+            check("relais_annulation_sans_partiel", !fm.fileExists(atPath: "\(relayDst)/gros-relais.bin") && !fm.fileExists(atPath: "\(relayDst)/gros-relais.bin.part"))
+            feature.transfers.retry(t[0])
+            check("relais_reessayer_apres_annulation", await wait(60) { t.first?.state == .done } && sha256("\(relaySrc)/gros-relais.bin") == sha256("\(relayDst)/gros-relais.bin"), "\(t.first?.state as Any)")
+        } else { check("relais_annulation_demarre", false, "gros-relais.bin absent") }
+        feature.transfers.clearFinished()
+        await s.navigate(to: work)
+
+        // 10c. Mode shell : un nom non UTF-8 arrive tel quel au serveur (APFS refuse de le créer : l'erreur, et l'absence de
+        // dossier « U+FFFD », prouvent que les octets d'origine, et non une version substituée, ont atteint la commande).
+        let rawName = Data("\(work)/raw-".utf8) + Data([0xE9, 0xFF])
+        let shellFS = ShellFileSystem(executor: link.transport)
+        var rawError: String?
+        do { try await shellFS.makeDirectory(rawName) } catch { rawError = "\(error)" }
+        let substituted = "\(work)/raw-\u{FFFD}\u{FFFD}"
+        check("shell_nom_non_utf8_octets_transmis", rawError != nil && !fm.fileExists(atPath: substituted), rawError ?? "créé (octets substitués ?)")
+        do { _ = try await shellFS.attributes(of: rawName); check("shell_nom_non_utf8_introuvable_type", false, "trouvé") }
+        catch SFTPError.status(let c, _) { check("shell_nom_non_utf8_introuvable_type", c == .noSuchFile, "\(c)") }
+        catch { check("shell_nom_non_utf8_introuvable_type", false, "\(error)") }
 
         // 11. Perte du maître : le navigateur se rouvre seul, et le transfert coupé reprend tout seul
         let opened1 = s.channelsOpened
