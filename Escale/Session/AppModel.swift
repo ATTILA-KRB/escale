@@ -83,6 +83,7 @@ final class AppModel {
             ("selftest-multiexec", { await MultiExecSelfTest(directory: $0, model: self).run() }),
             ("selftest-macros", { await MacroSelfTest(directory: $0, model: self).run() }),
             ("selftest-import", { await ImportSelfTest(directory: $0, model: self).run() }),
+            ("selftest-terminal", { await TerminalSelfTest(directory: $0, model: self).run() }),
         ]
     }
 

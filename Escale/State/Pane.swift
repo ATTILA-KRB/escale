@@ -44,6 +44,7 @@ final class Pane: Identifiable {
 
     init(kind: Kind, baseTitle: String, session: TerminalSession = TerminalSession()) {
         self.kind = kind; self.baseTitle = baseTitle; self.session = session
+        session.engine.accessibilityLabel = "Terminal — \(baseTitle)"
     }
 
     var hostID: UUID? { if case .host(let h) = kind { h.id } else { nil } }
