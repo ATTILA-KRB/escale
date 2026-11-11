@@ -148,13 +148,13 @@ public struct OpenSSHCommandBuilder: Sendable, Equatable {
     // MARK: - Interne
 
     /// Invariant 2 : tout client secondaire neutralise le repli sur une nouvelle connexion.
-    private func secondaryPrefix() -> [String] {
+    func secondaryPrefix() -> [String] {
         var a = ["-S", controlPath, "-o", "ControlMaster=no", "-o", "ProxyCommand=/usr/bin/false"]
         if let f = options.configFile { a += ["-F", f] }
         return a
     }
 
-    private func targetOptions() -> [String] {
+    func targetOptions() -> [String] {
         var a: [String] = []
         if let p = profile.port { a += ["-p", String(p)] }
         if case .keyFile(let path) = profile.auth { a += ["-i", path, "-o", "IdentitiesOnly=yes"] }
