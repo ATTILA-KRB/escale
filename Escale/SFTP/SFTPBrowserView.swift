@@ -37,7 +37,7 @@ enum SFTPDragPayload {
     }
 }
 
-/// Contenu de l'inspecteur : navigateur de l'hôte de l'onglet actif + file de transferts.
+/// Contenu du volet « Fichiers » de la barre latérale : navigateur de l'hôte de l'onglet actif + file de transferts.
 struct SFTPBrowserView: View {
     @Bindable var feature: SFTPFeature
 
@@ -171,6 +171,8 @@ private struct SFTPSessionView: View {
             .onSubmit { Task { await session.navigate(to: pathText) } }
             .padding(.horizontal, 10).padding(.bottom, 6)
             .disabled(!session.isReady)
+            // Volet étroit : le chemin complet reste lisible au survol.
+            .help(pathText)
     }
 
     /// En-têtes de tri : un clic choisit la colonne, un second clic inverse l'ordre. Dossiers toujours en premier.

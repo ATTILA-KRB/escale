@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
+import EscaleCore
 
 /// Barre d'onglets compacte : titre, pastille d'état, fermeture (bouton ou clic milieu), glisser pour réordonner.
 struct TabBarView: View {
@@ -11,11 +12,27 @@ struct TabBarView: View {
     var body: some View {
         let ws = model.workspace
         HStack(spacing: 2) {
+            // Accueil (l'onglet « Home » de MobaXterm) : connexion rapide et sessions récentes, sans fermer d'onglet.
+            Button { if ws.showsHome { ws.showsHome = false } else { model.showHome() } } label: {
+                Image(systemName: ws.showsHome ? "house.fill" : "house")
+                    .foregroundStyle(ws.showsHome ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                    .frame(width: 26, height: 24).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Accueil")
+            .accessibilityLabel("Accueil")
+            .padding(.leading, 6)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
                     ForEach(ws.tabs) { tab in
-                        TabItem(tab: tab, isActive: tab.id == ws.activeID, isHovered: hovered == tab.id,
+                        TabItem(tab: tab, isActive: tab.id == ws.activeID && !ws.showsHome, isHovered: hovered == tab.id,
                                 select: { ws.select(tab.id) }, close: { model.close(tab) })
+                            .contextMenu {
+                                Button("Dupliquer l'onglet") { model.duplicate(tab) }
+                                Divider()
+                                Button("Fermer l'onglet") { model.close(tab) }
+                                Button("Fermer les autres onglets") { model.closeOthers(tab) }.disabled(ws.tabs.count < 2)
+                            }
                             .onHover { inside in
                                 if inside { hovered = tab.id } else if hovered == tab.id { hovered = nil }
                             }
@@ -59,7 +76,7 @@ private struct TabItem: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            indicator.frame(width: 12)
+            indicator.frame(width: 16)
             Text(tab.displayTitle).lineLimit(1).truncationMode(.middle).font(.callout)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if tab.panes.count > 1 {
@@ -80,22 +97,33 @@ private struct TabItem: View {
         .padding(.horizontal, 8).padding(.vertical, 4)
         .frame(width: Self.width)
         .background(isActive ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.clear), in: RoundedRectangle(cornerRadius: 6))
+        .overlay(alignment: .bottom) {
+            // Onglet actif souligné à la couleur d'accent : repérable d'un coup d'œil dans une rangée dense.
+            if isActive { Capsule().fill(.tint).frame(height: 2).padding(.horizontal, 10) }
+        }
         .contentShape(RoundedRectangle(cornerRadius: 6))
         .onTapGesture(perform: select)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isActive ? [.isSelected, .isButton] : .isButton)
     }
 
+    /// Icône du protocole (ou du terminal local) avec la pastille d'état de la session en incrustation.
     @ViewBuilder private var indicator: some View {
-        if tab.isRemote {
-            switch tab.status {
-            case .running: Circle().fill(.green).frame(width: 7, height: 7)
-            case .connecting, .reconnecting: Circle().fill(.orange).frame(width: 7, height: 7)
-            case .failed: Circle().fill(.red).frame(width: 7, height: 7)
-            case .ended: Circle().strokeBorder(.secondary, lineWidth: 1).frame(width: 7, height: 7)
-            }
+        if case .host(let h) = tab.kind {
+            Image(systemName: h.connectionProtocol.symbolName).font(.system(size: 10))
+                .foregroundStyle(h.connectionProtocol.tint)
+                .overlay(alignment: .bottomTrailing) { statusDot.offset(x: 4, y: 3) }
         } else {
             Image(systemName: "terminal").font(.system(size: 10)).foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var statusDot: some View {
+        switch tab.status {
+        case .running: Circle().fill(.green).frame(width: 6, height: 6)
+        case .connecting, .reconnecting: Circle().fill(.orange).frame(width: 6, height: 6)
+        case .failed: Circle().fill(.red).frame(width: 6, height: 6)
+        case .ended: Circle().fill(.gray).frame(width: 6, height: 6)
         }
     }
 }

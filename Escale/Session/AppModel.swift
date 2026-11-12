@@ -27,6 +27,28 @@ enum DeletionRequest: Identifiable {
     var id: UUID { switch self { case .host(let h): h.id; case .folder(let f): f.id } }
 }
 
+/// Volets de la barre latérale (les onglets verticaux de MobaXterm : Sessions, Sftp, Tools, Macros).
+enum SidebarTab: String, CaseIterable, Identifiable {
+    case sessions, files, tools, macros
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .sessions: "Sessions"
+        case .files: "Fichiers"
+        case .tools: "Outils"
+        case .macros: "Macros"
+        }
+    }
+    var symbolName: String {
+        switch self {
+        case .sessions: "star"
+        case .files: "folder"
+        case .tools: "wrench.and.screwdriver"
+        case .macros: "paperplane"
+        }
+    }
+}
+
 /// État racine : bibliothèque, connexions, onglets, et orchestration du cycle de vie des shells.
 @MainActor
 @Observable
@@ -34,12 +56,22 @@ final class AppModel {
     /// Identifiant de l'entrée « Terminal local » de la barre latérale.
     static let localTerminalID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
 
+    /// Identifiant de la ligne « Connecter à … » (connexion rapide) de la barre latérale.
+    static let quickConnectRowID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+
     let options: LaunchOptions
     let library: LibraryStore
     let connections: ConnectionManager
     let workspace = Workspace()
 
     var searchText = ""
+    /// Volet affiché dans la barre latérale.
+    var sidebarTab: SidebarTab = .sessions
+    /// Champ « Connexion rapide » actif (⇧⌘K) : le volet Sessions lui donne le focus.
+    var quickConnectFocused = false
+    /// Sessions ouvertes récemment (page d'accueil) ; fichier `recents.json` à côté de la bibliothèque.
+    private(set) var recents = RecentSessionList()
+    @ObservationIgnored private var recentsURL: URL?
     var editor: EditorRequest?
     var pendingDeletion: DeletionRequest?
     var collapsedFolders: Set<UUID> = []
@@ -77,6 +109,7 @@ final class AppModel {
         self.options = options
         let url = options.libraryPath.map { URL(fileURLWithPath: $0) } ?? LibraryStore.defaultURL
         library = LibraryStore(repository: FileHostRepository(url: url))
+        recentsURL = RecentSessionList.url(besideLibrary: url)
         var ssh = OpenSSHOptions(
             configFile: options.sshConfig, userKnownHostsFile: options.knownHosts,
             strictHostKeyChecking: options.knownHosts != nil ? .yes : nil, extraOptions: options.sshOptions)
@@ -130,6 +163,7 @@ final class AppModel {
         guard !started else { return }
         started = true
         await library.load()
+        loadRecents()
         if let test = featureSelfTests.first(where: { options.value($0.option) != nil }),
            let dir = options.value(test.option) {
             Task { @MainActor in
@@ -190,7 +224,7 @@ final class AppModel {
 
     /// VNC/RDP : confié au module du protocole (aucun onglet).
     func openExternal(_ host: HostProfile) {
-        if let open = externalOpeners[host.connectionProtocol] { open(host) }
+        if let open = externalOpeners[host.connectionProtocol] { noteRecent(host); open(host) }
     }
 
     /// Onglet d'un hôte de terminal (SSH, Telnet, série). Les appelants écartent VNC/RDP (`connect`, menus).
@@ -200,9 +234,86 @@ final class AppModel {
         var n = workspace.tabs(forHost: host.id).count + 1
         while workspace.tabs.contains(where: { $0.hostID == host.id && $0.baseTitle == (n == 1 ? host.name : "\(host.name) \(n)") }) { n += 1 }
         let tab = TerminalTab(kind: .host(host), baseTitle: n == 1 ? host.name : "\(host.name) \(n)")
+        noteRecent(host)
         workspace.add(tab)
         start(tab)
         return tab
+    }
+
+    /// Nouvel onglet identique (même hôte, ou même commande locale).
+    @discardableResult
+    func duplicate(_ tab: TerminalTab) -> TerminalTab {
+        switch tab.kind {
+        case .host(let h): newTab(library.host(h.id) ?? h)
+        case .local(let command): openLocalTab(command: command)
+        }
+    }
+
+    func closeOthers(_ tab: TerminalTab) {
+        for t in workspace.tabs where t.id != tab.id { close(t) }
+    }
+
+    // MARK: Accueil, connexion rapide, sessions récentes
+
+    /// Affiche la page d'accueil par-dessus les onglets ; le terminal masqué ne doit plus recevoir la saisie.
+    func showHome() {
+        guard !workspace.tabs.isEmpty else { return }
+        workspace.showsHome = true
+        mainWindow?.makeFirstResponder(nil)
+    }
+
+    /// Rend le clavier au panneau actif (retour depuis l'accueil).
+    func focusActivePane() { workspace.activeTab?.activePane.session.engine.focus() }
+
+    /// Affiche le volet Sessions et donne le focus au champ « Connexion rapide ».
+    func focusQuickConnect() {
+        sidebarTab = .sessions
+        quickConnectFocused = true
+    }
+
+    /// « Connexion rapide » : `[utilisateur@]hôte[:port]`. Un hôte SSH identique de la bibliothèque est réutilisé ;
+    /// sinon la session est enregistrée à la racine (comme MobaXterm, toute session ouverte est gardée), ce qui lui
+    /// donne le même cycle de vie qu'un hôte ordinaire (Trousseau nettoyé à la suppression, invariant 7).
+    /// Faux si la saisie n'est pas une cible valide.
+    @discardableResult
+    func quickConnect(_ text: String) -> Bool {
+        guard let target = QuickConnectTarget.parse(text) else { return false }
+        if let known = library.library.hosts.first(where: { target.matches($0) }) {
+            connect(known)
+        } else {
+            let profile = target.makeProfile()
+            library.upsert(profile)
+            // Enregistrement refusé : rien n'est ouvert (un hôte hors bibliothèque laisserait un secret orphelin
+            // dans le Trousseau) ; le motif est affiché par le bandeau de la bibliothèque.
+            guard let saved = library.host(profile.id) else { return true }
+            connect(saved)
+        }
+        return true
+    }
+
+    /// Hôtes récents encore présents dans la bibliothèque, du plus récent au plus ancien.
+    var recentHosts: [(host: HostProfile, date: Date)] {
+        recents.entries.compactMap { e in library.host(e.hostID).map { ($0, e.date) } }
+    }
+
+    func clearRecents() { recents.clear(); saveRecents() }
+
+    private func loadRecents() {
+        guard let url = recentsURL else { return }
+        recents = RecentSessionList.load(from: url)
+    }
+
+    private func noteRecent(_ host: HostProfile) {
+        guard library.host(host.id) != nil else { return }
+        recents.record(host.id)
+        recents.prune(keeping: Set(library.library.hosts.map(\.id)))
+        saveRecents()
+    }
+
+    private func saveRecents() {
+        guard let url = recentsURL else { return }
+        let snapshot = recents
+        Task.detached(priority: .utility) { try? snapshot.save(to: url) }
     }
 
     /// Démarre (ou relance) le shell de chaque panneau de l'onglet.
