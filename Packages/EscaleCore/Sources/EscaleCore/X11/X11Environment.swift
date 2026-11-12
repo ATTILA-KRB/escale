@@ -143,3 +143,134 @@ public enum X11LaunchCommand {
 }
 
 public struct X11LaunchError: Error, Equatable, Sendable { public var message: String }
+
+/// Diagnostic d'une application X11 terminée pendant le délai d'observation : traduit les messages bruts de ssh
+/// et du shell distant en causes précises. Pur (sortie et code en entrée).
+public struct X11LaunchDiagnostic: Equatable, Sendable {
+    public enum Cause: Equatable, Sendable {
+        /// Le serveur a répondu « échec » à la demande de redirection X11 (SSH_MSG_CHANNEL_FAILURE, sans motif).
+        case forwardingRefused
+        /// Programme introuvable sur l'hôte (bash, zsh, dash ou code 127).
+        case commandNotFound(String?)
+        /// Le programme distant n'a pas pu joindre l'affichage (aucun DISPLAY distant).
+        case cannotOpenDisplay
+    }
+
+    public var causes: [Cause]
+    public var title: String
+    public var message: String
+
+    public static func diagnose(code: Int32, output: String) -> X11LaunchDiagnostic {
+        let raw = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        var causes: [Cause] = []
+        // Le client ssh n'apprend jamais pourquoi : le protocole ne transporte pas de motif. « Refusée par le serveur »
+        // est exact ; « non autorisée » ne le serait pas (xauth absent côté serveur produit la même réponse).
+        if raw.range(of: "X11 forwarding request failed", options: .caseInsensitive) != nil { causes.append(.forwardingRefused) }
+        if let name = missingCommand(in: raw) { causes.append(.commandNotFound(name)) }
+        else if code == 127 { causes.append(.commandNotFound(nil)) }
+        if raw.range(of: "open display", options: .caseInsensitive) != nil, !causes.contains(.forwardingRefused) {
+            causes.append(.cannotOpenDisplay)
+        }
+
+        var lines: [String] = []
+        for c in causes {
+            switch c {
+            case .forwardingRefused:
+                lines.append("Redirection X11 refusée par le serveur. Sur l'hôte : « X11Forwarding yes » dans /etc/ssh/sshd_config "
+                             + "et le programme xauth installé, puis rechargez sshd et rouvrez la connexion.")
+            case .commandNotFound(let name):
+                let n = name.map { "« \($0) »" } ?? "Le programme"
+                lines.append("\(n) n'est pas installé sur l'hôte (ou absent du PATH)."
+                             + (name.map { Self.packageHint(for: $0) } ?? ""))
+            case .cannotOpenDisplay:
+                lines.append("Le programme n'a pas pu joindre l'affichage : aucune redirection X11 active pour cette session.")
+            }
+        }
+        let title: String
+        switch causes.first {
+        case .forwardingRefused?: title = "Redirection X11 refusée par le serveur"
+        case .commandNotFound?: title = "Programme introuvable sur l'hôte"
+        case .cannotOpenDisplay?: title = "Affichage X11 inaccessible"
+        case nil: title = "Application X11 terminée (code \(code))"
+        }
+        if lines.isEmpty { lines.append(raw.isEmpty ? "Aucune sortie. Le programme est-il installé sur l'hôte ?" : raw) }
+        else if !raw.isEmpty { lines.append("Sortie (code \(code)) :\n" + raw) }
+        return X11LaunchDiagnostic(causes: causes, title: title, message: lines.joined(separator: "\n\n"))
+    }
+
+    /// Nom du programme introuvable : bash « NAME: command not found », zsh « command not found: NAME »,
+    /// dash « sh: 1: NAME: not found ».
+    static func missingCommand(in text: String) -> String? {
+        for line in text.split(whereSeparator: \.isNewline) {
+            let l = String(line)
+            if let r = l.range(of: "command not found: ") {
+                let n = l[r.upperBound...].trimmingCharacters(in: .whitespaces)
+                if !n.isEmpty { return n }
+            }
+            for suffix in [": command not found", ": not found"] where l.hasSuffix(suffix) {
+                let head = l.dropLast(suffix.count)
+                if let n = head.split(separator: ":").last?.trimmingCharacters(in: .whitespaces), !n.isEmpty { return n }
+            }
+        }
+        return nil
+    }
+
+    /// Paquet usuel des petits clients X11 de test.
+    static func packageHint(for name: String) -> String {
+        let apps: Set = ["xeyes", "xclock", "xcalc", "xlogo", "xedit", "xload", "xmag"]
+        guard apps.contains(name) else { return "" }
+        return " Paquet « x11-apps » (Debian, Ubuntu) ou « xorg-x11-apps » (Fedora, RHEL)."
+    }
+}
+
+extension X11LaunchDiagnostic {
+    /// Refus de la redirection X11 relevé dans la sortie d'un programme qui tourne encore (aucune autre cause :
+    /// un programme vivant n'est ni introuvable ni privé d'affichage de façon certaine). `nil` sans refus.
+    public static func refusalWhileRunning(output: String) -> X11LaunchDiagnostic? {
+        guard output.range(of: X11ForwardingRefusalScanner.marker, options: .caseInsensitive) != nil else { return nil }
+        let d = diagnose(code: 0, output: output)
+        let raw = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        return X11LaunchDiagnostic(causes: [.forwardingRefused], title: d.title,
+                                   message: "Le programme tourne sur l'hôte mais ne s'affichera pas. "
+                                       + (d.message.components(separatedBy: "\n\n").first ?? "")
+                                       + "\n\nSortie :\n" + raw)
+    }
+}
+
+/// Repère, dans le flux d'un terminal ssh, la ligne « X11 forwarding request failed[ on channel N] » que le client
+/// écrit quand le serveur refuse la redirection. Pur, sans sonde (invariant 12) : la ligne peut arriver en morceaux
+/// arbitraires, d'où la queue conservée entre deux appels. Ne regarde que le début de la sortie d'un processus
+/// (`limit` octets) : ssh l'écrit avant le shell, et un fichier affiché plus tard ne doit pas déclencher d'avertissement.
+public struct X11ForwardingRefusalScanner: Sendable {
+    public static let marker = "X11 forwarding request failed"
+    /// Avertissement écrit dans le terminal (la sortie de ssh reste affichée telle quelle).
+    public static let notice = "Escale : redirection X11 refusée par le serveur (X11Forwarding / xauth sur l'hôte). "
+        + "Les applications graphiques ne s'afficheront pas."
+
+    public let limit: Int
+    public private(set) var detected = false
+    private var tail: [UInt8] = []
+    private var scanned = 0
+    private static let needle = Array(marker.utf8)
+
+    public init(limit: Int = 16 * 1024) { self.limit = limit }
+
+    /// Vrai une seule fois : au morceau qui complète la première occurrence.
+    public mutating func consume(_ chunk: Data) -> Bool {
+        guard !detected, scanned < limit, !chunk.isEmpty else { return false }
+        let fresh = Array(chunk.prefix(limit - scanned))
+        scanned += fresh.count
+        let window = tail + fresh
+        if Self.contains(window, Self.needle) { detected = true; tail = []; return true }
+        tail = Array(window.suffix(Self.needle.count - 1))
+        return false
+    }
+
+    private static func contains(_ hay: [UInt8], _ needle: [UInt8]) -> Bool {
+        guard hay.count >= needle.count else { return false }
+        for i in 0...(hay.count - needle.count) where hay[i] == needle[0] {
+            if hay[i..<(i + needle.count)].elementsEqual(needle) { return true }
+        }
+        return false
+    }
+}

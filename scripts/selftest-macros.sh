@@ -13,6 +13,7 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/escale-macrot.XXXXXX")"
 OUT="${OUT:-$WORK/out}"
 mkdir -p "$OUT"
 SSHD_PID=""
+SSHD2_PID=""
 APP_PID=""
 FAKEX_PID=""
 FAKEXSEC_PID=""
@@ -27,10 +28,11 @@ cleanup() {
   [ -n "$APP_PID" ] && kill -9 "$APP_PID" 2>/dev/null || true
   [ -n "$FAKEX_PID" ] && kill "$FAKEX_PID" 2>/dev/null || true
   [ -n "$FAKEXSEC_PID" ] && kill "$FAKEXSEC_PID" 2>/dev/null || true
-  if [ -n "$SSHD_PID" ]; then
-    pkill -P "$SSHD_PID" 2>/dev/null || true
-    kill "$SSHD_PID" 2>/dev/null || true
-  fi
+  for P in "$SSHD_PID" "$SSHD2_PID"; do
+    [ -n "$P" ] || continue
+    pkill -P "$P" 2>/dev/null || true
+    kill "$P" 2>/dev/null || true
+  done
   # Maîtres orphelins de CETTE recette uniquement : leur ligne de commande cite $WORK (known_hosts, clé).
   # Ne jamais viser tous les « ssh -M » : cela tuerait les connexions d'une app Escale en service
   # et celles des tests du cœur lancés en parallèle.
@@ -108,16 +110,26 @@ LogLevel VERBOSE
 CONF
 /usr/sbin/sshd -D -e -f "$D/sshd_config" 2> "$D/sshd.log" &
 SSHD_PID=$!
-for _ in $(seq 1 50); do
-  (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null && break
-  kill -0 "$SSHD_PID" 2>/dev/null || { echo "sshd a quitté :"; cat "$D/sshd.log"; exit 2; }
-  sleep 0.1
+# Second sshd, même clé d'hôte : refuse la redirection X11 (diagnostic « refusée par le serveur »).
+PORT2="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')"
+sed -e "s/^Port .*/Port $PORT2/" -e "s|^PidFile .*|PidFile $D/sshd2.pid|" -e "s/^X11Forwarding yes/X11Forwarding no/" \
+  "$D/sshd_config" > "$D/sshd2_config"
+echo "[127.0.0.1]:$PORT2 $(cut -d' ' -f1,2 "$D/hostkey.pub")" >> "$D/known_hosts"
+/usr/sbin/sshd -D -e -f "$D/sshd2_config" 2> "$D/sshd2.log" &
+SSHD2_PID=$!
+for P in "$PORT:$SSHD_PID:sshd" "$PORT2:$SSHD2_PID:sshd2"; do
+  IFS=: read -r PP PID LOG <<< "$P"
+  for _ in $(seq 1 50); do
+    (exec 3<>"/dev/tcp/127.0.0.1/$PP") 2>/dev/null && break
+    kill -0 "$PID" 2>/dev/null || { echo "$LOG a quitté :"; cat "$D/$LOG.log"; exit 2; }
+    sleep 0.1
+  done
 done
 
 # --- bibliothèque JSON : un dossier, deux hôtes (auth = fichier de clé)
-python3 - "$WORK/library.json" "$PORT" "$D/client" "$(id -un)" <<'PY'
+python3 - "$WORK/library.json" "$PORT" "$D/client" "$(id -un)" "$PORT2" <<'PY'
 import json, sys, uuid
-path, port, key, user = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
+path, port, key, user, port2 = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4], int(sys.argv[5])
 folder = str(uuid.uuid4()).upper()
 def host(name, x11=False):
     h = {"id": str(uuid.uuid4()).upper(), "name": name, "host": "127.0.0.1", "port": port, "user": user,
@@ -126,6 +138,8 @@ def host(name, x11=False):
     return h
 lib = {"folders": [{"id": folder, "name": "Tests locaux"}], "hosts": [host("Hôte A"), host("Hôte X", True), host("Hôte Y", True), host("Hôte Z", True), host("Hôte E", True), host("Hôte S")]}
 lib["hosts"][-1]["startupCommand"] = "echo STARTUP-$((6*7)); echo SECOND-$((8*9))"
+refus = host("Hôte R", True); refus["port"] = port2
+lib["hosts"].append(refus)
 json.dump(lib, open(path, "w"), indent=2)
 PY
 
@@ -152,6 +166,6 @@ APP_PID=""
 set -e
 
 [ -f "$OUT/result.json" ] && cat "$OUT/result.json" || echo "result.json absent"
-if [ -n "${KEEP_OUT:-}" ]; then mkdir -p "$KEEP_OUT"; cp -R "$OUT"/. "$KEEP_OUT"/; cp "$D/sshd.log" "$KEEP_OUT/sshd.log"; fi
+if [ -n "${KEEP_OUT:-}" ]; then mkdir -p "$KEEP_OUT"; cp -R "$OUT"/. "$KEEP_OUT"/; cp "$D/sshd.log" "$D/sshd2.log" "$KEEP_OUT/"; fi
 echo "code de sortie de l'app : $CODE"
 exit "$CODE"

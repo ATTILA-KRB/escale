@@ -229,3 +229,80 @@ private func eventuallyData(_ seconds: Double = 5, _ cond: () -> Bool) async -> 
     while Date() < end { if cond() { return true }; try? await Task.sleep(for: .milliseconds(50)) }
     return cond()
 }
+
+@Suite("X11 : diagnostic d'une application terminée")
+struct X11LaunchDiagnosticTests {
+    @Test func refusEtProgrammeAbsent() {
+        let d = X11LaunchDiagnostic.diagnose(code: 127, output: "X11 forwarding request failed\n/bin/bash: line 1: xeyes: command not found\n")
+        #expect(d.causes == [.forwardingRefused, .commandNotFound("xeyes")])
+        #expect(d.title == "Redirection X11 refusée par le serveur")
+        #expect(d.message.contains("X11Forwarding yes") && d.message.contains("xauth"))
+        #expect(d.message.contains("« xeyes » n'est pas installé") && d.message.contains("x11-apps"))
+        #expect(d.message.contains("Sortie (code 127)"), "la sortie brute reste visible")
+    }
+
+    @Test func shellsUsuels() {
+        #expect(X11LaunchDiagnostic.missingCommand(in: "zsh:1: command not found: xclock") == "xclock")
+        #expect(X11LaunchDiagnostic.missingCommand(in: "sh: 1: xeyes: not found") == "xeyes")
+        #expect(X11LaunchDiagnostic.missingCommand(in: "bash: foo: command not found") == "foo")
+        #expect(X11LaunchDiagnostic.missingCommand(in: "tout va bien") == nil)
+    }
+
+    @Test func affichageEtCasInconnu() {
+        #expect(X11LaunchDiagnostic.diagnose(code: 1, output: "Error: Can't open display: ").causes == [.cannotOpenDisplay])
+        let refus = X11LaunchDiagnostic.diagnose(code: 1, output: "X11 forwarding request failed on channel 0\nError: Can't open display:")
+        #expect(refus.causes == [.forwardingRefused], "l'affichage absent découle du refus : une seule cause")
+        let autre = X11LaunchDiagnostic.diagnose(code: 3, output: "boom")
+        #expect(autre.causes.isEmpty && autre.title == "Application X11 terminée (code 3)" && autre.message == "boom")
+        #expect(X11LaunchDiagnostic.diagnose(code: 127, output: "").causes == [.commandNotFound(nil)])
+    }
+}
+
+@Suite("X11 : refus de redirection dans le terminal")
+struct X11ForwardingRefusalScannerTests {
+    private func run(_ chunks: [String], limit: Int = 16 * 1024) -> [Bool] {
+        var s = X11ForwardingRefusalScanner(limit: limit)
+        return chunks.map { s.consume(Data($0.utf8)) }
+    }
+
+    @Test func ligneEntiereEtVarianteCanal() {
+        #expect(run(["X11 forwarding request failed\r\n$ "]) == [true])
+        #expect(run(["Last login: hier\r\nX11 forwarding request failed on channel 0\r\nuser@h:~$ "]) == [true])
+    }
+
+    @Test func ligneDecoupeeEnMorceauxArbitraires() {
+        let line = "bienvenue\r\nX11 forwarding request failed on channel 3\r\n$ "
+        // Toutes les coupures en deux, puis octet par octet : détecté exactement une fois.
+        for cut in 1..<line.utf8.count {
+            let b = Array(line.utf8)
+            var s = X11ForwardingRefusalScanner()
+            let hits = [s.consume(Data(b[..<cut])), s.consume(Data(b[cut...]))]
+            #expect(hits.filter { $0 }.count == 1, "coupure \(cut)")
+        }
+        var s = X11ForwardingRefusalScanner()
+        let hits = line.utf8.map { s.consume(Data([$0])) }
+        #expect(hits.filter { $0 }.count == 1 && s.detected)
+    }
+
+    @Test func uneSeuleFoisEtRienSansRefus() {
+        #expect(run(["X11 forwarding request failed\r\n", "X11 forwarding request failed\r\n"]) == [true, false])
+        #expect(run(["Last login\r\n", "$ ls\r\nX11 forwarding\r\n", "request ok\r\n"]) == [false, false, false])
+        #expect(run([""]) == [false])
+    }
+
+    @Test func limiteDuDebutDeSortie() {
+        // Au-delà de la limite (fichier affiché plus tard par l'utilisateur) : aucun avertissement.
+        #expect(run([String(repeating: "a", count: 32), "X11 forwarding request failed\r\n"], limit: 32) == [false, false])
+        // Ligne à cheval sur la limite : seule la partie lue compte.
+        #expect(run([String(repeating: "a", count: 20), "X11 forwarding request failed"], limit: 40) == [false, false])
+    }
+
+    @Test func refusPendantQueLeProgrammeTourne() {
+        let d = X11LaunchDiagnostic.refusalWhileRunning(output: "X11 forwarding request failed on channel 1\n")
+        #expect(d?.causes == [.forwardingRefused])
+        #expect(d?.title == "Redirection X11 refusée par le serveur")
+        #expect(d?.message.contains("X11Forwarding yes") == true && d?.message.contains("on channel 1") == true)
+        #expect(X11LaunchDiagnostic.refusalWhileRunning(output: "tout va bien") == nil)
+        #expect(X11LaunchDiagnostic.refusalWhileRunning(output: "") == nil)
+    }
+}

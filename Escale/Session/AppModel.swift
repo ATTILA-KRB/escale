@@ -467,7 +467,7 @@ final class AppModel {
                     return
                 }
                 tab.launchEpoch = link.epoch
-                tab.session.attach(p) { [weak self, weak tab] status in
+                tab.session.attach(p, watchX11Refusal: link.profile.x11Forwarding) { [weak self, weak tab] status in
                     guard let self, let tab else { return }
                     Task { await self.remoteShellEnded(tab, link: link, status: status) }
                 }

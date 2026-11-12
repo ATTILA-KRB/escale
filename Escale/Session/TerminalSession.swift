@@ -23,6 +23,8 @@ final class TerminalSession: TerminalEngineDelegate {
     @ObservationIgnored let engine: SwiftTermEngine
     @ObservationIgnored private var process: (any TerminalByteStream)?
     @ObservationIgnored private var generation = 0
+    /// Repérage du refus de redirection X11 dans la sortie du processus courant (shell ssh d'un hôte X11 seulement).
+    @ObservationIgnored private var x11Refusal: X11ForwardingRefusalScanner?
 
     init(engine: SwiftTermEngine = SwiftTermEngine()) {
         self.engine = engine
@@ -39,10 +41,14 @@ final class TerminalSession: TerminalEngineDelegate {
 
     /// Branche un nouveau processus (pty, port série, Telnet) sur le moteur (l'écran existant est conservé).
     /// `onExit` est appelé exactement une fois, à la fin de CE processus, même si la session a disparu.
-    func attach(_ p: any TerminalByteStream, onExit: @escaping @MainActor (PTYExitStatus) -> Void) {
+    /// `watchX11Refusal` : la ligne « X11 forwarding request failed » de ssh est suivie d'un avertissement en français
+    /// (la sortie de ssh reste affichée ; aucune sonde, simple lecture du flux).
+    func attach(_ p: any TerminalByteStream, watchX11Refusal: Bool = false,
+                onExit: @escaping @MainActor (PTYExitStatus) -> Void) {
         generation += 1
         let gen = generation
         process = p
+        x11Refusal = watchX11Refusal ? X11ForwardingRefusalScanner() : nil
         state = .running
         let s = engine.size
         p.resize(columns: s.columns, rows: s.rows)
@@ -50,6 +56,7 @@ final class TerminalSession: TerminalEngineDelegate {
             for await chunk in p.output {
                 guard let self, self.generation == gen else { continue }
                 self.engine.feed(chunk)
+                if self.x11Refusal?.consume(chunk) == true { self.appendNotice(X11ForwardingRefusalScanner.notice) }
             }
             let status = await p.waitForExit()
             if let self, self.generation == gen {

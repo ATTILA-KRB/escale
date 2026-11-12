@@ -108,15 +108,20 @@ struct EmbeddedX11Tests {
         p.standardError = FileHandle.nullDevice
         try p.run()
         defer { if p.isRunning { p.terminate() } }
+        // quartz-wm pose le titre et la barre de titre après l'apparition de la fenêtre : avec gestionnaire,
+        // attendre la décoration (sinon course, ~40 % d'échecs), en gardant le dernier état vu pour le diagnostic.
         var found: (String, Double)?
+        var decorated = false
         let deadline = Date().addingTimeInterval(20)
-        while found == nil && Date() < deadline {
+        while !decorated && Date() < deadline {
             usleep(200_000)
             let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
             for w in list where (w[kCGWindowOwnerPID as String] as? Int32) == spid {
                 guard let b = w[kCGWindowBounds as String] as? [String: Double], abs((b["Width"] ?? 0) - 150) <= 4, (b["Height"] ?? 0) >= 90,
                       (b["Height"] ?? 0) < 200 else { continue }
-                found = (w[kCGWindowName as String] as? String ?? "", b["Height"] ?? 0)
+                let title = w[kCGWindowName as String] as? String ?? ""
+                found = (title, b["Height"] ?? 0)
+                decorated = !windowManager || (!title.isEmpty && (b["Height"] ?? 0) >= 115)
             }
         }
         p.terminate()

@@ -71,6 +71,8 @@ struct MacroSelfTest {
         if let hostE = hosts.first(where: { $0.name == "Hôte E" }) { await embeddedX11Scenario(f, host: hostE) }
         else { check("hote_e_declare", false) }
         await x11Scenario(f, hostX: hostX, hostY: hostY)
+        if let hostR = hosts.first(where: { $0.name == "Hôte R" }) { await x11RefusedScenario(f, host: hostR) }
+        else { check("hote_r_declare", false) }
         if let hostZ = hosts.first(where: { $0.name == "Hôte Z" }) { await x11UntrustedScenario(f, host: hostZ) }
         else { check("hote_z_declare", false) }
         return finish()
@@ -343,7 +345,11 @@ struct MacroSelfTest {
         let wmPID = server.windowManagerPID
         check("x11_integre_gestionnaire_fenetres_lance", wmPID != nil && wmPID != spid, "\(String(describing: wmPID))")
         if let winID {
-            // Décoration quartz-wm : titre « xeyes » et hauteur > 180 (barre de titre).
+            // Décoration quartz-wm : titre « xeyes » et hauteur > 180 (barre de titre). Le titre est posé
+            // après l'apparition de la fenêtre : l'attendre plutôt que le lire une fois (course).
+            _ = await wait(5) {
+                Self.windowTitle(winID) == "xeyes" && (Self.windows(of: spid).first { $0.0 == winID }?.2 ?? 0) >= 196
+            }
             let h = Self.windows(of: spid).first { $0.0 == winID }?.2 ?? 0
             check("x11_integre_fenetre_decoree_titre", Self.windowTitle(winID) == "xeyes", "\(Self.windowTitle(winID))")
             check("x11_integre_fenetre_decoree_barre_titre", h >= 196, "hauteur \(h) pour 180 demandes")
@@ -396,6 +402,41 @@ struct MacroSelfTest {
         model.close(tab)
         _ = await wait(10) { model.workspace.tabs.isEmpty }
         check("startup_compteurs_shells", await wait(10) { model.connections.shellsEnded == model.connections.shellsStarted })
+    }
+
+    /// Serveur qui refuse la redirection X11 (second sshd, `X11Forwarding no`) : titre précis du diagnostic, refus
+    /// signalé même si le programme tourne encore, avertissement dans le terminal (sortie de ssh conservée).
+    private func x11RefusedScenario(_ f: MacroFeature, host: HostProfile) async {
+        guard let fakeDir = ProcessInfo.processInfo.environment["ESCALE_FAKEX_DIR"] else { check("x11_environnement_fourni", false); return }
+        let cm = model.connections
+        cm.x11Detect = { X11Detection(xquartzPath: "/Applications/Utilities/XQuartz.app", xauthPath: "\(fakeDir)/fake-xauth", display: "\(fakeDir)/X0") }
+        cm.x11Trusted = { true }
+        let title = "Redirection X11 refusée par le serveur"
+
+        // 1. Programme terminé pendant le délai : alerte au titre précis.
+        f.notice = nil
+        f.launchFromSheet(host: host, command: "echo fin; exit 3")
+        check("x11_refus_programme_termine_titre", await wait(20) { f.notice != nil } && f.notice?.title == title,
+              "\(f.notice?.title ?? "aucune alerte") : \(tail(f.notice?.message ?? ""))")
+        check("x11_refus_sortie_brute_conservee", f.notice?.message.contains("X11 forwarding request failed") == true)
+
+        // 2. Programme qui tourne encore après le délai : refus signalé quand même.
+        f.notice = nil
+        f.launchFromSheet(host: host, command: "sleep 4")
+        check("x11_refus_programme_en_cours_signale", await wait(15) { f.notice != nil } && f.notice?.title == title,
+              "\(f.notice?.title ?? "aucune alerte")")
+        f.notice = nil
+
+        // 3. Terminal interactif : avertissement en français après la ligne de ssh.
+        let tab = model.newTab(host)
+        let p = tab.panes[0]
+        check("x11_refus_terminal_connecte", await wait(25) { p.status == .running }, "\(p.status)")
+        check("x11_refus_terminal_avertit", await wait(10) { text(p).contains("redirection X11 refusée par le serveur") }, tail(text(p)))
+        check("x11_refus_terminal_sortie_ssh_conservee", text(p).contains("X11 forwarding request failed"), tail(text(p)))
+        check("x11_refus_terminal_avertit_une_fois", count("redirection X11 refusée", in: p) == 1, tail(text(p)))
+        model.close(tab)
+        _ = await wait(10) { model.workspace.tabs.isEmpty }
+        check("x11_refus_compteurs_shells_coherents", await wait(10) { cm.shellsEnded == cm.shellsStarted }, "\(cm.shellsStarted)/\(cm.shellsEnded)")
     }
 
     /// X11 NON fiable (ForwardX11Trusted=no) avec un VRAI xauth (Homebrew) et un faux serveur X qui implémente

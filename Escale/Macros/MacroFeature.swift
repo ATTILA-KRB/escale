@@ -16,8 +16,9 @@ struct MacroNotice: Identifiable, Equatable {
 
 /// Résultat d'un « Lancer une application X11 ».
 enum X11LaunchOutcome: Equatable {
-    /// Le programme tourne encore après le délai d'observation (cas normal d'une application graphique).
-    case running(pid: Int32)
+    /// Le programme tourne encore après le délai d'observation (cas normal d'une application graphique) ;
+    /// `output` : ce qui a déjà été lu (un refus de redirection X11 y apparaît même si le programme continue).
+    case running(pid: Int32, output: String)
     /// Le programme s'est terminé pendant le délai d'observation (échec ou commande courte).
     case exited(code: Int32, output: String)
     case failed(String)
@@ -308,7 +309,7 @@ final class MacroFeature: AppFeature {
 
         let end = Date().addingTimeInterval(settle)
         while process.isRunning, Date() < end { try? await Task.sleep(for: .milliseconds(50)) }
-        if process.isRunning { return .running(pid: process.processIdentifier) }
+        if process.isRunning { return .running(pid: process.processIdentifier, output: sink.text) }
         try? await Task.sleep(for: .milliseconds(100)) // laisse lire la fin de la sortie
         return .exited(code: process.terminationStatus, output: sink.text)
     }
@@ -318,12 +319,15 @@ final class MacroFeature: AppFeature {
         Task { @MainActor in
             let outcome = await launchX11(host: host, command: command)
             switch outcome {
-            case .running: break
+            case .running(_, let output):
+                // Refus déjà écrit par ssh : signalé quand même, le programme continue (fermer l'alerte ne l'arrête pas).
+                if let d = X11LaunchDiagnostic.refusalWhileRunning(output: output) {
+                    notice = MacroNotice(title: d.title, message: d.message)
+                }
             case .failed(let m): notice = MacroNotice(title: "Application X11", message: m)
             case .exited(let code, let output):
-                let tail = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                notice = MacroNotice(title: "Application X11 terminée (code \(code))",
-                                     message: tail.isEmpty ? "Aucune sortie. Le programme est-il installé sur l'hôte ?" : tail)
+                let d = X11LaunchDiagnostic.diagnose(code: code, output: output)
+                notice = MacroNotice(title: d.title, message: d.message)
             }
         }
     }
