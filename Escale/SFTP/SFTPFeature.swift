@@ -12,8 +12,11 @@ final class SFTPFeature: AppFeature {
     @ObservationIgnored private(set) weak var model: AppModel?
     var requireModel: AppModel { model! }
 
-    /// Inspecteur affiché.
-    var isVisible = false
+    /// Volet « Fichiers » de la barre latérale affiché (à la MobaXterm : le navigateur vit à gauche du terminal).
+    var isVisible: Bool {
+        get { model?.sidebarTab == .files }
+        set { model?.sidebarTab = newValue ? .files : .sessions }
+    }
     /// Le navigateur suit le dossier courant du terminal (OSC 7).
     var followTerminal = true
 
@@ -75,7 +78,7 @@ final class SFTPFeature: AppFeature {
         return nil
     }
 
-    /// « Parcourir les fichiers (SFTP) » : sélectionne (ou ouvre) l'onglet de l'hôte, affiche l'inspecteur, ouvre le canal.
+    /// « Parcourir les fichiers (SFTP) » : sélectionne (ou ouvre) l'onglet de l'hôte, affiche le volet, ouvre le canal.
     func browse(_ host: HostProfile) async {
         guard let model else { return }
         pinnedHostID = host.id
@@ -90,8 +93,8 @@ final class SFTPFeature: AppFeature {
         if isVisible { widenWindowIfNeeded(); if let s = currentSession() { Task { await s.open() } } }
     }
 
-    /// L'inspecteur s'ajoute aux deux autres colonnes : sur une fenêtre trop étroite, SwiftUI boucle sur la mise en page.
-    /// On élargit donc la fenêtre (dans les limites de l'écran) quand l'inspecteur s'ouvre.
+    /// Le navigateur demande une barre latérale plus large que la liste des sessions : sur une fenêtre trop étroite,
+    /// on élargit la fenêtre (dans les limites de l'écran) quand le volet s'ouvre.
     func widenWindowIfNeeded() {
         guard let w = model?.mainWindow, let screen = w.screen ?? NSScreen.main else { return }
         let wanted: CGFloat = 1180
@@ -171,19 +174,18 @@ struct SFTPCommands: Commands {
     }
 }
 
+/// Le navigateur est le volet « Fichiers » de la barre latérale (`SidebarView`) : plus d'inspecteur à droite.
 struct SFTPScene: ViewModifier {
     let model: AppModel
-    func body(content: Content) -> some View {
-        @Bindable var feature = model.sftp
-        content
-            .inspector(isPresented: $feature.isVisible) {
-                // SwiftUI construit le contenu d'un inspecteur même replié : sans cette garde, le `.task` du
-                // navigateur ouvrirait un canal SFTP (une session du maître) dès qu'un onglet SSH devient actif.
-                if feature.isVisible {
-                    SFTPBrowserView(feature: feature)
-                        .inspectorColumnWidth(min: 300, ideal: 380, max: 640)
-                }
-            }
+    func body(content: Content) -> some View { content }
+}
+
+/// Contenu du volet « Fichiers ». L'appelant ne le construit que lorsque le volet est choisi : son `.task` ouvre
+/// un canal SFTP (une session du maître), ce qui ne doit arriver que sur action de l'utilisateur (invariant 12).
+struct SFTPSidebarPane: View {
+    let model: AppModel
+    var body: some View {
+        if model.sftp.isVisible { SFTPBrowserView(feature: model.sftp) }
     }
 }
 

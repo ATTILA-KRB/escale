@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// Zone de détail : barre d'onglets, panneaux de terminaux (tous gardés vivants), état vide.
+/// Zone de détail : barre d'onglets, panneaux de terminaux (tous gardés vivants), page d'accueil, barre d'état.
 struct DetailView: View {
     let model: AppModel
 
@@ -12,6 +12,7 @@ struct DetailView: View {
             PaneHostTab(tab: t, layout: t.layout,
                         bannerIDs: Set(t.panes.filter { $0.bannerMessage != nil }.map(\.id)))
         }
+        let home = ws.tabs.isEmpty || ws.showsHome
         VStack(spacing: 0) {
             if !ws.tabs.isEmpty {
                 TabBarView(model: model)
@@ -19,27 +20,15 @@ struct DetailView: View {
             }
             ZStack {
                 PaneHost(model: model, tabs: snapshot, activeID: ws.activeID)
-                    .opacity(ws.tabs.isEmpty ? 0 : 1)
-                if ws.tabs.isEmpty { EmptyStateView(model: model) }
+                    .opacity(home ? 0 : 1)
+                    .allowsHitTesting(!home)
+                    .accessibilityHidden(home)
+                if home { HomeView(model: model) }
             }
+            StatusBarView(model: model)
         }
-    }
-}
-
-private struct EmptyStateView: View {
-    let model: AppModel
-    var body: some View {
-        ContentUnavailableView {
-            Label("Aucune session ouverte", systemImage: "terminal")
-        } description: {
-            Text("Double-cliquez sur un hôte dans la barre latérale ou ouvrez un terminal local.")
-        } actions: {
-            HStack {
-                Button("Terminal local") { model.openLocalTab() }
-                Button("Nouvel hôte…") { model.editor = .newHost(folder: nil) }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.background)
+        // Retour de l'accueil vers un onglet : le panneau actif reprend le clavier (l'onglet actif n'a pas changé,
+        // `PaneHostView` ne le refait donc pas de lui-même).
+        .onChange(of: ws.showsHome) { _, shown in if !shown { model.focusActivePane() } }
     }
 }

@@ -545,3 +545,12 @@ inclut aussi les rapports souris/focus des applications distantes (negligeable).
 - Piste « tableau des departs » : deux volets d'afficheur a palettes portant l'invite `>_` (terminal d'aeroport / terminal),
   fond jaune signaletique. Format Icon Composer `Escale/AppIcon.icon` (calques SVG `volets` et `invite`, verre sur l'invite) ;
   actool produit `Assets.car` (Liquid Glass) et `AppIcon.icns` (repli macOS 15). Ressource declaree par `fileTypes.icon`.
+
+### Interface facon MobaXterm (2026-11-12, branche `ui-moba`)
+Detail, correspondance des zones et suite : `docs/UI-MOBAXTERM.md`.
+- Barre d'outils (`MainToolbar`), barre laterale a volets Sessions / Fichiers / Outils / Macros, page d'accueil
+  (`HomeView`, sessions recentes dans `recents.json`), barre d'etat (`StatusBarView`), onglets avec icone de protocole.
+- Connexion rapide (⇧⌘K) : `QuickConnectTarget` (coeur, teste), hote enregistre dans la bibliotheque (invariant 19).
+- Le navigateur SFTP quitte l'inspecteur de droite pour le volet Fichiers de la barre laterale (`isVisible` derive de
+  `AppModel.sidebarTab`). Les mentions « inspecteur » des sections SFTP plus haut decrivent l'etat anterieur.
+- Reste : monitoring distant, bandeau de protocoles du dialogue de session, onglets detachables, mode compact.

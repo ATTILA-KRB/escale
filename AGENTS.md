@@ -9,6 +9,7 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 - Modules M2-M5 et protocoles (`Escale/{SFTP,Tunnels,MultiExec,Macros,Import,Update,Serial,Telnet,VNC,RDP}/`) : s'accrochent a l'app uniquement par
   `Escale/Features/AppFeature.swift` (commandes, scenes, menus d'hote), `ConnectionManager.linkObservers`,
   `TerminalSession.inputObservers`, `AppModel.terminalLaunchers`/`externalOpeners` (protocoles) et `--selftest-<module> <dossier>`.
+- Interface calquee sur MobaXterm (barre d'outils, volets de la barre laterale, accueil, barre d'etat) : `docs/UI-MOBAXTERM.md`.
 - `project.yml` : source du projet Xcode (XcodeGen). `Escale.xcodeproj` est genere, non versionne.
 
 ## Commandes
@@ -34,7 +35,9 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 10. Une cle d'hote modifiee est toujours refusee, jamais proposee a l'utilisateur comme simple confirmation.
 11. Un secret n'est memorise dans le Keychain qu'apres une connexion reussie ; jamais dans un journal ni un message d'erreur.
 12. Un module n'ouvre aucune session sur le maitre sans action de l'utilisateur : SwiftUI evalue le contenu d'un
-    `.inspector` meme replie, donc garder sa vue derriere `if visible` (sinon `sessionCount` derive).
+    `.inspector` meme replie, donc garder sa vue derriere `if visible` (sinon `sessionCount` derive). Le navigateur SFTP
+    est le volet « Fichiers » de la barre laterale : `SidebarView` ne le construit que dans la branche `.files`. La barre
+    d'etat et la page d'accueil n'affichent que de l'etat deja connu (aucune sonde).
 13. Deux lignes exec distinctes : `execArguments` (applications X11, avec ForwardX11) et `batchExecArguments`
     (multi-execution : BatchMode, sans X11). Toute session exec compte dans `sessionCount`.
 14. Serveur X11 integre (`Contents/Helpers/EscaleX11.app`, `scripts/x11-bundle.sh`) : demarre seulement a la demande, arrete par
@@ -50,6 +53,9 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 17. Les fixtures de recette ne dependent d'aucun outil Homebrew (PATH systeme seul) : `/usr/bin/openssl` est LibreSSL.
 18. Toute valeur d'hote inseree dans une saisie ou une commande (multi-execution, macros) passe par `GroupExecTemplate`
     (echappement shell, un seul passage) : jamais d'interpolation brute.
+19. Connexion rapide : la saisie passe par `QuickConnectTarget.parse` (refus du tiret initial, des espaces et caracteres
+    de controle) et l'hote est enregistre dans la bibliotheque avant d'etre ouvert ; jamais de session sur un hote hors
+    bibliotheque (son secret du Trousseau n'aurait pas de cycle de vie).
 
 ## Conventions
 - Swift 6, concurrence stricte. Commentaires en francais. Sujets de commit sans accents.

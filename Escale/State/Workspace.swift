@@ -7,12 +7,15 @@ import Observation
 final class Workspace {
     private(set) var tabs: [TerminalTab] = []
     private(set) var activeID: UUID?
+    /// Page d'accueil affichée par-dessus les onglets (toujours visible quand il n'y a aucun onglet).
+    /// Choisir ou ouvrir un onglet la referme.
+    var showsHome = false
 
     var activeTab: TerminalTab? { tabs.first { $0.id == activeID } }
 
     func add(_ tab: TerminalTab, activate: Bool = true) {
         tabs.append(tab)
-        if activate || activeID == nil { activeID = tab.id }
+        if activate || activeID == nil { activeID = tab.id; showsHome = false }
     }
 
     /// Retire l'onglet ; l'activation passe au voisin de droite, sinon de gauche.
@@ -20,10 +23,11 @@ final class Workspace {
         guard let i = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
         tabs.remove(at: i)
         if activeID == tab.id { activeID = tabs.isEmpty ? nil : tabs[min(i, tabs.count - 1)].id }
+        if tabs.isEmpty { showsHome = false }
     }
 
-    func select(_ id: UUID) { if tabs.contains(where: { $0.id == id }) { activeID = id } }
-    func select(index: Int) { if tabs.indices.contains(index) { activeID = tabs[index].id } }
+    func select(_ id: UUID) { if tabs.contains(where: { $0.id == id }) { activeID = id; showsHome = false } }
+    func select(index: Int) { if tabs.indices.contains(index) { select(tabs[index].id) } }
 
     func selectNext() { step(1) }
     func selectPrevious() { step(-1) }
@@ -31,6 +35,7 @@ final class Workspace {
         guard !tabs.isEmpty else { return }
         let cur = tabs.firstIndex { $0.id == activeID } ?? 0
         activeID = tabs[(cur + d + tabs.count) % tabs.count].id
+        showsHome = false
     }
 
     /// Déplace `id` juste avant `target` (ou à la fin si `target` est nil).

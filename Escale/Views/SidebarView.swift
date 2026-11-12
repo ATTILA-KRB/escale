@@ -1,17 +1,80 @@
 import SwiftUI
+import AppKit
 import EscaleCore
 
-/// Barre latérale : recherche, « Terminal local », arborescence dossiers/hôtes avec état de connexion.
+/// Barre latérale à volets, sur le modèle des onglets verticaux de MobaXterm : Sessions, Fichiers (SFTP), Outils, Macros.
 struct SidebarView: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            SidebarTabBar(selection: $model.sidebarTab)
+            Divider()
+            switch model.sidebarTab {
+            case .sessions: SessionsPane(model: model)
+            // Construit seulement quand le volet est choisi : son `.task` ouvre un canal SFTP (invariant 12).
+            case .files: SFTPSidebarPane(model: model)
+            case .tools: ToolsPane(model: model)
+            case .macros: MacrosPane(model: model)
+            }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) { LibraryProblemBanner(library: model.library) }
+    }
+}
+
+/// Sélecteur de volet : icône + libellé, le volet actif teinté.
+private struct SidebarTabBar: View {
+    @Binding var selection: SidebarTab
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(SidebarTab.allCases) { tab in
+                let active = tab == selection
+                Button { selection = tab } label: {
+                    VStack(spacing: 2) {
+                        Image(systemName: tab.symbolName).symbolVariant(active ? .fill : .none)
+                            .font(.system(size: 14)).frame(height: 16)
+                        Text(tab.title).font(.system(size: 10, weight: active ? .semibold : .regular)).lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 5)
+                    .foregroundStyle(active ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                    .background(active ? AnyShapeStyle(.tint.opacity(0.14)) : AnyShapeStyle(.clear), in: RoundedRectangle(cornerRadius: 6))
+                    .contentShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .help(tab.title)
+                .accessibilityLabel(tab.title)
+                .accessibilityAddTraits(active ? [.isSelected] : [])
+                .accessibilityIdentifier("sidebar.tab.\(tab.rawValue)")
+            }
+        }
+        .padding(.horizontal, 8).padding(.vertical, 6)
+    }
+}
+
+/// Volet Sessions : connexion rapide / recherche, « Terminal local », arborescence dossiers/hôtes avec état de connexion.
+private struct SessionsPane: View {
     @Bindable var model: AppModel
     @State private var selection: Set<UUID> = []
 
     private var searching: Bool { !model.searchText.trimmingCharacters(in: .whitespaces).isEmpty }
+    /// Cible de connexion rapide lisible dans la saisie (nil : simple recherche).
+    private var quickTarget: QuickConnectTarget? { searching ? QuickConnectTarget.parse(model.searchText) : nil }
 
     var body: some View {
         List(selection: $selection) {
-            Section {
-                Label("Terminal local", systemImage: "terminal").tag(AppModel.localTerminalID)
+            if let target = quickTarget {
+                Section {
+                    Label("Connecter à \(target.display)", systemImage: "bolt.fill")
+                        .tag(AppModel.quickConnectRowID)
+                        .help("Ouvre une session SSH et l'enregistre dans la bibliothèque (Entrée)")
+                }
+            }
+            if !searching {
+                Section {
+                    Label("Terminal local", systemImage: "terminal").tag(AppModel.localTerminalID)
+                }
             }
             Section("Hôtes") {
                 if searching {
@@ -29,17 +92,20 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
-        .searchable(text: $model.searchText, placement: .sidebar, prompt: "Rechercher un hôte")
+        .environment(\.defaultMinListRowHeight, 24)
+        .searchable(text: $model.searchText, isPresented: $model.quickConnectFocused, placement: .sidebar,
+                    prompt: "Connexion rapide ou recherche")
+        .onSubmit(of: .search) { submitQuickConnect() }
         .contextMenu(forSelectionType: UUID.self) { ids in
             contextMenu(for: ids)
         } primaryAction: { ids in
             // Double-clic ou Entrée.
             for id in ids {
                 if id == AppModel.localTerminalID { model.openLocalTab() }
+                else if id == AppModel.quickConnectRowID { if model.quickConnect(model.searchText) { model.searchText = "" } }
                 else if let h = model.library.host(id) { model.connect(h) }
             }
         }
-        .safeAreaInset(edge: .top, spacing: 0) { LibraryProblemBanner(library: model.library) }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             HStack {
                 Menu {
@@ -56,9 +122,26 @@ struct SidebarView: View {
                 .help("Ajouter un hôte ou un dossier")
                 .accessibilityLabel("Ajouter")
                 Spacer()
+                Text("\(model.library.library.hosts.count) hôtes").font(.caption).foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 12).padding(.vertical, 6)
             .background(.bar)
+        }
+    }
+
+    /// Entrée dans le champ : une cible explicite (`@`, `:`) ouvre cette cible ; sinon le meilleur résultat de la
+    /// recherche, et à défaut la saisie prise comme nom d'hôte.
+    private func submitQuickConnect() {
+        let text = model.searchText.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        let explicit = text.contains("@") || text.contains(":")
+        if !explicit, let best = model.library.searchResults(text).first {
+            model.connect(best.host)
+            model.searchText = ""
+        } else if model.quickConnect(text) {
+            model.searchText = ""
+        } else {
+            NSSound.beep()
         }
     }
 
@@ -75,6 +158,8 @@ struct SidebarView: View {
             Button("Importer depuis ~/.ssh/config…") { model.beginImport() }
         } else if ids == [AppModel.localTerminalID] {
             Button("Ouvrir un terminal local") { model.openLocalTab() }
+        } else if ids == [AppModel.quickConnectRowID] {
+            Button("Connecter") { if model.quickConnect(model.searchText) { model.searchText = "" } }
         } else if ids.count == 1, let id = ids.first, let host = model.library.host(id) {
             Button("Connecter") { model.connect(host) }
             if host.connectionProtocol.isTerminal { Button("Nouvel onglet") { model.newTab(host) } }
@@ -173,12 +258,18 @@ private struct HostRow: View {
 
     var body: some View {
         let state = model.connections.state(of: host.id)
-        HStack(spacing: 8) {
-            Image(systemName: host.connectionProtocol.symbolName).foregroundStyle(.secondary)
+        HStack(spacing: 6) {
+            Image(systemName: host.connectionProtocol.symbolName).foregroundStyle(host.connectionProtocol.tint)
+                .frame(width: 18)
                 .help(host.connectionProtocol.displayName)
             VStack(alignment: .leading, spacing: 1) {
-                Text(highlighted(host.name, result, .name)).lineLimit(1)
-                Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                // Une seule ligne (densité d'une liste de sessions) : nom, puis cible en retrait.
+                HStack(spacing: 6) {
+                    Text(highlighted(host.name, result, .name)).lineLimit(1).layoutPriority(1)
+                    if host.name != host.target || result != nil {
+                        Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                    }
+                }
                 if !matchedTags.isEmpty {
                     Text(matchedTags.reduce(AttributedString()) { $0 + $1 + AttributedString(" ") })
                         .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
@@ -189,6 +280,19 @@ private struct HostRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(host.name), \(ConnectionDot.label(state))")
+    }
+}
+
+extension ConnectionProtocol {
+    /// Couleur de l'icône du protocole (repère visuel dans les listes, les onglets et la barre d'état).
+    var tint: Color {
+        switch self {
+        case .ssh: .blue
+        case .telnet: .purple
+        case .serial: .orange
+        case .vnc: .green
+        case .rdp: .teal
+        }
     }
 }
 

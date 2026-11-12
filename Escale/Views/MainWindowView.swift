@@ -2,17 +2,23 @@ import SwiftUI
 import AppKit
 import EscaleCore
 
-/// Fenêtre principale : barre latérale des hôtes + zone de détail (onglets de terminaux).
+/// Fenêtre principale : barre d'outils, barre latérale à volets, zone de détail (onglets de terminaux, accueil, barre d'état).
 struct MainWindowView: View {
     @Bindable var model: AppModel
+    @State private var columns: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columns) {
             SidebarView(model: model)
-                .navigationSplitViewColumnWidth(min: 210, ideal: 260, max: 400)
+                // Assez large pour le volet Fichiers (navigateur SFTP), qui vit dans la barre latérale.
+                .navigationSplitViewColumnWidth(min: 250, ideal: 290, max: 560)
         } detail: {
             DetailView(model: model)
         }
+        .toolbar(id: "principal") { MainToolbar(model: model) }
+        // Changer de volet (menu, barre d'outils, raccourci) ou appeler la connexion rapide rouvre une barre latérale repliée.
+        .onChange(of: model.sidebarTab) { _, _ in columns = .all }
+        .onChange(of: model.quickConnectFocused) { _, focused in if focused { columns = .all } }
         .navigationTitle(model.workspace.activeTab?.displayTitle ?? "Escale")
         .navigationSubtitle(subtitle)
         .sheet(item: $model.editor) { request in
@@ -51,7 +57,7 @@ struct MainWindowView: View {
             case .folder(let f): Text("Le dossier « \(f.name) » sera supprimé ; les hôtes qu'il contient remontent au niveau supérieur.")
             }
         }
-        .background(WindowAccessor { model.mainWindow = $0 })
+        .background(WindowAccessor { model.mainWindow = $0; ToolbarDefaults.apply(to: $0) })
         .modifier(FeatureScenes(model: model))
     }
 

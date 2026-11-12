@@ -4,6 +4,7 @@ options:
   deploymentTarget:
     macOS: "15.0"
   createIntermediateGroups: true
+  developmentLanguage: fr
   fileTypes:
     # Icone Icon Composer (Liquid Glass) : ressource, pas groupe de sources.
     icon: {file: true, buildPhase: resources}

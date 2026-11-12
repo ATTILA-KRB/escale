@@ -47,6 +47,7 @@ struct EscaleCommands: Commands {
             Button("Nouveau terminal local") { model.openLocalTab() }.keyboardShortcut("t")
             Button("Nouvel hôte…") { model.editor = .newHost(folder: nil) }.keyboardShortcut("n")
             Button("Nouveau dossier…") { model.editor = .newFolder(parent: nil) }
+            Button("Connexion rapide…") { model.focusQuickConnect() }.keyboardShortcut("k", modifiers: [.command, .shift])
             Divider()
             Button("Importer depuis ~/.ssh/config…") { model.beginImport() }
         }
@@ -56,6 +57,14 @@ struct EscaleCommands: Commands {
                 if model.workspace.activeTab != nil { model.closeActiveTab() } else { NSApp.keyWindow?.performClose(nil) }
             }
             .keyboardShortcut("w")
+        }
+        // Présentation : volets de la barre latérale et page d'accueil.
+        CommandGroup(after: .sidebar) {
+            Button("Accueil") { model.showHome() }.keyboardShortcut("h", modifiers: [.command, .shift])
+            // Sans raccourci : ⌃chiffre appartient au terminal et à Mission Control.
+            ForEach(SidebarTab.allCases) { tab in
+                Button("Volet \(tab.title)") { model.sidebarTab = tab }
+            }
         }
         CommandMenu("Onglets") {
             Button("Onglet suivant") { model.workspace.selectNext() }.keyboardShortcut("]", modifiers: [.command, .shift])
