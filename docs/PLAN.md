@@ -489,6 +489,10 @@ inclut aussi les rapports souris/focus des applications distantes (negligeable).
 - **Verifie** : `EmbeddedX11Tests` (serveur reel : X.Org repond, aucune ecoute TCP, arret par pid, verrou et dossier supprimes) ;
   recette `selftest-macros.sh` hote E (87 controles) : serveur pas demarre sans action, demarre a la demande, `DISPLAY=localhost:10` distant,
   refus sans cookie, X.Org repond via ssh, fenetre xeyes 240×180 affichee et capturee (`x11-integre-xeyes.png`), arret par pid.
+- **Invariant des tests de fenetre** (`EmbeddedX11Tests` xeyes, recette `x11_integre_fenetre_decoree_*`) : quartz-wm pose le titre et la
+  barre de titre *apres* l'apparition de la fenetre. Toujours attendre la decoration (titre non vide + hauteur), jamais la lire une fois :
+  la lecture unique echouait ~4 fois sur 10. Ces tests exigent l'ecran allume (`caffeinate -d` en session longue) : ecran en veille,
+  la fenetre n'est jamais listee et ils echouent a coup sur.
 - **Limites** : pas de gestionnaire de fenetres X (fenetres sans decoration macOS, correct pour des outils simples) ; menus « X11 » et
   preferences XQuartz visibles quand le serveur tourne ; notarisation des 31 dylibs + binaire patche a confirmer a la prochaine publication.
 
