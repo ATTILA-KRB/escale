@@ -346,8 +346,9 @@ struct MacroSelfTest {
         check("x11_integre_gestionnaire_fenetres_lance", wmPID != nil && wmPID != spid, "\(String(describing: wmPID))")
         if let winID {
             // Décoration quartz-wm : titre « xeyes » et hauteur > 180 (barre de titre). Le titre est posé
-            // après l'apparition de la fenêtre : l'attendre plutôt que le lire une fois (course).
-            _ = await wait(5) {
+            // après l'apparition de la fenêtre : l'attendre plutôt que le lire une fois (course). 15 s : sous charge
+            // (tests du coeur en parallele), quartz-wm depasse 5 s ; l'attente s'arrete des que le titre est pose.
+            _ = await wait(15) {
                 Self.windowTitle(winID) == "xeyes" && (Self.windows(of: spid).first { $0.0 == winID }?.2 ?? 0) >= 196
             }
             let h = Self.windows(of: spid).first { $0.0 == winID }?.2 ?? 0
