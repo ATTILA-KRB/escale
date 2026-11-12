@@ -346,7 +346,6 @@ Restes (au 2026-11-11, apres la vague v2 ; toutes les fonctionnalites prevues so
   lien distant a vraie latence (dont PROMETHEUS en mode shell).
 - SFTP : glisser-deposer a la souris entre deux hotes verifie par la recette (logique), pas au geste reel ; listage
   `find -printf` verifie par son analyseur seulement (pas de find GNU local).
-- Icone de l'app (design).
 
 ### Dettes techniques M1 (2026-11-11, branche `v2-tech`)
 
@@ -540,3 +539,9 @@ inclut aussi les rapports souris/focus des applications distantes (negligeable).
   `EscaleX11.app/Contents/Resources`). Lance apres la remise du socket (rootless), relance jusqu'a 8 fois s'il sort trop tot,
   arrete par pid avant le serveur. Les fenetres X ont une barre de titre macOS. Desactivable : `defaults write
   com.attila-krb.Escale x11WindowManager -bool NO`. A confirmer : licence propre de libAppleWM (supposee MIT/X11).
+
+### Icone (2026-11-12)
+
+- Piste « tableau des departs » : deux volets d'afficheur a palettes portant l'invite `>_` (terminal d'aeroport / terminal),
+  fond jaune signaletique. Format Icon Composer `Escale/AppIcon.icon` (calques SVG `volets` et `invite`, verre sur l'invite) ;
+  actool produit `Assets.car` (Liquid Glass) et `AppIcon.icns` (repli macOS 15). Ressource declaree par `fileTypes.icon`.

@@ -4,6 +4,9 @@ options:
   deploymentTarget:
     macOS: "15.0"
   createIntermediateGroups: true
+  fileTypes:
+    # Icone Icon Composer (Liquid Glass) : ressource, pas groupe de sources.
+    icon: {file: true, buildPhase: resources}
 packages:
   EscaleCore:
     path: Packages/EscaleCore
@@ -58,6 +61,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.attila-krb.Escale
         PRODUCT_NAME: Escale
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: Escale/Escale.entitlements
         # La phase « Serveur X11 integre » lit le cache ~/Library/Caches/Escale-build et build/x11.

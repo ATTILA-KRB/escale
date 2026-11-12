@@ -1,0 +1,53 @@
+{
+  "color-space-for-untagged-svg-colors": "display-p3",
+  "fill": {
+    "linear-gradient": [
+      "display-p3:1.00000,0.82353,0.29020,1.00000",
+      "display-p3:0.96078,0.61961,0.04314,1.00000"
+    ]
+  },
+  "groups": [
+    {
+      "name": "Invite",
+      "layers": [
+        {
+          "image-name": "invite.svg",
+          "name": "invite",
+          "glass": true
+        }
+      ],
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      },
+      "specular": true
+    },
+    {
+      "name": "Volets",
+      "layers": [
+        {
+          "image-name": "volets.svg",
+          "name": "volets",
+          "glass": false
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.45
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}
