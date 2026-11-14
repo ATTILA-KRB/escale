@@ -176,4 +176,9 @@ enum SFTPFormat {
         guard let d else { return "—" }
         return d.formatted(.dateTime.day().month(.abbreviated).year().hour().minute())
     }
+    /// Date courte localisée pour la colonne « Date » (ex. 14/11/2026 09:41).
+    static func shortDate(_ d: Date?) -> String {
+        guard let d else { return "—" }
+        return d.formatted(date: .numeric, time: .shortened)
+    }
 }

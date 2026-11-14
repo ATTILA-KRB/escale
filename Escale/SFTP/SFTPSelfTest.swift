@@ -76,6 +76,14 @@ private final class SFTPSelfTestRunner {
         if fm.fileExists(atPath: path) { shots.append("\(name).png") }
     }
 
+    /// Premier `NSSplitView` de la fenêtre (barre latérale | contenu) : sert à mesurer le navigateur à des largeurs réelles.
+    private func findSplitView(_ v: NSView?) -> NSSplitView? {
+        guard let v else { return nil }
+        if let s = v as? NSSplitView, s.isVertical { return s }
+        for sub in v.subviews { if let f = findSplitView(sub) { return f } }
+        return nil
+    }
+
     private func children() -> [String] {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/ps")
@@ -304,6 +312,48 @@ private final class SFTPSelfTestRunner {
         check("tri_conserve_apres_rafraichissement", order() == "dir-a,dir-b,z.txt,a.txt,m.txt", order())
         var toggled = SFTPSort(key: .name, ascending: true); toggled.toggle(.name)
         check("tri_clic_inverse_l_ordre", toggled == SFTPSort(key: .name, ascending: false))
+        s.sort = SFTPSort(key: .name, ascending: true)
+
+        // 7b'. Colonnes Nom / Taille / Date : seuils à hystérésis, bascule réelle selon la largeur du volet
+        typealias M = SFTPColumnsMode
+        check("colonnes_seuils_montee", M.compact.updated(forWidth: 300) == .compact && M.compact.updated(forWidth: 430) == .columns
+              && M.compact.updated(forWidth: 560) == .columnsWithPermissions)
+        check("colonnes_hysteresis_pas_de_clignotement", M.columns.updated(forWidth: 420) == .columns && M.columns.updated(forWidth: 410) == .columns
+              && M.columns.updated(forWidth: 400) == .compact
+              && M.columnsWithPermissions.updated(forWidth: 530) == .columnsWithPermissions && M.columnsWithPermissions.updated(forWidth: 510) == .columns)
+        s.sort = SFTPSort(key: .name, ascending: true)
+        let cols = SFTPColumnsState.shared
+        if let split = findSplitView(window?.contentView), split.subviews.count >= 2 {
+            let total = split.bounds.width
+            func resize(_ sidebar: CGFloat) async {
+                split.setPosition(sidebar, ofDividerAt: 0)
+                split.layoutSubtreeIfNeeded()
+                await sleep(0.5)
+            }
+            await resize(290)
+            notes["largeur_etroite"] = "\(Int(cols.width))"
+            check("colonnes_liste_compacte_a_largeur_etroite", await wait(5) { cols.mode == .compact }, "largeur \(Int(cols.width)) mode \(cols.mode)")
+            await capture("06-colonnes-etroit")
+            await resize(min(470, total - 400))
+            notes["largeur_large"] = "\(Int(cols.width))"
+            check("colonnes_affichees_a_largeur_suffisante", await wait(5) { cols.mode.showsColumns }, "largeur \(Int(cols.width)) mode \(cols.mode)")
+            check("colonnes_tri_nom_dans_la_vue", s.visibleItems.map(\.name).joined(separator: ",") == "dir-a,dir-b,a.txt,m.txt,z.txt")
+            await capture("07-colonnes-large-tri-nom")
+            // Clic sur l'en-tête « Taille » : même bascule que la liste compacte (SFTPSort.toggle), puis inversion au second clic.
+            var hs = s.sort; hs.toggle(.size); s.sort = hs
+            check("colonnes_tri_taille_par_entete", order() == "dir-a,dir-b,z.txt,a.txt,m.txt" && s.sort.key == .size && !s.sort.ascending, order())
+            await capture("08-colonnes-large-tri-taille")
+            hs = s.sort; hs.toggle(.size); s.sort = hs
+            check("colonnes_second_clic_inverse", order() == "dir-a,dir-b,m.txt,a.txt,z.txt" && s.sort.ascending, order())
+            hs = s.sort; hs.toggle(.date); s.sort = hs
+            check("colonnes_tri_date_par_entete", order() == "dir-a,dir-b,z.txt,a.txt,m.txt" && s.sort.key == .date, order())
+            await resize(min(580, total - 400))
+            notes["largeur_tres_large"] = "\(Int(cols.width))"
+            check("colonnes_droits_a_tres_grande_largeur", await wait(5) { cols.mode == .columnsWithPermissions }, "largeur \(Int(cols.width)) mode \(cols.mode)")
+            await capture("09-colonnes-droits")
+            await resize(290)
+            check("colonnes_retour_compact", await wait(5) { cols.mode == .compact }, "largeur \(Int(cols.width)) mode \(cols.mode)")
+        } else { check("colonnes_volet_redimensionnable", false, "NSSplitView introuvable") }
         s.sort = SFTPSort(key: .name, ascending: true)
 
         // 7c. Glisser distant → distant : déplacer (rename) / copier, noms hostiles compris
