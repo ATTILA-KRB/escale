@@ -8,14 +8,12 @@ struct DetailView: View {
     var body: some View {
         let ws = model.workspace
         // Lecture explicite de tout ce qui change la mise en page : SwiftUI relance alors `PaneHost.updateNSView`.
-        let snapshot = ws.tabs.map { t in
-            PaneHostTab(tab: t, layout: t.layout,
-                        bannerIDs: Set(t.panes.filter { $0.bannerMessage != nil }.map(\.id)),
-                        monitorIDs: Set(t.panes.map(\.id).filter { model.monitoring.monitors[$0] != nil }))
-        }
-        let home = ws.tabs.isEmpty || ws.showsHome
+        // Onglets de la fenêtre principale seulement : les onglets détachés sont hébergés par leur fenêtre.
+        let mainTabs = ws.mainTabs
+        let snapshot = mainTabs.map { PaneHostTab(snapshotOf: $0, model: model) }
+        let home = mainTabs.isEmpty || ws.showsHome
         VStack(spacing: 0) {
-            if !ws.tabs.isEmpty {
+            if !mainTabs.isEmpty {
                 TabBarView(model: model)
                 Divider()
             }

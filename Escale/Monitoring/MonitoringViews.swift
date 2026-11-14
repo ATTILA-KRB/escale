@@ -139,6 +139,8 @@ struct MonitoringBar: View {
                     Image(systemName: i.symbol).font(.system(size: 10)).foregroundStyle(.secondary)
                     Text(i.value).lineLimit(1).fixedSize()
                 }
+                // Largeur minimale du débit : « — » (premier relevé) puis « 211 Ko/s » ne décalent pas la suite.
+                .frame(minWidth: i.id == "net" ? 150 : nil, alignment: .leading)
                 .help("\(i.label) — \(i.help)")
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(i.label) \(i.value)")

@@ -63,6 +63,8 @@ final class AppModel {
     let library: LibraryStore
     let connections: ConnectionManager
     let workspace = Workspace()
+    /// Fenêtres d'onglets détachés (`Escale/Views/DetachedWindows.swift`).
+    let detached = DetachedWindows()
 
     var searchText = ""
     /// Volet affiché dans la barre latérale.
@@ -124,6 +126,7 @@ final class AppModel {
         ssh.batchMode = true
         connections = ConnectionManager(sshOptions: ssh, secretStore: AuthKeychain.makeStore(service: options.keychainService))
         for f in features { f.attach(self) }
+        detached.attach(self)
     }
 
     /// Scénarios d'auto-test des modules : `--selftest-<module> <dossier>`.
@@ -142,6 +145,7 @@ final class AppModel {
             ("selftest-rdp", { await RDPSelfTest(directory: $0, model: self).run() }),
             ("selftest-hosteditor", { await HostEditorSelfTest(directory: $0, model: self).run() }),
             ("selftest-compact", { await CompactSelfTest(directory: $0, model: self).run() }),
+            ("selftest-tabs", { await TabsSelfTest(directory: $0, model: self).run() }),
         ]
     }
 
@@ -259,14 +263,14 @@ final class AppModel {
     }
 
     func closeOthers(_ tab: TerminalTab) {
-        for t in workspace.tabs where t.id != tab.id { close(t) }
+        for t in workspace.mainTabs where t.id != tab.id { close(t) }
     }
 
     // MARK: Accueil, connexion rapide, sessions récentes
 
     /// Affiche la page d'accueil par-dessus les onglets ; le terminal masqué ne doit plus recevoir la saisie.
     func showHome() {
-        guard !workspace.tabs.isEmpty else { return }
+        guard !workspace.mainTabs.isEmpty else { return }
         workspace.showsHome = true
         mainWindow?.makeFirstResponder(nil)
     }

@@ -20,7 +20,7 @@ struct MainWindowView: View {
         .onChange(of: model.sidebarTab) { _, _ in model.compact.revealSidebar() }
         .onChange(of: model.quickConnectFocused) { _, focused in if focused { model.compact.revealSidebar() } }
         .onChange(of: model.compact.columns) { _, _ in model.compact.columnsChanged() }
-        .onChange(of: model.workspace.tabs.count) { old, new in model.compact.tabsChanged(from: old, to: new) }
+        .onChange(of: model.workspace.mainTabs.count) { old, new in model.compact.tabsChanged(from: old, to: new) }
         .navigationTitle(model.workspace.activeTab?.displayTitle ?? "Escale")
         .navigationSubtitle(subtitle)
         .sheet(item: $model.editor) { request in

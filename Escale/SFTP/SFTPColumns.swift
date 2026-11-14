@@ -50,7 +50,8 @@ final class SFTPColumnsState {
 /// Largeurs fixes des colonnes (le nom prend le reste).
 enum SFTPColumnMetrics {
     static let icon: CGFloat = 18
-    static let spacing: CGFloat = 8
+    /// 12 pt : à 8, la taille (alignée à droite) se collait à la date (alignée à gauche).
+    static let spacing: CGFloat = 12
     static let size: CGFloat = 66
     static let date: CGFloat = 112
     static let permissions: CGFloat = 76
