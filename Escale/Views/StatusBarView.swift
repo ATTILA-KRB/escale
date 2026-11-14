@@ -5,6 +5,9 @@ import EscaleCore
 /// Ne lit que de l'état déjà connu de l'app : aucune session n'est ouverte pour la remplir (invariant 12).
 struct StatusBarView: View {
     static let height: CGFloat = 22
+    /// Hauteur en mode compact (texte réduit, sans dossier courant ni compteurs).
+    static let compactHeight: CGFloat = 18
+    private var compact: Bool { model.compact.isOn }
     let model: AppModel
 
     var body: some View {
@@ -15,12 +18,12 @@ struct StatusBarView: View {
                 Text("Prêt").foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            globalItems
+            if !compact { globalItems }
         }
-        .font(.system(size: 11))
+        .font(.system(size: compact ? 10 : 11))
         .lineLimit(1)
         .padding(.horizontal, 10)
-        .frame(height: Self.height)
+        .frame(height: compact ? Self.compactHeight : Self.height)
         .background(.bar)
         .overlay(alignment: .top) { Divider() }
         .accessibilityElement(children: .contain)
@@ -42,7 +45,7 @@ struct StatusBarView: View {
             .help(h.name)
         }
         StatusText(status: pane.status)
-        if let dir = pane.session.workingDirectory {
+        if !compact, let dir = pane.session.workingDirectory {
             Divider().frame(height: 12)
             Label(dir.path, systemImage: "folder").labelStyle(.titleAndIcon)
                 .foregroundStyle(.secondary).truncationMode(.head)

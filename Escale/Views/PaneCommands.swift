@@ -8,6 +8,7 @@ final class PaneMenuState: ObservableObject {
     static let shared = PaneMenuState()
     @Published private(set) var hasTab = false
     @Published private(set) var several = false
+    @Published private(set) var compact = false
     private weak var model: AppModel?
 
     func bind(_ model: AppModel) {
@@ -19,16 +20,18 @@ final class PaneMenuState: ObservableObject {
     /// Relit l'état et se ré-arme sur les propriétés lues (onglet actif, nombre de panneaux).
     private func refresh() {
         guard let model else { return }
-        var tab = false, many = false
+        var tab = false, many = false, compactOn = false
         withObservationTracking {
             let t = model.workspace.activeTab
             tab = t != nil
             many = (t?.panes.count ?? 0) > 1
+            compactOn = model.compact.isOn
         } onChange: { [weak self] in
             Task { @MainActor in self?.refresh() }
         }
         if hasTab != tab { hasTab = tab }
         if several != many { several = many }
+        if compact != compactOn { compact = compactOn }
     }
 }
 
@@ -45,6 +48,8 @@ struct PaneCommands: Commands {
 
     var body: some Commands {
         CommandMenu("Terminal") { PaneMenuItems(model: model) }
+        // Présentation : bascule du mode compact (⇧⌘M, libre : ⌘M et ⌥⌘M minimisent la fenêtre).
+        CommandGroup(after: .sidebar) { CompactMenuItem(model: model) }
     }
 }
 
@@ -88,5 +93,16 @@ private struct PaneMenuItems: View {
             Button("Égaliser les panneaux") { model.workspace.activeTab?.equalize() }
                 .disabled(!several)
         }
+    }
+}
+
+/// « Mode compact » (coche) dans le menu Présentation.
+private struct CompactMenuItem: View {
+    let model: AppModel
+    @ObservedObject private var state = PaneMenuState.shared
+
+    var body: some View {
+        Toggle("Mode compact", isOn: Binding(get: { state.compact }, set: { model.compact.set($0, model: model) }))
+            .keyboardShortcut("m", modifiers: [.command, .shift])
     }
 }
