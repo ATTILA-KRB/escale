@@ -56,7 +56,8 @@ final class PaneHostView: NSView {
         activeTabID = activeID
         let alive = Set(list.flatMap { $0.tab.panes.map(\.id) })
         let aliveSplits = Set(list.flatMap { $0.layout.splitIDs })
-        for (id, e) in engines where !alive.contains(id) { e.view.removeFromSuperview(); engines[id] = nil }
+        // Une vue de moteur déjà adoptée par l'hôte d'une autre fenêtre (onglet détaché/rattaché) ne doit pas lui être retirée.
+        for (id, e) in engines where !alive.contains(id) { if e.view.superview === self { e.view.removeFromSuperview() }; engines[id] = nil }
         for (id, v) in banners where !alive.contains(id) || !list.contains(where: { $0.bannerIDs.contains(id) }) {
             v.removeFromSuperview(); banners[id] = nil
         }
@@ -65,6 +66,7 @@ final class PaneHostView: NSView {
         for t in list {
             for p in t.tab.panes {
                 let e = p.session.engine
+                if engines[p.id] != nil, e.view.superview !== self { addSubview(e.view) }
                 if engines[p.id] == nil {
                     e.view.autoresizingMask = []
                     addSubview(e.view)

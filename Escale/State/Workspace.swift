@@ -2,6 +2,9 @@ import Foundation
 import Observation
 
 /// Liste ordonnée des onglets et onglet actif.
+/// `tabs` contient TOUS les onglets, y compris ceux détachés dans leur propre fenêtre (`TerminalTab.windowID`) :
+/// compteurs, multi-exécution, macros et SFTP les voient donc sans cas particulier. `mainTabs`, `activeID`,
+/// `activeTab` et la navigation ne concernent que la fenêtre principale.
 @MainActor
 @Observable
 final class Workspace {
@@ -13,6 +16,13 @@ final class Workspace {
 
     var activeTab: TerminalTab? { tabs.first { $0.id == activeID } }
 
+    /// Onglets de la fenêtre principale (hors onglets détachés).
+    var mainTabs: [TerminalTab] { tabs.filter { $0.windowID == nil } }
+    /// Onglets détachés dans la fenêtre `windowID`.
+    func tabs(inWindow windowID: UUID) -> [TerminalTab] { tabs.filter { $0.windowID == windowID } }
+    /// Appelé quand on « sélectionne » un onglet détaché : la fenêtre concernée passe devant (renseigné par `AppModel`).
+    @ObservationIgnored var revealDetached: ((TerminalTab) -> Void)?
+
     func add(_ tab: TerminalTab, activate: Bool = true) {
         tabs.append(tab)
         if activate || activeID == nil { activeID = tab.id; showsHome = false }
@@ -22,19 +32,49 @@ final class Workspace {
     func remove(_ tab: TerminalTab) {
         guard let i = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
         tabs.remove(at: i)
-        if activeID == tab.id { activeID = tabs.isEmpty ? nil : tabs[min(i, tabs.count - 1)].id }
-        if tabs.isEmpty { showsHome = false }
+        if activeID == tab.id { activeID = mainNeighbour(at: i) }
+        if mainTabs.isEmpty { showsHome = false }
     }
 
-    func select(_ id: UUID) { if tabs.contains(where: { $0.id == id }) { activeID = id; showsHome = false } }
-    func select(index: Int) { if tabs.indices.contains(index) { select(tabs[index].id) } }
+    /// Onglet principal le plus proche de l'indice `i` : voisin de droite, sinon de gauche.
+    private func mainNeighbour(at i: Int) -> UUID? {
+        let k = min(i, tabs.count)
+        return (tabs[k...].first { $0.windowID == nil } ?? tabs[..<k].last { $0.windowID == nil })?.id
+    }
+
+    /// Détache l'onglet dans la fenêtre `windowID` (le moteur et le pty ne sont pas touchés).
+    /// L'activation de la fenêtre principale passe à un voisin.
+    func detach(_ tab: TerminalTab, window windowID: UUID) {
+        guard tab.windowID == nil, let i = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
+        tab.windowID = windowID
+        if activeID == tab.id { activeID = mainNeighbour(at: i + 1) }
+        if mainTabs.isEmpty { showsHome = false }
+    }
+
+    /// Rattache l'onglet à la fenêtre principale, en fin de barre, et l'active.
+    func reattach(_ tab: TerminalTab) {
+        guard tab.windowID != nil, let i = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
+        tabs.remove(at: i)
+        tab.windowID = nil
+        tabs.append(tab)
+        activeID = tab.id
+        showsHome = false
+    }
+
+    func select(_ id: UUID) {
+        guard let tab = tabs.first(where: { $0.id == id }) else { return }
+        if tab.windowID != nil { revealDetached?(tab); return }
+        activeID = id; showsHome = false
+    }
+    func select(index: Int) { let m = mainTabs; if m.indices.contains(index) { select(m[index].id) } }
 
     func selectNext() { step(1) }
     func selectPrevious() { step(-1) }
     private func step(_ d: Int) {
-        guard !tabs.isEmpty else { return }
-        let cur = tabs.firstIndex { $0.id == activeID } ?? 0
-        activeID = tabs[(cur + d + tabs.count) % tabs.count].id
+        let m = mainTabs
+        guard !m.isEmpty else { return }
+        let cur = m.firstIndex { $0.id == activeID } ?? 0
+        activeID = m[(cur + d + m.count) % m.count].id
         showsHome = false
     }
 

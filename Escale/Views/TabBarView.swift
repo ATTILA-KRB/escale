@@ -24,14 +24,15 @@ struct TabBarView: View {
             .padding(.leading, 6)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
-                    ForEach(ws.tabs) { tab in
+                    ForEach(ws.mainTabs) { tab in
                         TabItem(tab: tab, isActive: tab.id == ws.activeID && !ws.showsHome, isHovered: hovered == tab.id,
                                 select: { ws.select(tab.id) }, close: { model.close(tab) })
                             .contextMenu {
                                 Button("Dupliquer l'onglet") { model.duplicate(tab) }
+                                Button("Détacher l'onglet dans une nouvelle fenêtre") { model.detached.detach(tab) }
                                 Divider()
                                 Button("Fermer l'onglet") { model.close(tab) }
-                                Button("Fermer les autres onglets") { model.closeOthers(tab) }.disabled(ws.tabs.count < 2)
+                                Button("Fermer les autres onglets") { model.closeOthers(tab) }.disabled(ws.mainTabs.count < 2)
                             }
                             .onHover { inside in
                                 if inside { hovered = tab.id } else if hovered == tab.id { hovered = nil }
@@ -57,7 +58,7 @@ struct TabBarView: View {
         .onAppear {
             // Clic milieu = fermer l'onglet survolé (SwiftUI n'expose pas ce bouton).
             monitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseUp) { event in
-                guard event.buttonNumber == 2, let id = hovered, let tab = model.workspace.tabs.first(where: { $0.id == id }) else { return event }
+                guard event.buttonNumber == 2, let id = hovered, let tab = model.workspace.mainTabs.first(where: { $0.id == id }) else { return event }
                 model.close(tab)
                 return nil
             }

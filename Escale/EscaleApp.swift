@@ -54,6 +54,8 @@ struct EscaleCommands: Commands {
         CommandGroup(replacing: .saveItem) {
             Button("Fermer l'onglet") {
                 // Dernier onglet fermé : Cmd-W ferme alors la fenêtre.
+                // Fenêtre détachée active : ⌘W ferme son panneau actif, puis son onglet et la fenêtre.
+                if model.detached.closeActivePaneInKeyWindow() { return }
                 if model.workspace.activeTab != nil { model.closeActiveTab() } else { NSApp.keyWindow?.performClose(nil) }
             }
             .keyboardShortcut("w")
@@ -74,6 +76,7 @@ struct EscaleCommands: Commands {
                 Button("Onglet \(i)") { model.workspace.select(index: i - 1) }
                     .keyboardShortcut(KeyEquivalent(Character("\(i)")), modifiers: .command)
             }
+            DetachedTabMenuItems(model: model)
         }
     }
 }

@@ -16,6 +16,9 @@ final class TerminalTab: Identifiable {
     private(set) var layout: PaneLayout
     private var panesByID: [UUID: Pane]
     var isClosing = false
+    /// Fenêtre détachée qui porte cet onglet ; nil dans la fenêtre principale. Seul changement : l'hébergement de la
+    /// vue (moteur, pty et connexion ne bougent pas).
+    var windowID: UUID?
     /// Dernière taille de la zone des panneaux (renseignée par la vue) : sert à la navigation directionnelle
     /// et aux bornes de redimensionnement.
     @ObservationIgnored var viewSize = CGSize(width: 1000, height: 600)
