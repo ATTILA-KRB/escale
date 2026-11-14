@@ -6,7 +6,7 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 - `Packages/EscaleCore` : logique sans UI (modeles, transport SSH, SFTP, pty, serveur X11 integre). Testee par `swift test`.
   Seule cible C : `CEscaleX11` (remise du socket au serveur Xquartz par Mach).
 - `Escale/` : app SwiftUI/AppKit. Le moteur de terminal (SwiftTerm) reste confine a `Escale/Terminal/`.
-- Modules M2-M5 et protocoles (`Escale/{SFTP,Tunnels,MultiExec,Macros,Import,Update,Serial,Telnet,VNC,RDP}/`) : s'accrochent a l'app uniquement par
+- Modules M2-M5 et protocoles (`Escale/{SFTP,Tunnels,MultiExec,Macros,Import,Update,Serial,Telnet,VNC,RDP,Monitoring}/`) : s'accrochent a l'app uniquement par
   `Escale/Features/AppFeature.swift` (commandes, scenes, menus d'hote), `ConnectionManager.linkObservers`,
   `TerminalSession.inputObservers`, `AppModel.terminalLaunchers`/`externalOpeners` (protocoles) et `--selftest-<module> <dossier>`.
 - Interface calquee sur MobaXterm (barre d'outils, volets de la barre laterale, accueil, barre d'etat) : `docs/UI-MOBAXTERM.md`.
@@ -14,7 +14,7 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 
 ## Commandes
 - `scripts/test.sh` : tests du coeur + build de l'app. A lancer avant tout commit.
-- `scripts/selftest-{ssh,auth,panes,terminal,sftp,sftp-shell,tunnels,multiexec,macros,import,serial,telnet,vnc,rdp}.sh` : recettes de l'app contre un sshd local
+- `scripts/selftest-{ssh,auth,panes,terminal,sftp,sftp-shell,tunnels,multiexec,macros,import,serial,telnet,vnc,rdp,monitoring,hosteditor,compact,tabs}.sh` : recettes de l'app contre un sshd local
   (ouvrent une fenetre, sans prendre le focus). Resultats dans `$OUT` (result.json + captures).
   A lancer apres tout changement dans `Escale/`, une a la fois (meme dossier `build/`). Sortie vers un fichier,
   pas `| tail` (le garde-fou `sleep` en arriere-plan garde la pipe ouverte).
