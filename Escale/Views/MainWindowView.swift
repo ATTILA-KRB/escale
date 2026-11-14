@@ -5,10 +5,9 @@ import EscaleCore
 /// Fenêtre principale : barre d'outils, barre latérale à volets, zone de détail (onglets de terminaux, accueil, barre d'état).
 struct MainWindowView: View {
     @Bindable var model: AppModel
-    @State private var columns: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columns) {
+        NavigationSplitView(columnVisibility: Binding(get: { model.compact.columns }, set: { model.compact.columns = $0 })) {
             SidebarView(model: model)
                 // Assez large pour le volet Fichiers (navigateur SFTP), qui vit dans la barre latérale.
                 .navigationSplitViewColumnWidth(min: 250, ideal: 290, max: 560)
@@ -17,8 +16,11 @@ struct MainWindowView: View {
         }
         .toolbar(id: "principal") { MainToolbar(model: model) }
         // Changer de volet (menu, barre d'outils, raccourci) ou appeler la connexion rapide rouvre une barre latérale repliée.
-        .onChange(of: model.sidebarTab) { _, _ in columns = .all }
-        .onChange(of: model.quickConnectFocused) { _, focused in if focused { columns = .all } }
+        // En mode compact, cela rouvre la barre latérale temporairement (voir `CompactMode.revealSidebar`).
+        .onChange(of: model.sidebarTab) { _, _ in model.compact.revealSidebar() }
+        .onChange(of: model.quickConnectFocused) { _, focused in if focused { model.compact.revealSidebar() } }
+        .onChange(of: model.compact.columns) { _, _ in model.compact.columnsChanged() }
+        .onChange(of: model.workspace.tabs.count) { old, new in model.compact.tabsChanged(from: old, to: new) }
         .navigationTitle(model.workspace.activeTab?.displayTitle ?? "Escale")
         .navigationSubtitle(subtitle)
         .sheet(item: $model.editor) { request in
@@ -57,7 +59,7 @@ struct MainWindowView: View {
             case .folder(let f): Text("Le dossier « \(f.name) » sera supprimé ; les hôtes qu'il contient remontent au niveau supérieur.")
             }
         }
-        .background(WindowAccessor { model.mainWindow = $0; ToolbarDefaults.apply(to: $0) })
+        .background(WindowAccessor { model.mainWindow = $0; ToolbarDefaults.apply(to: $0); model.compact.applyToolbar(to: $0) })
         .modifier(FeatureScenes(model: model))
     }
 

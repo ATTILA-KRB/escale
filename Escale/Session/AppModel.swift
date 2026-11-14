@@ -67,6 +67,8 @@ final class AppModel {
     var searchText = ""
     /// Volet affiché dans la barre latérale.
     var sidebarTab: SidebarTab = .sessions
+    /// Mode compact de la fenêtre (barre d'outils en icônes, barre latérale repliée).
+    let compact: CompactMode
     /// Champ « Connexion rapide » actif (⇧⌘K) : le volet Sessions lui donne le focus.
     var quickConnectFocused = false
     /// Sessions ouvertes récemment (page d'accueil) ; fichier `recents.json` à côté de la bibliothèque.
@@ -107,6 +109,9 @@ final class AppModel {
 
     init(options: LaunchOptions) {
         self.options = options
+        // La recette n'écrit jamais dans les préférences réelles de l'utilisateur.
+        compact = CompactMode(defaults: options.value("selftest-compact") != nil
+                              ? (UserDefaults(suiteName: CompactSelfTest.defaultsSuite) ?? .standard) : .standard)
         let url = options.libraryPath.map { URL(fileURLWithPath: $0) } ?? LibraryStore.defaultURL
         library = LibraryStore(repository: FileHostRepository(url: url))
         recentsURL = RecentSessionList.url(besideLibrary: url)
@@ -134,6 +139,7 @@ final class AppModel {
             ("selftest-vnc", { await VNCSelfTest(directory: $0, model: self).run() }),
             ("selftest-rdp", { await RDPSelfTest(directory: $0, model: self).run() }),
             ("selftest-hosteditor", { await HostEditorSelfTest(directory: $0, model: self).run() }),
+            ("selftest-compact", { await CompactSelfTest(directory: $0, model: self).run() }),
         ]
     }
 
