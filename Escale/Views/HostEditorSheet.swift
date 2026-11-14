@@ -47,144 +47,41 @@ enum HostFormValidation {
     }
 }
 
-/// Feuille d'édition (ou de création) d'un hôte.
+/// Feuille d'édition (ou de création) d'un hôte : bandeau de protocoles, puis réglages en onglets (`HostEditorTab`).
 struct HostEditorSheet: View {
     let model: AppModel
     let host: HostProfile?
     let initialFolder: UUID?
     @Environment(\.dismiss) private var dismiss
 
-    private enum AuthChoice: Hashable { case defaults, keyFile, keychain }
-
-    @State private var name = ""
-    @State private var hostname = ""
-    @State private var port = ""
-    @State private var user = ""
-    @State private var authChoice: AuthChoice = .defaults
-    @State private var keyPath = ""
-    /// Identifiant de l'hôte (celui de l'hôte édité, ou un nouvel identifiant) : le compte Trousseau en dérive.
-    @State private var hostID = UUID()
+    @State private var form = HostEditorForm()
     @State private var hasStoredSecret = false
     @State private var secretMessage: String?
-    @State private var jumpHosts = ""
-    @State private var tags = ""
-    @State private var folderID: UUID?
-    @State private var tunnels: [TunnelSpec] = []
-    @State private var x11Forwarding = false
-    @State private var startupCommand = ""
     @State private var loaded = false
-    @State private var connectionProtocol: ConnectionProtocol = .ssh
-    @State private var serial = SerialSettings()
-    @State private var telnet = TelnetSettings()
-    @State private var vnc = VNCSettings()
-    @State private var rdp = RDPSettings()
 
-    private var isSSH: Bool { connectionProtocol == .ssh }
-
-    private var errors: [String] {
-        var e: [String] = []
-        // Série : pas d'hôte réseau (le port série est dans la section du module).
-        let needsHost = connectionProtocol != .serial
-        [HostFormValidation.name(name), needsHost ? HostFormValidation.host(hostname) : nil,
-         needsHost ? HostFormValidation.port(port) : nil, HostFormValidation.user(user)].forEach { if let m = $0 { e.append(m) } }
-        e += ProtocolEditorSection.errors(connectionProtocol, serial: serial, telnet: telnet, vnc: vnc, rdp: rdp)
-        guard isSSH else { return e }
-        [authChoice == .keyFile ? HostFormValidation.keyPath(keyPath) : nil,
-         HostFormValidation.jumpHosts(jumpHosts)].forEach { if let m = $0 { e.append(m) } }
-        if let m = StartupCommand.validationMessage(startupCommand) { e.append(m) }
-        e += TunnelValidation.listErrors(tunnels) + tunnels.filter { !TunnelValidation.errors($0).isEmpty }.map { "Tunnel « \($0.title) » invalide." }
-        return e
-    }
+    private var errors: [String] { form.errors }
 
     var body: some View {
         VStack(spacing: 0) {
-            Form {
-                Section {
-                    Picker("Protocole", selection: $connectionProtocol) {
-                        ForEach(ConnectionProtocol.allCases, id: \.self) { Text($0.displayName).tag($0) }
-                    }
-                    TextField("Nom", text: $name, prompt: Text(connectionProtocol == .serial ? "Nom du port si vide" : "Identique à l'hôte si vide"))
-                    if connectionProtocol != .serial {
-                        TextField("Hôte", text: $hostname, prompt: Text(isSSH ? "nom, adresse IP ou alias ssh_config" : "nom ou adresse IP"))
-                            .disableAutocorrection(true)
-                        TextField("Port", text: $port, prompt: Text(connectionProtocol.defaultPort.map(String.init) ?? ""))
-                    }
-                    if connectionProtocol != .serial && connectionProtocol != .vnc {
-                        TextField("Utilisateur", text: $user, prompt: Text(isSSH ? "Utilisateur courant" : "facultatif"))
-                    }
+            VStack(spacing: 10) {
+                HostEditorBanner(form: form)
+                Picker("Onglet", selection: $form.tab) {
+                    ForEach(form.tabs, id: \.self) { Text($0.title(for: form.connectionProtocol)).tag($0) }
                 }
-                ProtocolEditorSection(model: model, connectionProtocol: connectionProtocol,
-                                      serial: $serial, telnet: $telnet, vnc: $vnc, rdp: $rdp)
-                if isSSH {
-                Section("Authentification") {
-                    Picker("Méthode", selection: $authChoice) {
-                        Text("Réglages OpenSSH par défaut").tag(AuthChoice.defaults)
-                        Text("Fichier de clé").tag(AuthChoice.keyFile)
-                        Text("Mot de passe (Trousseau)").tag(AuthChoice.keychain)
-                    }
-                    if authChoice == .keyFile {
-                        LabeledContent("Clé privée") {
-                            HStack(spacing: 8) {
-                                // Chemin long : troncature au milieu (début et nom du fichier restent lisibles), chemin complet en infobulle.
-                                Text(keyPath.isEmpty ? "Aucun fichier choisi" : keyPath)
-                                    .foregroundStyle(keyPath.isEmpty ? .secondary : .primary)
-                                    .lineLimit(1).truncationMode(.middle)
-                                    .help(keyPath.isEmpty ? "Aucun fichier choisi" : keyPath)
-                                    .frame(maxWidth: .infinity, alignment: .trailing)
-                                Button("Choisir…") { chooseKey() }
-                            }
-                        }
-                        Text("Si la clé est protégée par une phrase de passe, elle vous sera demandée à la connexion.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    if authChoice == .keychain {
-                        Text("Le mot de passe est demandé à la première connexion. La case « Mémoriser dans le Trousseau » l'enregistre, après une connexion réussie.")
-                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        if hasStoredSecret {
-                            HStack {
-                                Label("Un mot de passe est enregistré dans le Trousseau.", systemImage: "checkmark.seal")
-                                    .font(.caption)
-                                Spacer()
-                                Button("Oublier le mot de passe enregistré") { forgetSecret() }.controlSize(.small)
-                            }
-                        } else if let m = secretMessage {
-                            Text(m).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    if authChoice == .defaults {
-                        Text("Agent ssh, clés par défaut et ~/.ssh/config.").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                Section {
-                    TextField("Bastions", text: $jumpHosts, prompt: Text("user@bastion:22, autre-bastion"))
-                    TextField("Étiquettes", text: $tags, prompt: Text("prod, web"))
-                    Picker("Dossier", selection: $folderID) {
-                        Text("Racine").tag(UUID?.none)
-                        ForEach(model.library.allFolderPaths, id: \.id) { Text($0.path).tag(UUID?.some($0.id)) }
-                    }
-                }
-                TunnelEditorSection(tunnels: $tunnels)
-                X11EditorSection(isOn: $x11Forwarding, detect: { [connections = model.connections] in connections.x11Detect() })
-                StartupCommandEditorSection(text: $startupCommand)
-                } else {
-                    Section {
-                        TextField("Étiquettes", text: $tags, prompt: Text("prod, web"))
-                        Picker("Dossier", selection: $folderID) {
-                            Text("Racine").tag(UUID?.none)
-                            ForEach(model.library.allFolderPaths, id: \.id) { Text($0.path).tag(UUID?.some($0.id)) }
-                        }
-                    }
-                }
+                .pickerStyle(.segmented).labelsHidden()
             }
-            .formStyle(.grouped)
+            .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 4)
 
-            if !errors.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(errors, id: \.self) { Text($0).font(.caption).foregroundStyle(.red) }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20).padding(.bottom, 6)
+            // Hauteur fixe : la feuille garde la même taille d'un onglet et d'un protocole à l'autre (le contenu défile).
+            Form { tabContent }
+                .formStyle(.grouped)
+                .frame(maxHeight: .infinity)
+
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(errors, id: \.self) { Text($0).font(.caption).foregroundStyle(.red) }
             }
+            .frame(maxWidth: .infinity, minHeight: 36, alignment: .topLeading)
+            .padding(.horizontal, 20).padding(.vertical, 4)
             Divider()
             HStack {
                 Spacer()
@@ -195,31 +92,107 @@ struct HostEditorSheet: View {
             }
             .padding(12)
         }
-        .frame(width: 480)
-        .onAppear(perform: load)
+        .frame(width: 560, height: 640)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear {
+            load()
+            form.saveAction = { if form.errors.isEmpty { save() } }
+            HostEditorForm.current = form
+        }
+        .onDisappear { if HostEditorForm.current === form { HostEditorForm.current = nil } }
         .navigationTitle(host == nil ? "Nouvel hôte" : "Modifier l'hôte")
+    }
+
+    @ViewBuilder private var tabContent: some View {
+        switch form.tab {
+        case .basic: basicTab
+        case .advanced: advancedTab
+        case .terminal: StartupCommandEditorSection(text: $form.startupCommand)
+        case .network: TunnelEditorSection(tunnels: $form.tunnels)
+        case .protocolSettings:
+            ProtocolEditorSection(model: model, connectionProtocol: form.connectionProtocol,
+                                  serial: $form.serial, telnet: $form.telnet, vnc: $form.vnc, rdp: $form.rdp)
+        }
+    }
+
+    private var basicTab: some View {
+        let p = form.connectionProtocol
+        return Group {
+            Section {
+                TextField("Nom", text: $form.name, prompt: Text(p == .serial ? "Nom du port si vide" : "Identique à l'hôte si vide"))
+                if p != .serial {
+                    TextField("Hôte", text: $form.hostname, prompt: Text(form.isSSH ? "nom, adresse IP ou alias ssh_config" : "nom ou adresse IP"))
+                        .disableAutocorrection(true)
+                    TextField("Port", text: $form.port, prompt: Text(p.defaultPort.map(String.init) ?? ""))
+                }
+                if p != .serial && p != .vnc {
+                    TextField("Utilisateur", text: $form.user, prompt: Text(form.isSSH ? "Utilisateur courant" : "facultatif"))
+                }
+            }
+            Section {
+                TextField("Étiquettes", text: $form.tags, prompt: Text("prod, web"))
+                Picker("Dossier", selection: $form.folderID) {
+                    Text("Racine").tag(UUID?.none)
+                    ForEach(model.library.allFolderPaths, id: \.id) { Text($0.path).tag(UUID?.some($0.id)) }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var advancedTab: some View {
+        Section("Authentification") {
+            Picker("Méthode", selection: $form.authChoice) {
+                Text("Réglages OpenSSH par défaut").tag(HostEditorAuthChoice.defaults)
+                Text("Fichier de clé").tag(HostEditorAuthChoice.keyFile)
+                Text("Mot de passe (Trousseau)").tag(HostEditorAuthChoice.keychain)
+            }
+            if form.authChoice == .keyFile {
+                LabeledContent("Clé privée") {
+                    HStack(spacing: 8) {
+                        // Chemin long : troncature au milieu (début et nom du fichier restent lisibles), chemin complet en infobulle.
+                        Text(form.keyPath.isEmpty ? "Aucun fichier choisi" : form.keyPath)
+                            .foregroundStyle(form.keyPath.isEmpty ? .secondary : .primary)
+                            .lineLimit(1).truncationMode(.middle)
+                            .help(form.keyPath.isEmpty ? "Aucun fichier choisi" : form.keyPath)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                        Button("Choisir…") { chooseKey() }
+                    }
+                }
+                Text("Si la clé est protégée par une phrase de passe, elle vous sera demandée à la connexion.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            if form.authChoice == .keychain {
+                Text("Le mot de passe est demandé à la première connexion. La case « Mémoriser dans le Trousseau » l'enregistre, après une connexion réussie.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                if hasStoredSecret {
+                    HStack {
+                        Label("Un mot de passe est enregistré dans le Trousseau.", systemImage: "checkmark.seal")
+                            .font(.caption)
+                        Spacer()
+                        Button("Oublier le mot de passe enregistré") { forgetSecret() }.controlSize(.small)
+                    }
+                } else if let m = secretMessage {
+                    Text(m).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if form.authChoice == .defaults {
+                Text("Agent ssh, clés par défaut et ~/.ssh/config.").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        Section {
+            TextField("Bastions", text: $form.jumpHosts, prompt: Text("user@bastion:22, autre-bastion"))
+        }
+        X11EditorSection(isOn: $form.x11Forwarding, detect: { [connections = model.connections] in connections.x11Detect() })
     }
 
     private func load() {
         guard !loaded else { return }
         loaded = true
-        folderID = initialFolder
-        guard let h = host else { return }
-        hostID = h.id
-        name = h.name; hostname = h.host; port = h.port.map(String.init) ?? ""; user = h.user ?? ""
-        jumpHosts = h.jumpHosts.joined(separator: ", "); tags = h.tags.joined(separator: ", ")
-        tunnels = h.tunnels; x11Forwarding = h.x11Forwarding; startupCommand = h.startupCommand ?? ""
-        connectionProtocol = h.connectionProtocol
-        serial = h.serial ?? SerialSettings(); telnet = h.telnet ?? TelnetSettings()
-        vnc = h.vnc ?? VNCSettings(); rdp = h.rdp ?? RDPSettings()
-        switch h.auth {
-        case .openSSHDefaults: authChoice = .defaults
-        case .keyFile(let p): authChoice = .keyFile; keyPath = p
-        case .keychainPassword: authChoice = .keychain; refreshStoredSecret()
-        }
+        form.load(host: host, initialFolder: initialFolder)
+        if form.authChoice == .keychain { refreshStoredSecret() }
     }
 
-    private var account: String { AuthKeychain.passwordAccount(for: hostID) }
+    private var account: String { form.account }
 
     private func refreshStoredSecret() {
         let store = model.connections.secretStore, account = account
@@ -243,43 +216,16 @@ struct HostEditorSheet: View {
         panel.directoryURL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".ssh")
         panel.prompt = "Choisir"
         panel.message = "Choisissez le fichier de clé privée (il n'est jamais copié ni modifié)."
-        if panel.runModal() == .OK, let url = panel.url { keyPath = url.path }
+        if panel.runModal() == .OK, let url = panel.url { form.keyPath = url.path }
     }
 
     private func save() {
-        let hostTrim = hostname.trimmingCharacters(in: .whitespaces)
-        let nameTrim = name.trimmingCharacters(in: .whitespaces)
-        let userTrim = user.trimmingCharacters(in: .whitespaces)
-        let auth: HostProfile.Auth = switch authChoice {
-        case .defaults: .openSSHDefaults
-        case .keyFile: .keyFile(path: keyPath.trimmingCharacters(in: .whitespaces))
-        case .keychain: .keychainPassword(account: account)
-        }
-        var h = host ?? HostProfile(id: hostID, name: "", host: "")
+        let h = form.makeProfile(base: host)
         // Méthode quittée : le mot de passe enregistré ne doit pas rester orphelin dans le Trousseau.
-        if case .keychainPassword = h.auth, authChoice != .keychain {
-            let store = model.connections.secretStore, hid = h.id
+        if let old = host, case .keychainPassword = old.auth, form.authChoice != .keychain {
+            let store = model.connections.secretStore, hid = old.id
             Task { try? await store.removeSecret(for: AuthKeychain.passwordAccount(for: hid)) }
         }
-        h.connectionProtocol = connectionProtocol
-        h.serial = connectionProtocol == .serial ? serial : nil
-        h.telnet = connectionProtocol == .telnet ? telnet : nil
-        h.vnc = connectionProtocol == .vnc ? vnc : nil
-        h.rdp = connectionProtocol == .rdp ? rdp : nil
-        // Série : le « hôte » affiché est le périphérique (barre latérale, recherche).
-        let isSerial = connectionProtocol == .serial
-        let shownHost = isSerial ? serial.devicePath : hostTrim
-        h.name = !nameTrim.isEmpty ? nameTrim : (isSerial ? (shownHost as NSString).lastPathComponent : hostTrim)
-        h.host = shownHost
-        h.port = connectionProtocol == .serial ? nil : Int(port.trimmingCharacters(in: .whitespaces))
-        h.user = userTrim.isEmpty ? nil : userTrim
-        h.auth = auth
-        h.jumpHosts = HostFormValidation.split(jumpHosts)
-        h.tags = HostFormValidation.split(tags)
-        h.folderID = folderID
-        h.tunnels = tunnels
-        h.x11Forwarding = x11Forwarding
-        h.startupCommand = StartupCommand.normalized(startupCommand)
         let previousTunnels = host?.tunnels ?? []
         model.library.upsert(h)
         model.tunnels.hostSaved(oldTunnels: previousTunnels, host: h) // modification à chaud des tunnels actifs
