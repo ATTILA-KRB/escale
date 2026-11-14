@@ -70,6 +70,8 @@ private struct SFTPSessionView: View {
     @State private var newFolderText = ""
     @State private var deleting: [SFTPItem] = []
     @State private var confirmTracking = false
+    /// Mode d'affichage (compact / colonnes) selon la largeur mesurée de la liste.
+    private var columns: SFTPColumnsState { .shared }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -98,7 +100,11 @@ private struct SFTPSessionView: View {
                 }
                 .padding(8).background(.blue.opacity(0.10))
             }
-            sortBar
+            if columns.mode.showsColumns {
+                SFTPColumnsHeader(sort: $session.sort, mode: columns.mode)
+            } else {
+                sortBar
+            }
             Divider()
             content
         }
@@ -240,6 +246,12 @@ private struct SFTPSessionView: View {
     }
 
     private var list: some View {
+        listBody
+            // Largeur de la liste : choisit colonnes ou liste compacte (hystérésis dans `SFTPColumnsMode`).
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { columns.measured($0) }
+    }
+
+    private var listBody: some View {
         List(selection: $session.selection) {
             ForEach(session.visibleItems) { item in
                 row(item).tag(item.id)
@@ -280,6 +292,10 @@ private struct SFTPSessionView: View {
         .contentShape(Rectangle())
     }
 
+    @ViewBuilder private func rowContent(_ item: SFTPItem) -> some View {
+        if columns.mode.showsColumns { SFTPColumnsRow(item: item, mode: columns.mode) } else { rowLabel(item) }
+    }
+
     private func dragItem(_ item: SFTPItem) -> RemoteDragFile {
         let paths: [Data] = draggedItems(for: item).map { $0.path }
         let payload = SFTPDragPayload.encode(session: session.id, paths: paths)
@@ -290,7 +306,7 @@ private struct SFTPSessionView: View {
     }
 
     @ViewBuilder private func row(_ item: SFTPItem) -> some View {
-        let source = rowLabel(item).draggable(dragItem(item))
+        let source = rowContent(item).draggable(dragItem(item))
         if item.isDirectory {
             source
                 .dropDestination(for: URL.self) { urls, _ in
