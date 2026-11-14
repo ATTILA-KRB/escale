@@ -133,6 +133,7 @@ final class AppModel {
             ("selftest-telnet", { await TelnetSelfTest(directory: $0, model: self).run() }),
             ("selftest-vnc", { await VNCSelfTest(directory: $0, model: self).run() }),
             ("selftest-rdp", { await RDPSelfTest(directory: $0, model: self).run() }),
+            ("selftest-hosteditor", { await HostEditorSelfTest(directory: $0, model: self).run() }),
         ]
     }
 
