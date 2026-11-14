@@ -24,6 +24,7 @@ struct FeatureCommands: Commands {
         MacroCommands(model: model)
         ImportCommands(model: model)
         UpdateCommands(model: model)
+        MonitoringCommands(model: model)
     }
 }
 
@@ -57,6 +58,7 @@ struct FeatureHostMenuItems: View {
             SFTPHostMenuItems(model: model, host: host)
             TunnelHostMenuItems(model: model, host: host)
             MacroHostMenuItems(model: model, host: host)
+            MonitoringHostMenuItems(model: model, host: host)
         case .serial: SerialHostMenuItems(model: model, host: host)
         case .telnet: TelnetHostMenuItems(model: model, host: host)
         case .vnc: VNCHostMenuItems(model: model, host: host)

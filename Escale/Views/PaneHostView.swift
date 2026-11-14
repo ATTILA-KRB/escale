@@ -7,6 +7,8 @@ struct PaneHostTab {
     let tab: TerminalTab
     let layout: PaneLayout
     let bannerIDs: Set<UUID>
+    /// Panneaux dont la barre de monitoring distant est affichée (module Monitoring).
+    var monitorIDs: Set<UUID> = []
 }
 
 /// Héberge TOUTES les vues de moteur (une par panneau de chaque onglet) : scinder, fermer ou changer d'onglet
@@ -36,6 +38,7 @@ final class PaneHostView: NSView {
     private var engines: [UUID: SwiftTermEngine] = [:]
     private var banners: [UUID: NSHostingView<PaneBanner>] = [:]
     private var chromes: [UUID: PaneChromeView] = [:]
+    private var monitorBars: [UUID: NSHostingView<MonitoringBar>] = [:]
     private var dividers: [UUID: PaneDividerView] = [:]
     private var clickMonitor: Any?
 
@@ -60,6 +63,9 @@ final class PaneHostView: NSView {
         for (id, v) in banners where !alive.contains(id) || !list.contains(where: { $0.bannerIDs.contains(id) }) {
             v.removeFromSuperview(); banners[id] = nil
         }
+        for (id, v) in monitorBars where !alive.contains(id) || !list.contains(where: { $0.monitorIDs.contains(id) }) {
+            v.removeFromSuperview(); monitorBars[id] = nil
+        }
         for (id, v) in chromes where !alive.contains(id) { v.removeFromSuperview(); chromes[id] = nil }
         for (id, v) in dividers where !aliveSplits.contains(id) { v.removeFromSuperview(); dividers[id] = nil }
         for t in list {
@@ -72,6 +78,12 @@ final class PaneHostView: NSView {
                     let c = PaneChromeView()
                     addSubview(c)
                     chromes[p.id] = c
+                }
+                if t.monitorIDs.contains(p.id), monitorBars[p.id] == nil, let m = model.monitoring.monitor(for: p.id) {
+                    let b = NSHostingView(rootView: MonitoringBar(feature: model.monitoring, monitor: m, hostName: p.baseTitle))
+                    b.sizingOptions = []
+                    addSubview(b)
+                    monitorBars[p.id] = b
                 }
                 if t.bannerIDs.contains(p.id), banners[p.id] == nil {
                     let b = NSHostingView(rootView: PaneBanner(model: model, pane: p))
@@ -107,9 +119,10 @@ final class PaneHostView: NSView {
     // MARK: Mise en page
 
     /// Rectangle de la grille d'un panneau (multiple entier de la hauteur de cellule), dans notre repère.
-    private func engineRect(pane rect: CGRect, hasBanner: Bool, cellHeight: CGFloat) -> CGRect {
+    private func engineRect(pane rect: CGRect, hasBanner: Bool, hasMonitor: Bool = false, cellHeight: CGFloat) -> CGRect {
         var area = rect
         if hasBanner { let bh = PaneBanner.height(forWidth: rect.width); area.origin.y += bh; area.size.height -= bh }
+        if hasMonitor { area.size.height -= MonitoringBar.height }
         let w = max(area.width - 2 * Self.insetX, 1)
         let avail = max(area.height - Self.insetTop - Self.insetBottom, 1)
         let h = cellHeight > 0 ? max(floor(avail / cellHeight), 1) * cellHeight : avail
@@ -131,7 +144,12 @@ final class PaneHostView: NSView {
                     b.isHidden = !visible || !hasBanner
                     b.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: PaneBanner.height(forWidth: rect.width))
                 }
-                let er = engineRect(pane: rect, hasBanner: hasBanner, cellHeight: e.cellHeight)
+                let hasMonitor = monitorBars[p.id] != nil && t.monitorIDs.contains(p.id)
+                if let m = monitorBars[p.id] {
+                    m.isHidden = !visible || !hasMonitor
+                    m.frame = CGRect(x: rect.minX, y: rect.maxY - MonitoringBar.height, width: rect.width, height: MonitoringBar.height)
+                }
+                let er = engineRect(pane: rect, hasBanner: hasBanner, hasMonitor: hasMonitor, cellHeight: e.cellHeight)
                 e.view.isHidden = !visible
                 if e.view.frame != er { e.view.frame = er }
                 if let c = chromes[p.id] {
@@ -199,6 +217,7 @@ final class PaneHostView: NSView {
 
     // MARK: Accès pour l'auto-test
     func dividerView(_ splitID: UUID) -> PaneDividerView? { dividers[splitID] }
+    func monitorBarView(_ paneID: UUID) -> NSView? { monitorBars[paneID].flatMap { $0.isHidden ? nil : $0 } }
     func bannerView(_ paneID: UUID) -> NSView? { banners[paneID].flatMap { $0.isHidden ? nil : $0 } }
     func chromeView(_ paneID: UUID) -> PaneChromeView? { chromes[paneID] }
 }

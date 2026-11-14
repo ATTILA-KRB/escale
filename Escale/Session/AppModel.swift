@@ -89,7 +89,8 @@ final class AppModel {
     let macros = MacroFeature()
     let imports = ImportFeature()
     let updates = UpdateFeature()
-    var features: [any AppFeature] { [sftp, tunnels, multiExec, macros, imports, updates, serial, telnet, vnc, rdp] }
+    let monitoring = MonitoringFeature()
+    var features: [any AppFeature] { [sftp, tunnels, multiExec, macros, imports, updates, monitoring, serial, telnet, vnc, rdp] }
 
     // Modules de protocoles (V1.2/V2), même contrat `AppFeature`.
     let serial = SerialFeature()
@@ -131,6 +132,7 @@ final class AppModel {
             ("selftest-sftp", { await SFTPSelfTest(directory: $0, model: self).run() }),
             ("selftest-tunnels", { await TunnelSelfTest(directory: $0, model: self).run() }),
             ("selftest-multiexec", { await MultiExecSelfTest(directory: $0, model: self).run() }),
+            ("selftest-monitoring", { await MonitoringSelfTest(directory: $0, model: self).run() }),
             ("selftest-macros", { await MacroSelfTest(directory: $0, model: self).run() }),
             ("selftest-import", { await ImportSelfTest(directory: $0, model: self).run() }),
             ("selftest-terminal", { await TerminalSelfTest(directory: $0, model: self).run() }),
