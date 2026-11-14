@@ -19,9 +19,11 @@ principale, navigateur SFTP latéral, monitoring distant, dialogue de session).
 | Onglet « Home » (bouton maison), sessions récentes | Bouton maison de la barre d'onglets → `HomeView` : connexion rapide, actions, sessions récentes (⇧⌘H) | fait |
 | Onglets de session avec icône, menu contextuel | Icône du protocole + pastille d'état, onglet actif souligné, menu Dupliquer / Fermer / Fermer les autres | fait |
 | Barre d'état | `StatusBarView` : protocole et cible, état, dossier courant, tunnels actifs, X11, diffusion, compteurs | fait |
-| Barre « Remote monitoring » (CPU, RAM, réseau, disque) | — | à faire |
-| Dialogue « Session settings » : bandeau d'icônes de protocoles | `HostEditorSheet` garde un sélecteur de protocole classique | à faire |
-| Onglets détachables, mode compact / plein écran | — | à faire |
+| Barre « Remote monitoring » (CPU, RAM, réseau, disque) | `Escale/Monitoring/` : barre sous le panneau SSH (CPU, mémoire, charge, disque, débit, utilisateurs, uptime), réglage par hôte, ⌥⌘U | fait |
+| Dialogue « Session settings » : bandeau d'icônes de protocoles | `HostEditorSheet` : bandeau SSH/Telnet/Série/VNC/RDP, onglets Basique/Avancé/Terminal/Réseau (ou réglages du protocole) | fait |
+| Onglets détachables | `DetachedWindows` : Détacher / Ramener (menus), même moteur et même pty ; glisser hors de la barre non fait | fait (partiel) |
+| Mode compact | `CompactMode` : icônes seules, barre latérale repliée, barre d'état réduite, ⇧⌘M, persistant | fait |
+| Navigateur de fichiers en colonnes | `SFTPColumns` : Nom/Taille/Date dès 430 pt, + Droits dès 540 pt (hystérésis 24 pt), en-têtes triables | fait |
 
 ## Décisions
 
@@ -40,15 +42,17 @@ principale, navigateur SFTP latéral, monitoring distant, dialogue de session).
   premier répondeur et le retrouve au retour.
 - **Pas de raccourci ⌃chiffre** pour les volets : réservé au terminal et à Mission Control.
 - Langue de développement `fr` (`project.yml`) : les libellés fournis par le système suivent le français.
+- **Monitoring = réglage de l'hôte**, pas du panneau : il suit les nouveaux panneaux et les reconnexions. Une session
+  exec longue par panneau (`openShellStream`, BatchMode sans X11), script POSIX sh en argument (rien déposé côté
+  serveur), un bloc toutes les 2 s ; maître plein = rien ouvert, barre « maître plein ». Débit : interfaces physiques
+  seules (bouclage, ponts, veth, docker, tunnels écartés, sinon double compte).
+- **Mode compact** : choisir un volet rouvre temporairement la barre latérale (sinon le choix serait invisible) ;
+  elle se replie à l'ouverture d'un onglet. Le mode de la barre d'outils d'avant est restauré en sortie.
+- **Onglet détaché** : seul l'hébergement de la vue change (`TerminalTab.windowID`) ; l'onglet reste dans
+  `Workspace.tabs` (compteurs, multi-exécution, macros le voient), moteur et pty jamais recréés.
 
 ## Suite proposée
 
-1. **Monitoring distant.** Barre sous le terminal SSH (charge, mémoire, disque, débit réseau, utilisateurs). Il faut une
-   session exec sur le maître : désactivé par défaut, activé par un bouton (invariants 5, 12, 13 : `batchExecArguments`,
-   compte dans `sessionCount`), une seule commande longue plutôt qu'un exec par relevé. Linux d'abord (`/proc`), repli
-   silencieux ailleurs.
-2. **Dialogue de session.** Bandeau d'icônes de protocoles en tête de `HostEditorSheet`, réglages regroupés en onglets
-   (Basique, Avancé, Terminal, Réseau).
-3. **Onglets détachables** et glisser d'un onglet vers une nouvelle fenêtre.
-4. **Mode compact** : barre d'outils en icônes seules, barre latérale repliée, bascule par un seul raccourci.
-5. Navigateur de fichiers : vraies colonnes (Nom, Taille, Date) quand la barre latérale est assez large.
+1. **Glisser un onglet hors de la barre** vers une nouvelle fenêtre (pas d'API SwiftUI propre pour un dépôt hors cible :
+   passer par `NSDraggingSession` côté AppKit).
+2. Monitoring : vérifier un BSD réel (repli macOS seul testé) et l'affichage dans une fenêtre étroite.

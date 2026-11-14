@@ -221,7 +221,7 @@ Fait et verifie (coeur : 157 tests, `scripts/test.sh` vert) :
 - Tests contre sshd local : 1 Gio aller-retour SHA-256 (~14 s envoi, 4 a 10 s retour selon la charge de la machine), 256 Mio avec
   coupure du maitre ssh puis reprise (envoi et reception), mort du sftp-server, prefixe modifie (queue, tete, milieu), delai.
 
-Reste : lien reel a latence (NAS, VPS) ; blocs de 64 Kio quand `limits@openssh.com` l'autorise (non fait, reste 32 Kio).
+Reste : lien reel a latence (NAS, VPS) ; blocs de 64 Kio quand `limits@openssh.com` l'autorise (fait depuis : `limitsChunkSize`).
 
 ### M4 distribution (2026-11-11)
 
@@ -558,4 +558,21 @@ Detail, correspondance des zones et suite : `docs/UI-MOBAXTERM.md`.
 - Connexion rapide (⇧⌘K) : `QuickConnectTarget` (coeur, teste), hote enregistre dans la bibliotheque (invariant 19).
 - Le navigateur SFTP quitte l'inspecteur de droite pour le volet Fichiers de la barre laterale (`isVisible` derive de
   `AppModel.sidebarTab`). Les mentions « inspecteur » des sections SFTP plus haut decrivent l'etat anterieur.
-- Reste : monitoring distant, bandeau de protocoles du dialogue de session, onglets detachables, mode compact.
+- Suite livree par la vague « UI 2 » ci-dessous.
+
+### Vague UI 2 (2026-11-14, branches `ui2/*`)
+Cinq flux paralleles, fusionnes sur `main`. Detail et decisions : `docs/UI-MOBAXTERM.md`.
+- **Monitoring distant** (`Escale/Monitoring/`, coeur `Monitoring/`) : `MonitoringScript` (POSIX sh, Linux `/proc`,
+  repli macOS), `MonitoringStreamParser` + `MonitoringCalculator` (deltas CPU et debit), `MonitoringTests` dont une sortie
+  reelle du NAS Linux. Recette `selftest-monitoring` : aucune session avant activation, +1 a l'activation, rendue a l'arret,
+  maitre plein (10 sessions) = rien ouvert.
+- **Dialogue de session** : `HostEditorForm` (etat, onglets, bandeau) ; `HostProfile` et le format de la bibliotheque
+  inchanges. Recette `selftest-hosteditor` (chaque protocole et onglet, aller-retour de tous les champs).
+- **Mode compact** (`CompactMode`, ⇧⌘M, menu Presentation) : recette `selftest-compact`.
+- **Colonnes SFTP** (`SFTPColumns`) : tri partage avec la liste compacte ; `selftest-sftp` et `selftest-sftp-shell` etendues.
+- **Onglets detachables** (`DetachedWindows`, `Workspace.mainTabs`/`tabs(inWindow:)`) : recette `selftest-tabs` (meme pid
+  de shell, marqueurs conserves, `sessionCount` inchange, panneaux scindes). `PaneHostTab(snapshotOf:model:)` partage par
+  les deux fenetres (bandeaux et barre de monitoring suivent l'onglet).
+- Non fait : glisser d'un onglet hors de la barre ; monitoring sur BSD reel.
+- Correction : les blocs SFTP de 64 Kio avec `limits@openssh.com` etaient deja en place (`SFTPConfiguration.limitsChunkSize`,
+  test dans `ShellFileSystemTests`) ; la mention « non fait » de la section M2 coeur est perimee.

@@ -83,11 +83,46 @@ users=1
 
 """
 
+/// Sortie réelle du script sur un NAS Linux (UGOS, Docker), lancée par `sh -s` en SSH ; interfaces réduites à un
+/// échantillon de chaque famille (bouclage, physiques, docker0, pont, veth).
+private let linuxStream = """
+@@ESC begin
+os=Linux
+load=1.40
+cpu=1801705921 1711047279
+mem=8081084416 5918392320
+net=lo 760151270954 760151270954
+net=eth1 0 0
+net=eth0 2312184279371 4786730301902
+net=br-99f6e3616086 3855121343060 2237230522955
+net=docker0 41830897009 12153340766
+net=vetheb6967f 3915989786261 2237201811359
+uptime=3044470.20
+disk=114581700608 46457057280 43%
+users=0
+@@ESC end
+
+"""
+
 private func run(_ data: String, parser: inout MonitoringStreamParser, now: TimeInterval = 0) -> [MonitoringEvent] {
     parser.feed(Data(data.utf8), now: now)
 }
 
 @Suite struct MonitoringTests {
+    @Test func analyseUneSortieLinuxReelle() throws {
+        var p = MonitoringStreamParser()
+        guard case .sample(let s)? = run(linuxStream, parser: &p).first else { Issue.record("relevé attendu"); return }
+        #expect(s.os == "Linux")
+        #expect(s.load1 == 1.40)
+        #expect(s.cpuTotal == 1_801_705_921 && s.cpuIdle == 1_711_047_279)
+        #expect(s.memTotal == 8_081_084_416 && s.memUsed == 5_918_392_320)
+        #expect(s.diskTotal == 114_581_700_608 && s.diskUsed == 46_457_057_280 && s.diskPercent == 43)
+        #expect(s.users == 0)
+        #expect(s.uptime == 3_044_470.20)
+        // lo, docker0, br-*, veth* écartées : eth0 + eth1 seules (sinon le trafic des conteneurs compte deux fois).
+        #expect(s.netIn == 2_312_184_279_371 && s.netOut == 4_786_730_301_902)
+    }
+
     @Test func analyseUneSortieMacReelle() throws {
         var p = MonitoringStreamParser()
         let events = run(macStream, parser: &p, now: 100)

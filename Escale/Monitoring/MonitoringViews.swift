@@ -137,10 +137,13 @@ struct MonitoringBar: View {
             ForEach(items) { i in
                 HStack(spacing: 4) {
                     Image(systemName: i.symbol).font(.system(size: 10)).foregroundStyle(.secondary)
-                    Text(i.value).lineLimit(1).fixedSize()
+                    ZStack(alignment: .leading) {
+                        // Débit : gabarit invisible de la valeur la plus large, pour que « — » (premier relevé) puis
+                        // « 211 Ko/s » ne décalent pas les éléments suivants d'une barre à l'autre.
+                        if i.id == "net" { Text("↓ 999,9 Ko/s  ↑ 999,9 Ko/s").lineLimit(1).fixedSize().hidden() }
+                        Text(i.value).lineLimit(1).fixedSize()
+                    }
                 }
-                // Largeur minimale du débit : « — » (premier relevé) puis « 211 Ko/s » ne décalent pas la suite.
-                .frame(minWidth: i.id == "net" ? 150 : nil, alignment: .leading)
                 .help("\(i.label) — \(i.help)")
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(i.label) \(i.value)")
