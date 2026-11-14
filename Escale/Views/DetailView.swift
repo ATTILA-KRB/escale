@@ -10,7 +10,8 @@ struct DetailView: View {
         // Lecture explicite de tout ce qui change la mise en page : SwiftUI relance alors `PaneHost.updateNSView`.
         let snapshot = ws.tabs.map { t in
             PaneHostTab(tab: t, layout: t.layout,
-                        bannerIDs: Set(t.panes.filter { $0.bannerMessage != nil }.map(\.id)))
+                        bannerIDs: Set(t.panes.filter { $0.bannerMessage != nil }.map(\.id)),
+                        monitorIDs: Set(t.panes.map(\.id).filter { model.monitoring.monitors[$0] != nil }))
         }
         let home = ws.tabs.isEmpty || ws.showsHome
         VStack(spacing: 0) {
