@@ -137,6 +137,8 @@ export const fr = {
     lead: 'Escale vous fait gagner du temps ?',
     cta: 'Offrez-moi un café',
     footer: 'Soutenir le projet',
+    thanks: 'Téléchargement lancé. Escale vous rend service ?',
+    close: 'Fermer',
   },
   faq: {
     title: 'Questions',

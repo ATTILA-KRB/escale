@@ -134,6 +134,8 @@ export const en: Dict = {
     lead: 'Does Escale save you time?',
     cta: 'Buy me a coffee',
     footer: 'Support the project',
+    thanks: 'Download started. Is Escale useful to you?',
+    close: 'Close',
   },
   faq: {
     title: 'FAQ',
