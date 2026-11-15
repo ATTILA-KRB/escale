@@ -22,7 +22,7 @@ export const fr = {
     lead:
       'Terminal à onglets, fichiers SFTP à côté du shell, tunnels et multi-exécution, dans une app Mac native qui s’appuie sur l’OpenSSH de votre système.',
     cta: 'Télécharger pour macOS',
-    meta: ['Version 0.1.0', 'macOS 15 ou plus', 'Apple Silicon et Intel', '26 Mo'],
+    meta: ['Version 1.0.0', 'macOS 15 ou plus', 'Apple Silicon et Intel', '26 Mo'],
     shotAlt:
       'Fenêtre d’Escale : sessions classées par dossier à gauche, terminal ouvert sur un serveur web, barre d’état en bas.',
   },
@@ -118,8 +118,8 @@ export const fr = {
   download: {
     title: 'Gratuit. Sans compte. Sans abonnement.',
     lead: 'Ouvrez l’image disque, glissez Escale dans Applications. Les mises à jour arrivent ensuite d’elles-mêmes.',
-    cta: 'Télécharger Escale 0.1.0',
-    file: 'Escale-0.1.0.dmg · 26 Mo',
+    cta: 'Télécharger Escale 1.0.0',
+    file: 'Escale-1.0.0.dmg · 26 Mo',
     specs: [
       ['Système', 'macOS 15 Sequoia ou plus récent'],
       ['Processeur', 'Apple Silicon et Intel (universel)'],

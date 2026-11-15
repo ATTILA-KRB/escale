@@ -11,8 +11,8 @@ interface Props {
 const { locale } = Astro.props;
 const t = locale === 'en' ? en : fr;
 const base = locale === 'en' ? '/en' : '';
-// Lien du DMG branché par variable (Vercel) ; la maquette renvoie à la section Téléchargement.
-const downloadURL = import.meta.env.PUBLIC_DOWNLOAD_URL || '#download';
+// DMG servi par le site (public/updates, copié de dist/updates par la release) ; surchargeable par variable.
+const downloadURL = import.meta.env.PUBLIC_DOWNLOAD_URL || '/updates/Escale-1.0.0.dmg';
 const canonical = new URL(base || '/', Astro.site).href;
 const alternates = [
   { lang: 'fr', href: new URL('/', Astro.site).href },

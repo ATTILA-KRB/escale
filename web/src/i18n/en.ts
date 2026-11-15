@@ -24,7 +24,7 @@ export const en: Dict = {
     lead:
       'Tabbed terminal, SFTP files beside the shell, tunnels and multi-execution, in a native Mac app built on your system’s OpenSSH.',
     cta: 'Download for macOS',
-    meta: ['Version 0.1.0', 'macOS 15 or later', 'Apple silicon and Intel', '26 MB'],
+    meta: ['Version 1.0.0', 'macOS 15 or later', 'Apple silicon and Intel', '26 MB'],
     shotAlt:
       'Escale window: sessions sorted by folder on the left, a terminal open on a web server, status bar at the bottom.',
   },
@@ -116,8 +116,8 @@ export const en: Dict = {
   download: {
     title: 'Free. No account. No subscription.',
     lead: 'Open the disk image, drag Escale to Applications. Updates then arrive on their own.',
-    cta: 'Download Escale 0.1.0',
-    file: 'Escale-0.1.0.dmg · 26 MB',
+    cta: 'Download Escale 1.0.0',
+    file: 'Escale-1.0.0.dmg · 26 MB',
     specs: [
       ['System', 'macOS 15 Sequoia or later'],
       ['Processor', 'Apple silicon and Intel (universal)'],
