@@ -22,6 +22,7 @@ principale, navigateur SFTP latéral, monitoring distant, dialogue de session).
 | Barre « Remote monitoring » (CPU, RAM, réseau, disque) | `Escale/Monitoring/` : barre sous le panneau SSH (CPU, mémoire, charge, disque, débit, utilisateurs, uptime), réglage par hôte, ⌥⌘U | fait |
 | Dialogue « Session settings » : bandeau d'icônes de protocoles | `HostEditorSheet` : bandeau SSH/Telnet/Série/VNC/RDP, onglets Basique/Avancé/Terminal/Réseau (ou réglages du protocole) | fait |
 | Onglets détachables | `DetachedWindows` : Détacher / Ramener (menus), même moteur et même pty ; glisser hors de la barre non fait | fait (partiel) |
+| Bouton barre latérale | Item « Barre latérale » de `MainToolbar` (tête de barre, personnalisable) + menu Présentation ⌃⌘S ; bouton système retiré | fait |
 | Mode compact | `CompactMode` : icônes seules, barre latérale repliée, barre d'état réduite, ⇧⌘M, persistant | fait |
 | Navigateur de fichiers en colonnes | `SFTPColumns` : Nom/Taille/Date dès 430 pt, + Droits dès 540 pt (hystérésis 24 pt), en-têtes triables | fait |
 

@@ -335,27 +335,17 @@ struct LibraryProblemBanner: View {
 
     var body: some View {
         if let problem = library.loadProblem {
-            banner(problem, symbol: "exclamationmark.triangle.fill") {
-                Button("Repartir d'une bibliothèque vide") { library.startFresh() }
-                Button("Continuer sans enregistrer") { library.dismissLoadProblem() }
+            // Barre latérale étroite : boutons empilés sous le message, le plus sûr en principal.
+            StatusBanner(tone: .warning, icon: .symbol("exclamationmark.triangle.fill"), title: problem,
+                         layout: .compact, titleLines: nil) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Button("Continuer sans enregistrer") { library.dismissLoadProblem() }.buttonStyle(.bannerPrimary)
+                    Button("Repartir d'une bibliothèque vide") { library.startFresh() }.buttonStyle(.bannerSecondary)
+                }
             }
         } else if let error = library.lastError {
-            banner(error, symbol: "exclamationmark.triangle.fill") {
-                Button("Fermer") { library.dismissError() }
-            }
+            StatusBanner(tone: .warning, icon: .symbol("exclamationmark.triangle.fill"), title: error,
+                         layout: .compact, titleLines: nil, onDismiss: { library.dismissError() })
         }
-    }
-
-    private func banner<A: View>(_ text: String, symbol: String, @ViewBuilder actions: () -> A) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label { Text(text).fixedSize(horizontal: false, vertical: true) } icon: { Image(systemName: symbol).foregroundStyle(.orange) }
-                .font(.caption)
-            HStack { actions() }.controlSize(.small)
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.orange.opacity(0.12))
-        .overlay(alignment: .bottom) { Divider() }
-        .accessibilityElement(children: .contain)
     }
 }

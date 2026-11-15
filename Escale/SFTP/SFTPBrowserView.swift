@@ -79,26 +79,14 @@ private struct SFTPSessionView: View {
             pathBar
             followRow
             if let m = session.errorMessage {
-                HStack(alignment: .top) {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                    Text(m).font(.caption).textSelection(.enabled)
-                    Spacer()
-                    Button { session.errorMessage = nil } label: { Image(systemName: "xmark") }.buttonStyle(.plain)
-                }
-                .padding(8).background(.orange.opacity(0.12))
+                StatusBanner(tone: .warning, icon: .symbol("exclamationmark.triangle.fill"), title: m,
+                             layout: .compact, titleLines: nil, onDismiss: { session.errorMessage = nil })
+                    .textSelection(.enabled)
             }
             if session.isShellMode, session.isReady {
-                HStack(alignment: .top, spacing: 6) {
-                    Image(systemName: "terminal").foregroundStyle(.secondary)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Mode shell (SFTP indisponible)").font(.caption.bold())
-                        if let r = session.shellReason, !r.isEmpty {
-                            Text(r).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
-                        }
-                    }
-                    Spacer()
-                }
-                .padding(8).background(.blue.opacity(0.10))
+                StatusBanner(tone: .info, icon: .symbol("terminal"), title: "Mode shell (SFTP indisponible)",
+                             detail: session.shellReason.flatMap { $0.isEmpty ? nil : $0 },
+                             layout: .compact, titleLines: 1, detailLines: 2)
             }
             if columns.mode.showsColumns {
                 SFTPColumnsHeader(sort: $session.sort, mode: columns.mode)

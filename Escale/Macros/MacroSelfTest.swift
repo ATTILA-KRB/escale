@@ -121,6 +121,7 @@ struct MacroSelfTest {
         type(p1, "echo REC-$((3*5))\r")
         check("saisie_executee_pendant_enregistrement", await wait(10) { text(p1).contains("REC-15") })
         check("etapes_capturees", f.recordedStepCount == 1, "\(f.recordedStepCount)")
+        await capture("enregistrement-bandeau", win)
         f.stopRecording()
         check("observateur_macros_retire", p1.session.inputObservers["macros"] == nil && !f.isRecording)
         check("editeur_ouvert_avec_la_saisie", f.managerOpen && f.draft?.steps == [.text("echo REC-$((3*5))\n")] && f.draftIsNew, "\(String(describing: f.draft?.steps))")

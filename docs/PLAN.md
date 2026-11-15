@@ -576,3 +576,18 @@ Cinq flux paralleles, fusionnes sur `main`. Detail et decisions : `docs/UI-MOBAX
 - Non fait : glisser d'un onglet hors de la barre ; monitoring sur BSD reel.
 - Correction : les blocs SFTP de 64 Kio avec `limits@openssh.com` etaient deja en place (`SFTPConfiguration.limitsChunkSize`,
   test dans `ShellFileSystemTests`) ; la mention « non fait » de la section M2 coeur est perimee.
+
+### Bandeaux d'etat unifies (2026-11-15)
+- Composant commun `StatusBanner` (`Escale/Views/StatusBanner.swift`) : ton (`neutral`/`info`/`warning`/`error`/`live`),
+  icone ou indicateur d'activite, message + detail, bouton « Masquer » optionnel. Dispositions `wide` (une ligne, boutons a
+  droite) et `compact` (message puis boutons alignes sous le texte), `automatic` = `ViewThatFits`.
+- Boutons : `.bannerPrimary` (plein, couleur du ton) et `.bannerSecondary` (lisere) ; secondaire puis principal en fin de
+  rangee. Style propre (le style natif disparait dans un `NSHostingView` sur fond sombre).
+- Utilise par : bandeau de panneau (`PaneBanner` : Annuler / Fermer le panneau + Reconnecter, Reessayer ou Relancer ; suit
+  l'apparence systeme, 32 pt sur une ligne, 70 pt en compact sous 560 pt, hauteur selon la seule largeur), diffusion
+  multi-exec et enregistrement de macro (ton `live`), erreurs et mode shell SFTP, probleme de bibliotheque.
+- Barre laterale : le bouton systeme de `NavigationSplitView` est retire (`.toolbar(removing: .sidebarToggle)`) ; sa
+  legende « Masquer la barre latérale » debordait en mode icone et texte et il echappait a la personnalisation.
+  Remplace par l'item `barre-laterale` de `MainToolbar` (placement `.navigation`, meme format que les autres) et par
+  « Afficher/Masquer la barre latérale » (⌃⌘S) du menu Presentation, tous deux sur `CompactMode.toggleSidebar()`.
+  Recette `selftest-compact` : absence du bouton systeme, presence du notre, raccourci, aller-retour.

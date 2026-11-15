@@ -62,6 +62,11 @@ struct EscaleCommands: Commands {
         }
         // Présentation : volets de la barre latérale et page d'accueil.
         CommandGroup(after: .sidebar) {
+            Button(model.compact.sidebarVisible ? "Masquer la barre latérale" : "Afficher la barre latérale") {
+                model.compact.toggleSidebar()
+            }
+            .keyboardShortcut("s", modifiers: [.command, .control])
+            Divider()
             Button("Accueil") { model.showHome() }.keyboardShortcut("h", modifiers: [.command, .shift])
             // Sans raccourci : ⌃chiffre appartient au terminal et à Mission Control.
             ForEach(SidebarTab.allCases) { tab in

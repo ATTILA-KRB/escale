@@ -11,6 +11,8 @@ struct MainWindowView: View {
             SidebarView(model: model)
                 // Assez large pour le volet Fichiers (navigateur SFTP), qui vit dans la barre latérale.
                 .navigationSplitViewColumnWidth(min: 250, ideal: 290, max: 560)
+                // Bouton système remplacé par « Barre latérale » de `MainToolbar`.
+                .toolbar(removing: .sidebarToggle)
         } detail: {
             DetailView(model: model)
         }

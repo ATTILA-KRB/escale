@@ -14,6 +14,14 @@ struct MainToolbar: CustomizableToolbarContent {
     }
 
     var body: some CustomizableToolbarContent {
+        // Remplace le bouton système de `NavigationSplitView` (retiré dans `MainWindowView`) : même format que les
+        // autres boutons, personnalisable, et lié à `CompactMode.columns` (repli temporaire du mode compact).
+        ToolbarItem(id: "barre-laterale", placement: .navigation) {
+            let visible = model.compact.sidebarVisible
+            Button { model.compact.toggleSidebar() } label: { Label("Barre latérale", systemImage: "sidebar.left") }
+                .help(visible ? "Masquer la barre latérale (⌃⌘S)" : "Afficher la barre latérale (⌃⌘S)")
+                .accessibilityIdentifier("toolbar-barre-laterale")
+        }
         ToolbarItem(id: "session", placement: .automatic) {
             Button { model.editor = .newHost(folder: nil) } label: { Label("Session", systemImage: "plus.rectangle.on.rectangle") }
                 .help("Nouvelle session (⌘N)")

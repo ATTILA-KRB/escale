@@ -96,20 +96,13 @@ struct MultiExecScene: ViewModifier {
 private struct BroadcastBanner: View {
     let feature: MultiExecFeature
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "dot.radiowaves.left.and.right")
-            Text("Diffusion de la saisie : ce que vous tapez est envoyé à \(feature.broadcastPaneIDs.count) panneaux")
-                .fontWeight(.semibold)
-            Spacer()
-            Text("Quitter sans diffuser la touche : ⌃⌥Échap, ⌥⌘I, ou Échap Échap rapide")
-                .font(.caption)
-                .help("Le premier Échap est retenu 0,35 s pour les autres panneaux ; si un second suit, la diffusion s'arrête et aucun des deux n'est envoyé.")
-            Button("Choisir…") { feature.openBroadcastSheet() }.buttonStyle(.bordered).controlSize(.small)
-            Button("Arrêter (⌥⌘I)") { feature.stopBroadcast() }.buttonStyle(.bordered).controlSize(.small)
+        StatusBanner(tone: .live, icon: .symbol("dot.radiowaves.left.and.right"),
+                     title: "Diffusion de la saisie vers \(feature.broadcastPaneIDs.count) panneaux",
+                     detail: "Sortie sans diffuser la touche : ⌥⌘I, ⌃⌥Échap ou Échap Échap") {
+            Button("Choisir les panneaux…") { feature.openBroadcastSheet() }.buttonStyle(.bannerSecondary)
+            Button("Arrêter la diffusion") { feature.stopBroadcast() }.buttonStyle(.bannerPrimary)
+                .help("⌥⌘I. Échap Échap rapide : le premier Échap est retenu 0,35 s pour les autres panneaux ; si un second suit, la diffusion s'arrête et aucun des deux n'est envoyé.")
         }
-        .padding(.horizontal, 12).padding(.vertical, 6)
-        .foregroundStyle(.white)
-        .background(Color.red)
         .accessibilityIdentifier("multiexec-banner")
     }
 }

@@ -63,17 +63,14 @@ struct MacroScene: ViewModifier {
 private struct MacroRecordingBar: View {
     let feature: MacroFeature
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "record.circle.fill").foregroundStyle(.red)
-            Text("Enregistrement de la macro : \(feature.recordedStepCount) étape(s). Ne tapez pas de mot de passe : il serait enregistré en clair.")
-                .font(.callout)
-            Spacer()
-            Button("Arrêter") { feature.stopRecording() }.keyboardShortcut(.escape, modifiers: [.control, .option])
-            Button("Abandonner") { feature.stopRecording(keep: false) }
+        StatusBanner(tone: .live, icon: .symbol("record.circle.fill"),
+                     title: "Enregistrement de la macro — \(feature.recordedStepCount) étape\(feature.recordedStepCount > 1 ? "s" : "")",
+                     detail: "Ne tapez pas de mot de passe : il serait enregistré en clair.") {
+            Button("Abandonner") { feature.stopRecording(keep: false) }.buttonStyle(.bannerSecondary)
+            Button("Terminer") { feature.stopRecording() }.buttonStyle(.bannerPrimary)
+                .keyboardShortcut(.escape, modifiers: [.control, .option])
+                .help("Terminer et enregistrer la macro (⌃⌥Échap)")
         }
-        .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(.regularMaterial)
-        .overlay(alignment: .top) { Divider() }
     }
 }
 

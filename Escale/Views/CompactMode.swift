@@ -69,6 +69,15 @@ final class CompactMode {
         autoOpened = false
     }
 
+    var sidebarVisible: Bool { columns != .detailOnly }
+
+    /// Bouton « Barre latérale » de la barre d'outils et commande du menu Présentation (le bouton système de
+    /// `NavigationSplitView` est retiré : sa légende débordait et il échappait à la personnalisation).
+    func toggleSidebar() {
+        columns = sidebarVisible ? .detailOnly : .all
+        columnsChanged()
+    }
+
     /// Repli de la barre latérale par l'utilisateur (bouton, glissement) : plus rien à refermer.
     func columnsChanged() {
         if columns == .detailOnly { autoOpened = false }

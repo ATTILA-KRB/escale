@@ -79,11 +79,12 @@ final class CompactSelfTest {
         return NSApp.mainMenu.flatMap(search)
     }
     /// Valide la barre de menus (AppKit le fait avant d'afficher un menu), puis lit l'item.
-    private func compactItem() -> NSMenuItem? {
-        guard let item = menuItem("Mode compact") else { return nil }
-        item.menu?.delegate?.menuNeedsUpdate?(item.menu!)
-        item.menu?.update()
-        return item
+    private func compactItem() -> NSMenuItem? { validatedItem("Mode compact") }
+    /// Item lu après validation de son menu (SwiftUI ne met à jour titre et coche qu'à ce moment). Le titre peut
+    /// changer : on valide le menu qui contient « Mode compact » (Présentation), puis on cherche `title`.
+    private func validatedItem(_ title: String) -> NSMenuItem? {
+        if let m = menuItem("Mode compact")?.menu { m.delegate?.menuNeedsUpdate?(m); m.update() }
+        return menuItem(title)
     }
     private func clickCompactMenu() -> Bool {
         guard let item = compactItem(), let m = item.menu, let i = m.items.firstIndex(of: item) else { return false }
@@ -114,6 +115,20 @@ final class CompactSelfTest {
         check("menu_raccourci_shift_cmd_M", before?.keyEquivalent.lowercased() == "m"
               && before?.keyEquivalentModifierMask.intersection([.command, .shift, .option, .control]) == [.command, .shift],
               "touche \(before?.keyEquivalent ?? "?") masque \(String(describing: before?.keyEquivalentModifierMask.rawValue))")
+        // Bouton « Barre latérale » : le nôtre, pas celui du système (légende débordante, non personnalisable).
+        let ids = window?.toolbar?.items.map(\.itemIdentifier.rawValue) ?? []
+        check("barre_outils_sans_bouton_systeme", !ids.contains(NSToolbarItem.Identifier.toggleSidebar.rawValue)
+              && !ids.contains { $0.localizedCaseInsensitiveContains("sidebarToggle") }, ids.joined(separator: ","))
+        check("barre_outils_bouton_barre_laterale", ids.contains { $0.contains("barre-laterale") }, ids.joined(separator: ","))
+        let showItem = validatedItem("Masquer la barre latérale")
+        check("menu_masquer_barre_laterale_ctrl_cmd_S", showItem?.keyEquivalent.lowercased() == "s"
+              && showItem?.keyEquivalentModifierMask.intersection([.command, .shift, .option, .control]) == [.command, .control],
+              "touche \(showItem?.keyEquivalent ?? "?") masque \(String(describing: showItem?.keyEquivalentModifierMask.rawValue))")
+        model.compact.toggleSidebar()
+        check("bouton_masque_la_barre", await wait(5) { sidebarWidth == 0 } && !model.compact.sidebarVisible, "largeur \(sidebarWidth)")
+        check("menu_libelle_afficher", await wait(3) { validatedItem("Afficher la barre latérale") != nil })
+        model.compact.toggleSidebar()
+        check("bouton_rouvre_la_barre", await wait(5) { sidebarWidth > 200 }, "largeur \(sidebarWidth)")
         await capture("01-normal")
 
         // 2. Entrée en compact par la commande de menu.
