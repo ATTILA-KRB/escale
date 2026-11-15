@@ -89,6 +89,79 @@ final class SwiftTermEngine: TerminalEngine {
             ?? NSFont.monospacedSystemFont(ofSize: CGFloat(size), weight: .regular)
     }
 
+    // MARK: - Thème de couleurs
+
+    /// Identifiant du thème appliqué (`nil` : défauts du moteur, jamais touchés).
+    private(set) var themeID: String?
+    /// Fond imposé par le thème ; `nil` : thème « Système » (fond dynamique de macOS).
+    private(set) var themeBackground: NSColor?
+    /// Fond à peindre autour de la grille (marges, séparateurs) : celui du thème, sinon le fond dynamique du système
+    /// (à résoudre dans l'apparence de la vue qui le peint).
+    var marginBackground: NSColor { themeBackground ?? .textBackgroundColor }
+
+    /// Applique un thème : 16 couleurs ANSI (le cube 256 en est recalculé), texte, fond, curseur, sélection.
+    /// Le contenu déjà affiché est redessiné avec la nouvelle palette (les cellules gardent leurs index de couleur).
+    func apply(theme: TerminalTheme) {
+        guard theme.id != themeID else { return }
+        themeID = theme.id
+        terminalView.installColors(theme.ansi.map { Color(red8: UInt16($0.red), green8: UInt16($0.green), blue8: UInt16($0.blue)) })
+        func ns(_ c: TerminalRGB) -> NSColor { NSColor(srgbRed: CGFloat(c.red) / 255, green: CGFloat(c.green) / 255, blue: CGFloat(c.blue) / 255, alpha: 1) }
+        if let fg = theme.foreground, let bg = theme.background {
+            terminalView.nativeForegroundColor = ns(fg)
+            terminalView.nativeBackgroundColor = ns(bg)
+            themeBackground = ns(bg)
+        } else {
+            // Système : couleurs dynamiques de macOS, comme à la création de la vue.
+            terminalView.nativeForegroundColor = .textColor
+            terminalView.nativeBackgroundColor = .textBackgroundColor
+            themeBackground = nil
+        }
+        terminalView.caretColor = theme.cursor.map(ns) ?? .selectedControlColor
+        terminalView.selectedTextBackgroundColor = theme.selectionBackground.map(ns)
+            ?? NSColor(srgbRed: 0, green: 166.0 / 255.0, blue: 178.0 / 255.0, alpha: 1.0)
+        terminalView.selectedTextForegroundColor = theme.selectionForeground.map(ns) ?? .black
+        terminalView.needsDisplay = true
+        terminalView.superview?.needsLayout = true
+    }
+
+    /// Vrai si l'écran alternatif est actif (vim, less, htop) : le surlignage de la sortie s'y abstient.
+    /// Lu à l'attache d'un processus ou au changement de réglage (copie de l'écran visible : pas à chaque paquet).
+    var isAlternateScreen: Bool { terminalView.terminalContentSnapshot(region: .viewport)?.bufferKind == .alt }
+
+    /// Recette : couleur de texte de la première cellule de chaque occurrence de `needle` (scrollback compris),
+    /// sous forme lisible : `ansi:1`, `rgb:ff8000`, `default`.
+    func foregroundDescriptions(of needle: String) -> [String] {
+        guard let snap = terminalView.terminalContentSnapshot(region: .history(maximumScrollbackRows: 10_000)) else { return [] }
+        var out: [String] = []
+        for row in snap.rows {
+            // Index de cellule de chaque caractère (les cellules de continuation des caractères larges sont sautées).
+            var chars: [Character] = []
+            var cellIndex: [Int] = []
+            for (i, c) in row.cells.enumerated() where c.width > 0 {
+                chars.append(c.isBlank ? " " : Character(c.text)); cellIndex.append(i)
+            }
+            let line = String(chars)
+            var from = line.startIndex
+            while let r = line.range(of: needle, range: from..<line.endIndex) {
+                let attr = row.cells[cellIndex[line.distance(from: line.startIndex, to: r.lowerBound)]].attribute
+                switch attr.fg {
+                case .ansi256(let code): out.append("ansi:\(code)")
+                case .trueColor(let r, let g, let b): out.append(String(format: "rgb:%02x%02x%02x", r, g, b))
+                case .defaultColor: out.append("default")
+                case .defaultInvertedColor: out.append("inverted")
+                }
+                from = r.upperBound
+            }
+        }
+        return out
+    }
+
+    /// Recette : fond effectif de la vue (sRGB 8 bits).
+    var effectiveBackground: TerminalRGB {
+        let c = terminalView.nativeBackgroundColor.usingColorSpace(.sRGB) ?? .black
+        return TerminalRGB(UInt8((c.redComponent * 255).rounded()), UInt8((c.greenComponent * 255).rounded()), UInt8((c.blueComponent * 255).rounded()))
+    }
+
     /// Force le dessin d'une image Metal (captures déterministes : la fenêtre peut être inactive
     /// ou masquée et la boucle de rendu à la demande ne pas avoir tourné).
     func refreshDisplay() {

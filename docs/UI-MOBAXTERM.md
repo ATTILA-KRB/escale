@@ -51,6 +51,20 @@ principale, navigateur SFTP latéral, monitoring distant, dialogue de session).
 - **Onglet détaché** : seul l'hébergement de la vue change (`TerminalTab.windowID`) ; l'onglet reste dans
   `Workspace.tabs` (compteurs, multi-exécution, macros le voient), moteur et pty jamais recréés.
 
+## Couleurs du terminal
+
+Équivalent de la « coloration syntaxique » et des thèmes de MobaXterm (`Escale/Colors/`, modèles dans
+`EscaleCore/Terminal/{TerminalTheme,OutputHighlighter}.swift`) :
+- **Thèmes** (Présentation › Thème du terminal, réglage général) : Système, Classique (fond noir, proche de MobaXterm), Tango sombre,
+  Solarized sombre et clair, Dracula, Papier. Palette ANSI 16 couleurs (le cube 256 en dérive), texte, fond (marges et séparateurs compris),
+  curseur, sélection. Appliqué aux panneaux ouverts et à tout nouveau panneau avant son premier octet.
+- **Coloration de la sortie** (Présentation › Coloration de la sortie ; remplaçable par hôte dans son menu contextuel) :
+  Désactivé, Mots-clés (défaut : erreur/échec rouge, avertissement jaune, ok/succès vert, FR et EN), Mots-clés et réseau
+  (plus IPv4 magenta, URL bleues). Seules des séquences SGR sont insérées ; écran alternatif (vim, less, htop) et texte
+  déjà coloré par le programme laissés intacts ; mot coupé entre deux paquets retenu au plus 8 ms (aucune attente sur
+  l'écho d'une frappe).
+- Pas encore : règles personnalisées (expressions de l'utilisateur), jeux Cisco/shell, chemins de fichiers.
+
 ## Suite proposée
 
 1. **Glisser un onglet hors de la barre** vers une nouvelle fenêtre (pas d'API SwiftUI propre pour un dépôt hors cible :

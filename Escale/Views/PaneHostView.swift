@@ -26,7 +26,7 @@ struct PaneHost: NSViewRepresentable {
 
 @MainActor
 final class PaneHostView: NSView {
-    /// Marges autour de la grille : le texte ne colle pas aux bords ; le fond noir remplit la marge.
+    /// Marges autour de la grille : le texte ne colle pas aux bords ; le fond du thème du terminal remplit la marge.
     static let insetX: CGFloat = 8
     static let insetTop: CGFloat = 6
     static let insetBottom: CGFloat = 4
@@ -38,6 +38,8 @@ final class PaneHostView: NSView {
     private var engines: [UUID: SwiftTermEngine] = [:]
     private var banners: [UUID: NSHostingView<PaneBanner>] = [:]
     private var chromes: [UUID: PaneChromeView] = [:]
+    /// Fond de la marge de chaque panneau : celui du thème du terminal (noir pour le thème « Système »).
+    private var backdrops: [UUID: NSView] = [:]
     private var monitorBars: [UUID: NSHostingView<MonitoringBar>] = [:]
     private var dividers: [UUID: PaneDividerView] = [:]
     private var clickMonitor: Any?
@@ -68,6 +70,7 @@ final class PaneHostView: NSView {
             v.removeFromSuperview(); monitorBars[id] = nil
         }
         for (id, v) in chromes where !alive.contains(id) { v.removeFromSuperview(); chromes[id] = nil }
+        for (id, v) in backdrops where !alive.contains(id) { v.removeFromSuperview(); backdrops[id] = nil }
         for (id, v) in dividers where !aliveSplits.contains(id) { v.removeFromSuperview(); dividers[id] = nil }
         for t in list {
             for p in t.tab.panes {
@@ -75,6 +78,10 @@ final class PaneHostView: NSView {
                 if engines[p.id] != nil, e.view.superview !== self { addSubview(e.view) }
                 if engines[p.id] == nil {
                     e.view.autoresizingMask = []
+                    let b = NSView()
+                    b.wantsLayer = true
+                    addSubview(b)
+                    backdrops[p.id] = b
                     addSubview(e.view)
                     engines[p.id] = e
                     let c = PaneChromeView()
@@ -160,11 +167,22 @@ final class PaneHostView: NSView {
                     c.frame = area
                     c.isHidden = !visible || !multi
                     c.isActive = p.id == live.active
+                    if let b = backdrops[p.id] {
+                        b.frame = area
+                        b.isHidden = !visible
+                        effectiveAppearance.performAsCurrentDrawingAppearance { b.layer?.backgroundColor = e.marginBackground.cgColor }
+                        // Vue de moteur rendue par une autre fenêtre puis revenue : le fond reste dessous.
+                        if let i = subviews.firstIndex(of: b), let j = subviews.firstIndex(of: e.view), i > j {
+                            addSubview(b, positioned: .below, relativeTo: e.view)
+                        }
+                    }
                 }
             }
+            let dividerFill = t.tab.panes.first.flatMap { engines[$0.id]?.marginBackground } ?? .black
             for d in g.dividers {
                 guard let v = dividers[d.splitID] else { continue }
                 v.isHidden = !visible
+                v.fill = dividerFill
                 v.apply(d)
             }
         }
@@ -261,6 +279,8 @@ final class PaneDividerView: NSView {
     weak var host: PaneHostView?
     private(set) var divider: PaneDivider?
     private var hovering = false { didSet { needsDisplay = true } }
+    /// Fond du séparateur (celui du thème du terminal), sous le trait central.
+    var fill: NSColor = .black { didSet { if fill != oldValue { needsDisplay = true } } }
 
     init(splitID: UUID) {
         self.splitID = splitID
@@ -281,8 +301,8 @@ final class PaneDividerView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        NSColor.black.setFill(); bounds.fill()
-        (hovering ? NSColor.controlAccentColor : NSColor(white: 0.32, alpha: 1)).setFill()
+        fill.setFill(); bounds.fill()
+        (hovering ? NSColor.controlAccentColor : NSColor(white: 0.5, alpha: 0.6)).setFill()
         let line: NSRect = divider?.axis == .vertical
             ? NSRect(x: 0, y: bounds.midY - 0.5, width: bounds.width, height: 1)
             : NSRect(x: bounds.midX - 0.5, y: 0, width: 1, height: bounds.height)

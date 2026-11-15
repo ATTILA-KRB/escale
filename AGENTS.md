@@ -6,7 +6,7 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 - `Packages/EscaleCore` : logique sans UI (modeles, transport SSH, SFTP, pty, serveur X11 integre). Testee par `swift test`.
   Seule cible C : `CEscaleX11` (remise du socket au serveur Xquartz par Mach).
 - `Escale/` : app SwiftUI/AppKit. Le moteur de terminal (SwiftTerm) reste confine a `Escale/Terminal/`.
-- Modules M2-M5 et protocoles (`Escale/{SFTP,Tunnels,MultiExec,Macros,Import,Update,Serial,Telnet,VNC,RDP,Monitoring}/`) : s'accrochent a l'app uniquement par
+- Modules M2-M5 et protocoles (`Escale/{SFTP,Tunnels,MultiExec,Macros,Import,Update,Serial,Telnet,VNC,RDP,Monitoring,Colors}/`) : s'accrochent a l'app uniquement par
   `Escale/Features/AppFeature.swift` (commandes, scenes, menus d'hote), `ConnectionManager.linkObservers`,
   `TerminalSession.inputObservers`, `AppModel.terminalLaunchers`/`externalOpeners` (protocoles) et `--selftest-<module> <dossier>`.
 - Interface calquee sur MobaXterm (barre d'outils, volets de la barre laterale, accueil, barre d'etat) : `docs/UI-MOBAXTERM.md`.
@@ -14,7 +14,7 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 
 ## Commandes
 - `scripts/test.sh` : tests du coeur + build de l'app. A lancer avant tout commit.
-- `scripts/selftest-{ssh,auth,panes,terminal,sftp,sftp-shell,tunnels,multiexec,macros,import,serial,telnet,vnc,rdp,monitoring,hosteditor,compact,tabs}.sh` : recettes de l'app contre un sshd local
+- `scripts/selftest-{ssh,auth,panes,terminal,sftp,sftp-shell,tunnels,multiexec,macros,import,serial,telnet,vnc,rdp,monitoring,hosteditor,compact,tabs,colors}.sh` : recettes de l'app contre un sshd local
   (ouvrent une fenetre, sans prendre le focus). Resultats dans `$OUT` (result.json + captures).
   A lancer apres tout changement dans `Escale/`, une a la fois (meme dossier `build/`). Sortie vers un fichier,
   pas `| tail` (le garde-fou `sleep` en arriere-plan garde la pipe ouverte).
@@ -56,6 +56,11 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 19. Connexion rapide : la saisie passe par `QuickConnectTarget.parse` (refus du tiret initial, des espaces et caracteres
     de controle) et l'hote est enregistre dans la bibliotheque avant d'etre ouvert ; jamais de session sur un hote hors
     bibliotheque (son secret du Trousseau n'aurait pas de cycle de vie).
+
+20. Coloration de la sortie (`OutputHighlighter`) : n'insère que des SGR (`ESC[3Xm` / `ESC[39m`), ne modifie aucun octet
+    du programme, ne touche ni l'intérieur des séquences d'échappement, ni l'écran alternatif, ni le texte déjà coloré.
+    Un mot retenu en fin de paquet est rendu sous 8 ms (et aussitôt pour l'écho d'une frappe). Le thème s'applique avant
+    le premier octet d'un panneau (`AppModel.paneStartObservers`).
 
 ## Conventions
 - Swift 6, concurrence stricte. Commentaires en francais. Sujets de commit sans accents.

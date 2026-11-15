@@ -92,7 +92,8 @@ final class AppModel {
     let imports = ImportFeature()
     let updates = UpdateFeature()
     let monitoring = MonitoringFeature()
-    var features: [any AppFeature] { [sftp, tunnels, multiExec, macros, imports, updates, monitoring, serial, telnet, vnc, rdp] }
+    let colors = TerminalColorsFeature()
+    var features: [any AppFeature] { [sftp, tunnels, multiExec, macros, imports, updates, monitoring, colors, serial, telnet, vnc, rdp] }
 
     // Modules de protocoles (V1.2/V2), même contrat `AppFeature`.
     let serial = SerialFeature()
@@ -105,6 +106,9 @@ final class AppModel {
     @ObservationIgnored var terminalLaunchers: [ConnectionProtocol: @MainActor (Pane, HostProfile) async throws -> any TerminalByteStream] = [:]
     /// Ouverture d'un hôte VNC/RDP (fenêtre ou app de bureau distant, pas d'onglet), par protocole.
     @ObservationIgnored var externalOpeners: [ConnectionProtocol: @MainActor (HostProfile) -> Void] = [:]
+    /// Observateurs du (re)démarrage d'un panneau, par clé de module : appelés avant le lancement du processus,
+    /// donc avant son premier octet (couleurs du terminal).
+    @ObservationIgnored var paneStartObservers: [String: @MainActor (Pane) -> Void] = [:]
 
     @ObservationIgnored weak var mainWindow: NSWindow?
     @ObservationIgnored private var started = false
@@ -146,6 +150,7 @@ final class AppModel {
             ("selftest-hosteditor", { await HostEditorSelfTest(directory: $0, model: self).run() }),
             ("selftest-compact", { await CompactSelfTest(directory: $0, model: self).run() }),
             ("selftest-tabs", { await TabsSelfTest(directory: $0, model: self).run() }),
+            ("selftest-colors", { await TerminalColorsSelfTest(directory: $0, model: self).run() }),
         ]
     }
 
@@ -335,6 +340,7 @@ final class AppModel {
     func start(_ pane: Pane) {
         pane.startTask?.cancel()
         pane.status = .connecting
+        for o in paneStartObservers.values { o(pane) }
         pane.startTask = Task { await self.run(pane) }
     }
 

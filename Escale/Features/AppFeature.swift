@@ -25,6 +25,7 @@ struct FeatureCommands: Commands {
         ImportCommands(model: model)
         UpdateCommands(model: model)
         MonitoringCommands(model: model)
+        TerminalColorsCommands(model: model)
     }
 }
 
@@ -59,8 +60,13 @@ struct FeatureHostMenuItems: View {
             TunnelHostMenuItems(model: model, host: host)
             MacroHostMenuItems(model: model, host: host)
             MonitoringHostMenuItems(model: model, host: host)
-        case .serial: SerialHostMenuItems(model: model, host: host)
-        case .telnet: TelnetHostMenuItems(model: model, host: host)
+            TerminalColorsHostMenuItems(feature: model.colors, host: host)
+        case .serial:
+            SerialHostMenuItems(model: model, host: host)
+            TerminalColorsHostMenuItems(feature: model.colors, host: host)
+        case .telnet:
+            TelnetHostMenuItems(model: model, host: host)
+            TerminalColorsHostMenuItems(feature: model.colors, host: host)
         case .vnc: VNCHostMenuItems(model: model, host: host)
         case .rdp: RDPHostMenuItems(model: model, host: host)
         }
