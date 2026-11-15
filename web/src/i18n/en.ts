@@ -128,6 +128,9 @@ export const en: Dict = {
     note: 'Direct distribution: Escale is not on the Mac App Store because it uses your system’s OpenSSH.',
   },
   support: {
+    nav: 'Support',
+    navLabel: 'Support Escale: buy me a coffee (new tab)',
+    hero: 'Buy me a coffee?',
     lead: 'Does Escale save you time?',
     cta: 'Buy me a coffee',
     footer: 'Support the project',

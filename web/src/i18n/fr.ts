@@ -131,6 +131,9 @@ export const fr = {
     note: 'Distribution directe : Escale n’est pas sur le Mac App Store, car il utilise l’OpenSSH de votre système.',
   },
   support: {
+    nav: 'Soutenir',
+    navLabel: 'Soutenir Escale : offrez-moi un café (nouvel onglet)',
+    hero: 'Un café pour remercier ?',
     lead: 'Escale vous fait gagner du temps ?',
     cta: 'Offrez-moi un café',
     footer: 'Soutenir le projet',

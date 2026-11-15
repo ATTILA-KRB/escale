@@ -20,6 +20,8 @@ const alternates = [
   { lang: 'fr', href: new URL('/', Astro.site).href },
   { lang: 'en', href: new URL('/en', Astro.site).href },
 ];
+// Tasse (page de dons) : même tracé dans la barre des menus, le héros, le Dock et le bloc Téléchargement.
+const cup = 'M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Zm13 1h1.5a2.5 2.5 0 0 1 0 5H17M8 3v3m4-3v3';
 // Une fonction sans capture réelle s'affiche en texte seul : jamais de cadre vide sur le site public.
 ---
 
@@ -74,6 +76,11 @@ const alternates = [
           <li><a class="opacity-80 hover:opacity-100" href="#faq">{t.nav.faq}</a></li>
         </ul>
         <div class="ml-auto flex items-center gap-4">
+          <!-- Lien de dons : discret (texte), le bouton Télécharger reste la seule action principale. -->
+          <a href={SUPPORT_URL} target="_blank" rel="noopener" aria-label={t.support.navLabel} class="-m-2 flex items-center gap-1.5 p-2 opacity-80 hover:opacity-100">
+            <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d={cup} fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            <span class="hidden sm:inline">{t.support.nav}</span>
+          </a>
           <a href={t.nav.otherHref} hreflang={t.nav.otherLang.toLowerCase()} aria-label={t.nav.otherLangLabel} class="font-mono text-[12px] font-semibold opacity-75 hover:opacity-100">{t.nav.otherLang}</a>
           <a href={downloadURL} class="rounded-full bg-ink px-3.5 py-1.5 text-[13px] font-semibold text-amber-hi hover:bg-panel-hi">{t.nav.download}</a>
         </div>
@@ -97,6 +104,12 @@ const alternates = [
           </div>
           <ul class="mt-6 flex flex-wrap gap-2 font-mono text-[12.5px] font-medium text-ink/85">
             {t.hero.meta.map((m) => <li class="rounded-full border border-ink/25 px-2.5 py-1">{m}</li>)}
+            <li>
+              <a href={SUPPORT_URL} target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-full border border-dashed border-ink/40 px-2.5 py-1 whitespace-nowrap transition-colors hover:border-ink hover:bg-ink hover:text-amber-hi">
+                <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d={cup} fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                {t.support.hero}
+              </a>
+            </li>
           </ul>
         </div>
         <div class="relative lg:-mr-[max(0px,calc((100vw-1240px)/2))]" data-reveal data-hero-shot>
@@ -226,7 +239,7 @@ const alternates = [
               <p class="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-white/12 pt-6 text-[15px] text-white/80">
                 {t.support.lead}
                 <a href={SUPPORT_URL} target="_blank" rel="noopener" class="inline-flex items-center gap-2 rounded-full border border-amber-hi/60 px-3.5 py-1.5 text-[14px] font-semibold text-amber-hi hover:bg-amber-hi hover:text-ink">
-                  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Zm13 1h1.5a2.5 2.5 0 0 1 0 5H17M8 3v3m4-3v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d={cup} fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
                   {t.support.cta}
                 </a>
               </p>
@@ -308,6 +321,14 @@ const alternates = [
             </li>
           ))
         }
+        <!-- Lien externe : séparé des sections, sans data-dock (jamais marqué comme section active). -->
+        <li class="mx-0.5 h-10 w-px self-center bg-ink/20" aria-hidden="true"></li>
+        <li class="relative">
+          <a href={SUPPORT_URL} target="_blank" rel="noopener" class="dock-item group relative grid size-12 place-items-center rounded-[13px] bg-amber-hi text-ink shadow-[inset_0_-1px_0_rgb(0_0_0/0.25)]" aria-label={t.support.navLabel}>
+            <span class="tip pointer-events-none absolute -top-9 rounded-md bg-ink/85 px-2 py-1 text-[12px] font-medium whitespace-nowrap text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">{t.support.cta}</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d={cup} fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </a>
+        </li>
       </ul>
     </nav>
 
