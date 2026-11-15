@@ -4,8 +4,9 @@
 # Variables (voir docs/RELEASE.md) :
 #   ESCALE_SIGN_IDENTITY   identite codesign (defaut : hash du certificat Developer ID de Rayan, team 5FMH389VS7)
 #   ESCALE_NOTARY_KEY      chemin de la cle API .p8 (jamais copiee ici) ; ESCALE_NOTARY_KEY_ID ; ESCALE_NOTARY_ISSUER
-#   ESCALE_FEED_URL        URL du flux Sparkle ; vide = mises a jour desactivees dans l'app
-#   ESCALE_DOWNLOAD_URL_PREFIX  prefixe des URL de telechargement ecrites dans l'appcast (optionnel)
+#   ESCALE_FEED_URL        URL du flux Sparkle (defaut : https://escale-ssh.vercel.app/updates/appcast.xml) ;
+#                          ESCALE_FEED_URL= (vide explicite) = build sans mises a jour
+#   ESCALE_DOWNLOAD_URL_PREFIX  prefixe des URL de DMG dans l'appcast (defaut : https://escale-ssh.vercel.app/updates/)
 #   ESCALE_SPARKLE_ACCOUNT compte Trousseau de la cle EdDSA (defaut : escale)
 set -euo pipefail
 
@@ -22,7 +23,9 @@ export ESCALE_SIGN_IDENTITY="$IDENTITY"
 NOTARY_KEY="${ESCALE_NOTARY_KEY:-$HOME/Downloads/05_Technique/AuthKey_G7JK2CFPL3.p8}"
 NOTARY_KEY_ID="${ESCALE_NOTARY_KEY_ID:-G7JK2CFPL3}"
 NOTARY_ISSUER="${ESCALE_NOTARY_ISSUER:-fd7a9e88-3c53-47c3-a128-f044f3aabd52}"
-FEED_URL="${ESCALE_FEED_URL:-}"
+# Flux fige dans les apps livrees depuis la 1.0.0 : ne pas le changer (les installations ne le suivraient pas).
+FEED_URL="${ESCALE_FEED_URL-https://escale-ssh.vercel.app/updates/appcast.xml}"
+export ESCALE_DOWNLOAD_URL_PREFIX="${ESCALE_DOWNLOAD_URL_PREFIX-https://escale-ssh.vercel.app/updates/}"
 SPARKLE_ACCOUNT="${ESCALE_SPARKLE_ACCOUNT:-escale}"
 
 VERSION="" BUILD="" SKIP_NOTARIZE=0 STYLE=1

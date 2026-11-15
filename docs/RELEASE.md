@@ -1,6 +1,7 @@
 # Release d'Escale (M4 distribution)
 
-Tout se fait avec `scripts/release.sh`. Il ne publie rien : les artefacts restent dans `dist/` (ignoré par git).
+Deux scripts : `scripts/release.sh` construit, signe et notarise (artefacts dans `dist/`, ignoré par git, rien n'est
+publié) ; `scripts/publish.sh` met cette release en ligne (DMG + appcast Sparkle) sur https://escale-ssh.vercel.app.
 
 ## Commande
 
@@ -28,8 +29,8 @@ Sorties : `dist/Escale.app`, `dist/Escale-<version>.dmg`, `dist/updates/{Escale-
 | `ESCALE_NOTARY_KEY` | `~/Downloads/05_Technique/AuthKey_G7JK2CFPL3.p8` | **Chemin** de la clé API App Store Connect. Son contenu n'est jamais copié dans le dépôt ni journalisé. |
 | `ESCALE_NOTARY_KEY_ID` | `G7JK2CFPL3` | Key ID. |
 | `ESCALE_NOTARY_ISSUER` | `fd7a9e88-3c53-47c3-a128-f044f3aabd52` | Issuer ID. |
-| `ESCALE_FEED_URL` | vide | URL du flux Sparkle écrite dans `SUFeedURL`. **Vide = mises à jour désactivées** (menu grisé, aucun accès réseau). |
-| `ESCALE_DOWNLOAD_URL_PREFIX` | vide | Préfixe des URL de DMG dans l'appcast (ex. `https://exemple.fr/escale/`). Sans lui, l'URL est relative au flux. |
+| `ESCALE_FEED_URL` | `https://escale-ssh.vercel.app/updates/appcast.xml` | URL du flux Sparkle écrite dans `SUFeedURL`. **Figée dans les apps livrées depuis la 1.0.0 : ne pas la changer.** `ESCALE_FEED_URL=` (vide explicite) = build sans mises à jour (menu grisé, aucun accès réseau). |
+| `ESCALE_DOWNLOAD_URL_PREFIX` | `https://escale-ssh.vercel.app/updates/` | Préfixe des URL de DMG dans l'appcast. |
 | `ESCALE_SPARKLE_ACCOUNT` | `escale` | Compte Trousseau de la clé EdDSA. |
 
 ## Signature et runtime durci
@@ -60,16 +61,37 @@ Sorties : `dist/Escale.app`, `dist/Escale-<version>.dmg`, `dist/updates/{Escale-
   **Perdre cette clé = impossible de publier des mises à jour reconnues par les installations existantes.**
   L'outil est dans `build-release/SourcePackages/artifacts/sparkle/Sparkle/bin/` après un premier `release.sh`.
 
-## Publier plus tard (à faire par Rayan, domaine non décidé)
+## Publier : `scripts/publish.sh`
 
-1. Choisir l'hébergement HTTPS (domaine, GitHub Pages, S3…).
-2. Définir `ESCALE_FEED_URL=https://<domaine>/escale/appcast.xml` et `ESCALE_DOWNLOAD_URL_PREFIX=https://<domaine>/escale/`,
-   puis lancer `scripts/release.sh`. **La première version à distribuer doit être construite avec le flux renseigné** :
-   une build à `SUFeedURL` vide ne se mettra jamais à jour.
-3. Téléverser `dist/updates/Escale-<version>.dmg` et `dist/updates/appcast.xml` à l'URL du flux. Conserver les
-   anciens DMG dans `dist/updates` (génère des deltas et garde l'historique) ou les republier avec l'appcast.
-4. Page de téléchargement : le DMG notarisé `dist/Escale-<version>.dmg`.
-5. Tester : installer l'ancienne version, lancer « Rechercher les mises à jour… » dans le menu Escale.
+```
+scripts/release.sh --version X.Y.Z     # build croissant = nombre de commits : committer avant
+scripts/publish.sh --dry-run           # contrôles + build du site, sans déployer
+scripts/publish.sh                     # déploiement production + vérification en ligne
+git add web/src/release.json web/public/updates/appcast.xml && git commit && git push
+```
+
+Hébergement : projet Vercel `escale` (équipe « attila's projects »), domaine `escale-ssh.vercel.app`, site Astro de
+`web/`. Déploiement par la CLI (`npx vercel build --prod` puis `deploy --prebuilt --prod`), pas par push git : le DMG
+(`*.dmg` ignoré par git) n'existe que dans `web/public/updates/` local et part avec le déploiement.
+
+Contrôles bloquants avant déploiement :
+- un seul DMG dans `dist/updates`, nommé d'après la version de l'appcast, qui ne décrit qu'une version ;
+- URL du DMG dans l'appcast = `<site>/updates/<dmg>` ; `SUFeedURL` de `dist/Escale.app` = flux du site (une app livrée
+  avec un autre flux ne se mettrait plus jamais à jour) ; `CFBundleVersion` = build de l'appcast ;
+- `spctl` et `stapler validate` du DMG ; signature EdDSA de l'appcast vérifiée avec la clé du Trousseau ;
+- build supérieur ou égal au build en ligne (Sparkle compare `CFBundleVersion` ; égal = republication, signalée).
+
+Ensuite : seul le dernier DMG est gardé dans `web/public/updates/` (l'appcast ne pointe que vers lui ; pas de deltas),
+`web/src/release.json` (version, build, nom et taille du DMG) alimente les textes et le bouton du site, puis build,
+déploiement et vérification en ligne : appcast identique à `dist/`, DMG identique et signature valide, pages `/` et
+`/en` pointant vers le nouveau DMG. Le script ne commite rien.
+
+Pièges :
+- `curl … | rg -q` échoue sous `set -o pipefail` (rg ferme la pipe, curl reçoit SIGPIPE) : lire la page dans une
+  variable avant de chercher.
+- Test bout en bout à faire à la première mise à jour : installer la version en ligne, publier la suivante, lancer
+  « Rechercher les mises à jour… » dans le menu Escale.
+- Si les DMG doivent rester téléchargeables (anciennes versions), passer à Vercel Blob comme Ardoise.
 
 ## Vérifications faites / restant à faire
 

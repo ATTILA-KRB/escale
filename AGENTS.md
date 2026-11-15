@@ -19,6 +19,7 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
   A lancer apres tout changement dans `Escale/`, une a la fois (meme dossier `build/`). Sortie vers un fichier,
   pas `| tail` (le garde-fou `sleep` en arriere-plan garde la pipe ouverte).
 - `scripts/release.sh [--skip-notarize]` : build Release Developer ID, notarisation, DMG, appcast (`docs/RELEASE.md`).
+- `scripts/publish.sh [--dry-run]` : met la release de `dist/` en ligne (DMG + appcast) sur escale-ssh.vercel.app, verifie en ligne.
 
 ## Invariants
 1. Aucun type SwiftTerm hors de `Escale/Terminal/` : tout passe par `TerminalEngine`.

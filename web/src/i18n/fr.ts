@@ -1,4 +1,6 @@
 // Texte du site (français, langue par défaut). Chaque affirmation se vérifie dans docs/PLAN.md ou le code de l'app.
+// Version publiée : release.json, écrit par scripts/publish.sh (ne pas l'inscrire en dur ici).
+import release from '../release.json';
 export const fr = {
   lang: 'fr',
   meta: {
@@ -22,7 +24,7 @@ export const fr = {
     lead:
       'Terminal à onglets, fichiers SFTP à côté du shell, tunnels et multi-exécution, dans une app Mac native qui s’appuie sur l’OpenSSH de votre système.',
     cta: 'Télécharger pour macOS',
-    meta: ['Version 1.0.0', 'macOS 15 ou plus', 'Apple Silicon et Intel', '26 Mo'],
+    meta: [`Version ${release.version}`, 'macOS 15 ou plus', 'Apple Silicon et Intel', `${release.sizeMB} Mo`],
     shotAlt:
       'Fenêtre d’Escale : sessions classées par dossier à gauche, terminal ouvert sur un serveur web, barre d’état en bas.',
   },
@@ -118,8 +120,8 @@ export const fr = {
   download: {
     title: 'Gratuit. Sans compte. Sans abonnement.',
     lead: 'Ouvrez l’image disque, glissez Escale dans Applications. Les mises à jour arrivent ensuite d’elles-mêmes.',
-    cta: 'Télécharger Escale 1.0.0',
-    file: 'Escale-1.0.0.dmg · 26 Mo',
+    cta: `Télécharger Escale ${release.version}`,
+    file: `${release.dmg} · ${release.sizeMB} Mo`,
     specs: [
       ['Système', 'macOS 15 Sequoia ou plus récent'],
       ['Processeur', 'Apple Silicon et Intel (universel)'],
