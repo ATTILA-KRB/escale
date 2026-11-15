@@ -127,10 +127,15 @@ export const en: Dict = {
     ],
     note: 'Direct distribution: Escale is not on the Mac App Store because it uses your system’s OpenSSH.',
   },
+  support: {
+    lead: 'Does Escale save you time?',
+    cta: 'Buy me a coffee',
+    footer: 'Support the project',
+  },
   faq: {
     title: 'FAQ',
     items: [
-      { q: 'Is Escale really free?', a: 'Yes. No account, no subscription, no trial: download the app and use it.' },
+      { q: 'Is Escale really free?', a: 'Yes. No account, no subscription, no trial: download the app and use it. If you want to say thanks, a coffee is welcome, with nothing expected in return.' },
       {
         q: 'Why not the Mac App Store?',
         a: 'The Mac App Store requires the sandbox, which rules out your system’s OpenSSH and your ~/.ssh/config. Escale is Developer ID signed and notarized by Apple: Gatekeeper checks its origin on first launch.',

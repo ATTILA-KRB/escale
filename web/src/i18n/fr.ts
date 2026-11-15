@@ -130,12 +130,17 @@ export const fr = {
     ],
     note: 'Distribution directe : Escale n’est pas sur le Mac App Store, car il utilise l’OpenSSH de votre système.',
   },
+  support: {
+    lead: 'Escale vous fait gagner du temps ?',
+    cta: 'Offrez-moi un café',
+    footer: 'Soutenir le projet',
+  },
   faq: {
     title: 'Questions',
     items: [
       {
         q: 'Escale est-il vraiment gratuit ?',
-        a: 'Oui. Ni compte, ni abonnement, ni période d’essai : vous téléchargez l’app et vous l’utilisez.',
+        a: 'Oui. Ni compte, ni abonnement, ni période d’essai : vous téléchargez l’app et vous l’utilisez. Si vous voulez remercier, un café est le bienvenu, sans aucune contrepartie.',
       },
       {
         q: 'Pourquoi pas le Mac App Store ?',
