@@ -1,0 +1,39 @@
+---
+// Fenêtre qui encadre une capture réelle de l'app. Sans capture disponible : fenêtre vide marquée « à venir ».
+import { Image } from 'astro:assets';
+import { shot } from '../lib/shots';
+
+interface Props {
+  name: string;
+  alt: string;
+  placeholder: string;
+  class?: string;
+  eager?: boolean;
+  sizes?: string;
+}
+const { name, alt, placeholder, class: klass = '', eager = false, sizes = '(min-width: 1024px) 60vw, 100vw' } = Astro.props;
+const src = shot(name);
+---
+
+{
+  src ? (
+    <figure class:list={['window bg-panel', klass]}>
+      <Image
+        src={src}
+        alt={alt}
+        widths={[Math.min(src.width, 900), Math.min(src.width, 1400), src.width]}
+        sizes={sizes}
+        loading={eager ? 'eager' : 'lazy'}
+        fetchpriority={eager ? 'high' : 'auto'}
+        class="block h-auto w-full"
+      />
+    </figure>
+  ) : (
+    <figure class:list={['window bg-panel text-amber-hi/70', klass]} aria-label={alt}>
+      <div class="flex h-9 items-center gap-3 bg-panel-hi px-3.5">
+        <span class="lights" aria-hidden="true"><i /><i /><i /></span>
+      </div>
+      <div class="grid aspect-[16/10] place-items-center font-mono text-sm">{placeholder}</div>
+    </figure>
+  )
+}

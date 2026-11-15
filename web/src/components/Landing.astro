@@ -1,0 +1,388 @@
+---
+import '../styles/global.css';
+import Shot from './Shot.astro';
+import { shot } from '../lib/shots';
+import { fr } from '../i18n/fr';
+import { en } from '../i18n/en';
+
+interface Props {
+  locale: 'fr' | 'en';
+}
+const { locale } = Astro.props;
+const t = locale === 'en' ? en : fr;
+const base = locale === 'en' ? '/en' : '';
+// Lien du DMG branché par variable (Vercel) ; la maquette renvoie à la section Téléchargement.
+const downloadURL = import.meta.env.PUBLIC_DOWNLOAD_URL || '#download';
+const canonical = new URL(base || '/', Astro.site).href;
+const alternates = [
+  { lang: 'fr', href: new URL('/', Astro.site).href },
+  { lang: 'en', href: new URL('/en', Astro.site).href },
+];
+// Une fonction sans capture réelle s'affiche en texte seul : jamais de cadre vide sur le site public.
+---
+
+<!doctype html>
+<html lang={t.lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{t.meta.title}</title>
+    <meta name="description" content={t.meta.description} />
+    <meta name="robots" content="noindex" />
+    <link rel="canonical" href={canonical} />
+    {alternates.map((a) => <link rel="alternate" hreflang={a.lang} href={a.href} />)}
+    <link rel="alternate" hreflang="x-default" href={alternates[0].href} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#ffd24a" />
+    <meta property="og:title" content={t.meta.title} />
+    <meta property="og:description" content={t.meta.description} />
+    <meta property="og:type" content="website" />
+    <script is:inline>
+      // Le module de mouvement prend la main ; filet de sécurité : tout redevient visible après 3 s.
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && matchMedia('(min-width: 768px)').matches) {
+        document.documentElement.setAttribute('data-motion', '');
+        setTimeout(() => document.documentElement.removeAttribute('data-motion'), 3000);
+      }
+    </script>
+  </head>
+  <body class="min-h-dvh font-sans">
+    <!-- Fond d'écran : aplats ambre qui se recouvrent, découpés comme les volets de l'icône. -->
+    <div class="wallpaper pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
+      <span class="flap" style="--x:-14vw;--y:78vh;--w:30vw;--h:46vh;--c:var(--color-amber-pale)"></span>
+      <span class="flap" style="--x:58vw;--y:-18vh;--w:52vw;--h:64vh;--c:var(--color-amber-lo)"></span>
+      <span class="flap" style="--x:70vw;--y:52vh;--w:40vw;--h:62vh;--c:var(--color-amber-deep)"></span>
+      <span class="flap" style="--x:30vw;--y:88vh;--w:36vw;--h:40vh;--c:#ffc21a"></span>
+    </div>
+
+    <!-- Barre des menus -->
+    <header class="sticky top-0 z-40 border-b border-ink/10 bg-amber-hi/75 backdrop-blur-xl backdrop-saturate-150">
+      <nav class="mx-auto flex h-11 max-w-[1240px] items-center gap-6 px-5 text-[14px]">
+        <a href={`${base}/`} class="flex items-center gap-2 font-bold">
+          <img src="/favicon.svg" alt="" width="22" height="22" />
+          <span>Escale</span>
+        </a>
+        <ul class="hidden items-center gap-5 md:flex">
+          <li><a class="opacity-80 hover:opacity-100" href="#features">{t.nav.features}</a></li>
+          <li><a class="opacity-80 hover:opacity-100" href="#protocols">{t.nav.protocols}</a></li>
+          <li><a class="opacity-80 hover:opacity-100" href="#security">{t.nav.security}</a></li>
+          <li><a class="opacity-80 hover:opacity-100" href="#faq">{t.nav.faq}</a></li>
+        </ul>
+        <div class="ml-auto flex items-center gap-4">
+          <a href={t.nav.otherHref} hreflang={t.nav.otherLang.toLowerCase()} aria-label={t.nav.otherLangLabel} class="font-mono text-[12px] font-semibold opacity-75 hover:opacity-100">{t.nav.otherLang}</a>
+          <a href={downloadURL} class="rounded-full bg-ink px-3.5 py-1.5 text-[13px] font-semibold text-amber-hi hover:bg-panel-hi">{t.nav.download}</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <!-- Héros -->
+      <section id="top" class="mx-auto grid max-w-[1240px] grid-cols-[minmax(0,1fr)] gap-12 px-5 pt-14 pb-20 md:pt-20 lg:grid-cols-[minmax(0,6fr)_minmax(0,7fr)] lg:items-center lg:gap-12 lg:pb-28">
+        <div data-stagger>
+          <p class="font-mono text-[13px] font-medium tracking-tight">{t.hero.kicker}</p>
+          <h1 class="display mt-5 text-[clamp(2.6rem,5vw,4.6rem)] leading-[0.98] [text-wrap:balance]">
+            {t.hero.title.map((l) => <span class="block">{l}</span>)}
+          </h1>
+          <p class="mt-7 max-w-[34rem] text-[19px] leading-[1.5] text-ink/85 [text-wrap:pretty]">{t.hero.lead}</p>
+          <div class="mt-9 flex flex-wrap items-center gap-x-5 gap-y-4">
+            <a href={downloadURL} class="cta inline-flex items-center gap-3 rounded-2xl bg-ink px-7 py-[1.1rem] text-[18px] font-semibold text-amber-hi shadow-[0_10px_30px_-10px_rgb(22_23_27/0.6)]">
+              <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v11m0 0-4.5-4.5M10 13l4.5-4.5M3 17h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              {t.hero.cta}
+            </a>
+          </div>
+          <ul class="mt-6 flex flex-wrap gap-2 font-mono text-[12.5px] font-medium text-ink/85">
+            {t.hero.meta.map((m) => <li class="rounded-full border border-ink/25 px-2.5 py-1">{m}</li>)}
+          </ul>
+        </div>
+        <div class="relative lg:-mr-[max(0px,calc((100vw-1240px)/2))]" data-reveal data-hero-shot>
+          <Shot name="hero" alt={t.hero.shotAlt} placeholder={t.shots.placeholder} eager sizes="(min-width: 1024px) 62vw, 100vw" />
+        </div>
+      </section>
+
+      <!-- Fonctions -->
+      <section id="features" class="mx-auto max-w-[1240px] px-5 py-16 md:py-24">
+        <h2 class="display max-w-[18ch] text-[clamp(2.1rem,4.4vw,3.6rem)] leading-[1.02]" data-reveal>{t.features.title}</h2>
+        <div class="mt-16 grid gap-24 md:mt-20 md:gap-32">
+          {
+            t.features.items.map((f, i) => (
+              <article id={f.id} class:list={['grid grid-cols-[minmax(0,1fr)] items-center gap-10 lg:gap-14', !shot(f.shot) ? 'max-w-[44rem]' : i % 2 ? 'lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]' : 'lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]']}>
+                <div class:list={[i % 2 && shot(f.shot) && 'lg:order-2']} data-stagger>
+                  <p class="inline-flex items-center gap-2 rounded-full bg-ink/90 px-3 py-1 text-[12.5px] font-semibold text-amber-hi">
+                    <span class="size-2 rounded-full bg-amber-hi" />
+                    {f.label}
+                  </p>
+                  <h3 class="mt-5 text-[clamp(1.7rem,2.8vw,2.35rem)] leading-[1.08] font-bold tracking-[-0.02em] [font-stretch:104%] [text-wrap:balance]">{f.title}</h3>
+                  <p class="mt-5 text-[17px] leading-[1.6] text-ink/85 [text-wrap:pretty]">{f.body}</p>
+                  <ul class="mt-6 grid gap-2 font-mono text-[13.5px]">
+                    {f.points.map((p) => (
+                      <li class="flex gap-3">
+                        <span aria-hidden="true" class="font-bold">›</span>
+                        <span>{p}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {shot(f.shot) && (
+                  <div data-reveal>
+                    <Shot name={f.shot} alt={t.shots[f.shot as keyof typeof t.shots]} placeholder={t.shots.placeholder} />
+                  </div>
+                )}
+              </article>
+            ))
+          }
+        </div>
+      </section>
+
+      <!-- Le reste, en liste Finder -->
+      <section class="mx-auto max-w-[1240px] px-5 py-16 md:py-20">
+        <div class="window bg-paper" data-reveal>
+          <div class="flex min-h-11 items-center gap-4 border-b border-ink/10 bg-[#efe9da] px-4 py-2.5">
+            <span class="lights" aria-hidden="true"><i /><i /><i /></span>
+            <h2 class="text-[15px] leading-tight font-semibold">{t.more.title}</h2>
+          </div>
+          <ul class="divide-y divide-ink/8">
+            {
+              t.more.items.map((m, i) => (
+                <li class:list={['grid grid-cols-[minmax(0,1fr)] gap-1 px-5 py-4 sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-6', i % 2 && 'bg-ink/[0.025]']}>
+                  <span class="flex items-center gap-2.5 font-semibold">
+                    <span class="size-2.5 rounded-full bg-amber-lo ring-1 ring-ink/15" aria-hidden="true" />
+                    {m.t}
+                  </span>
+                  <span class="text-ink/80">{m.d}</span>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </section>
+
+      <!-- Protocoles : tableau des départs -->
+      <section id="protocols" class="mx-auto max-w-[1240px] px-5 py-16 md:py-24">
+        <div class="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:items-end">
+          <!-- Taille du titre rapportée à SA colonne (cqi) et à la longueur du mot, pas à la fenêtre : « Departures » (EN,
+               ~0,55 em par lettre) débordait sur le tableau dans la colonne 4/12. 0,6 em par lettre garde une marge ;
+               un titre court (« Départs ») reste au plafond de 5rem. -->
+          <div class="@container" data-reveal>
+            <h2
+              class="display text-[clamp(2.8rem,calc(100cqi/(var(--chars)*0.6)),5rem)] leading-[0.95]"
+              style={`--chars:${[...t.protocols.title].length}`}
+            >{t.protocols.title}</h2>
+            <p class="mt-5 max-w-[22rem] text-[18px] leading-[1.5] text-ink/85">{t.protocols.lead}</p>
+          </div>
+          <div class="board rounded-[18px] bg-panel p-3 text-amber-hi shadow-[0_30px_60px_-24px_rgb(80_40_0/0.6)] sm:p-4" data-reveal>
+            <div class="hidden grid-cols-[9rem_6rem_minmax(0,1fr)] gap-3 px-3 pb-2 font-mono text-[11.5px] tracking-[0.12em] text-amber-hi/70 uppercase sm:grid">
+              {t.protocols.cols.map((c) => <span>{c}</span>)}
+            </div>
+            <ul class="grid gap-1.5" data-stagger>
+              {
+                t.protocols.rows.map((r) => (
+                  <li class="row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-[10px] bg-panel-hi px-3.5 py-3 font-mono sm:grid-cols-[9rem_6rem_minmax(0,1fr)]">
+                    <span class="text-[18px] font-bold tracking-wide sm:text-[19px]">{r.p}</span>
+                    <span class="text-[15px] text-amber-hi/80">{r.port}</span>
+                    <span class="col-span-2 text-[14px] text-white/85 sm:col-span-1 sm:text-[14.5px]">{r.d}</span>
+                  </li>
+                ))
+              }
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sécurité -->
+      <section id="security" class="mx-auto max-w-[1240px] px-5 py-16 md:py-24">
+        <div class="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+          <h2 class="display text-[clamp(2.1rem,4.4vw,3.6rem)] leading-[1.02] lg:sticky lg:top-24 lg:self-start" data-reveal>{t.security.title}</h2>
+          <dl class="grid border-t-2 border-ink" data-stagger>
+            {
+              t.security.items.map((s) => (
+                <div class="grid grid-cols-[minmax(0,1fr)] gap-2 border-b border-ink/20 py-6 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-8">
+                  <dt class="text-[18px] font-bold tracking-[-0.01em]">{s.t}</dt>
+                  <dd class="text-[16.5px] leading-[1.6] text-ink/85">{s.d}</dd>
+                </div>
+              ))
+            }
+          </dl>
+        </div>
+      </section>
+
+      <!-- Téléchargement -->
+      <section id="download" class="mx-auto max-w-[1240px] px-5 py-16 md:py-24">
+        <div class="relative overflow-clip rounded-[28px] bg-panel text-white shadow-[0_40px_80px_-30px_rgb(80_40_0/0.7)]" data-reveal>
+          <div class="relative grid grid-cols-[minmax(0,1fr)] gap-12 p-8 sm:p-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:p-16">
+            <div>
+              <img src="/favicon.svg" alt="" width="88" height="88" class="drop-shadow-[0_8px_16px_rgb(0_0_0/0.4)]" />
+              <h2 class="display mt-8 text-[clamp(2.2rem,4.6vw,3.8rem)] leading-[1.02] text-amber-hi">{t.download.title}</h2>
+              <p class="mt-6 max-w-[30rem] text-[18px] leading-[1.55] text-white/80">{t.download.lead}</p>
+              <a href={downloadURL} class="cta mt-9 inline-flex items-center gap-3 rounded-2xl bg-amber-hi px-6 py-4 text-[17px] font-semibold text-ink hover:bg-amber-pale">
+                <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v11m0 0-4.5-4.5M10 13l4.5-4.5M3 17h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                {t.download.cta}
+              </a>
+              <p class="mt-4 font-mono text-[13px] text-white/70">{t.download.file}</p>
+            </div>
+            <div class="self-end">
+              <dl class="grid gap-0 font-mono text-[13.5px]">
+                {
+                  t.download.specs.map(([k, v]) => (
+                    <div class="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-4 border-b border-white/12 py-3.5">
+                      <dt class="text-amber-hi/70">{k}</dt>
+                      <dd class="text-white/90">{v}</dd>
+                    </div>
+                  ))
+                }
+              </dl>
+              <p class="mt-6 text-[14.5px] leading-[1.55] text-white/70">{t.download.note}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Questions -->
+      <section id="faq" class="mx-auto max-w-[1240px] px-5 py-16 md:py-24">
+        <div class="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+          <h2 class="display text-[clamp(2.1rem,4.4vw,3.6rem)] leading-[1.02]" data-reveal>{t.faq.title}</h2>
+          <div class="grid border-t-2 border-ink" data-stagger>
+            {
+              t.faq.items.map((f) => (
+                <details class="group border-b border-ink/20">
+                  <summary class="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-[18px] font-semibold [&::-webkit-details-marker]:hidden">
+                    {f.q}
+                    <span class="grid size-8 shrink-0 place-items-center rounded-full bg-ink text-amber-hi transition-transform group-open:rotate-45" aria-hidden="true">+</span>
+                  </summary>
+                  <p class="max-w-[42rem] pb-6 text-[16.5px] leading-[1.6] text-ink/85">{f.a}</p>
+                </details>
+              ))
+            }
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="mx-auto max-w-[1240px] px-5 pt-10 pb-32 text-[14px]">
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-ink/20 pt-6">
+        <span class="flex items-center gap-2 font-semibold"><img src="/favicon.svg" alt="" width="18" height="18" />{t.footer.line}</span>
+      </div>
+    </footer>
+
+    <!-- Dock (navigation, ordinateur seulement) -->
+    <nav class="dock fixed bottom-4 left-1/2 z-40 hidden -translate-x-1/2 md:block" aria-label="Sections" data-dock-bar>
+      <ul class="flex items-end gap-2 rounded-[22px] border border-white/40 bg-white/30 p-2 shadow-[0_20px_40px_-16px_rgb(80_40_0/0.55)] backdrop-blur-2xl backdrop-saturate-150">
+        {
+          [
+            { href: '#top', label: t.dock.home, icon: 'app' },
+            { href: '#features', label: t.dock.features, icon: 'prompt' },
+            { href: '#protocols', label: t.dock.protocols, icon: 'board' },
+            { href: '#security', label: t.dock.security, icon: 'lock' },
+            { href: '#download', label: t.dock.download, icon: 'down' },
+          ].map((d) => (
+            <li class="relative">
+              <a href={d.href} data-dock={d.href.slice(1)} class="dock-item group relative grid size-12 place-items-center rounded-[13px] bg-panel text-amber-hi shadow-[inset_0_-1px_0_rgb(0_0_0/0.5)]" aria-label={d.label}>
+                <span class="tip pointer-events-none absolute -top-9 rounded-md bg-ink/85 px-2 py-1 text-[12px] font-medium whitespace-nowrap text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">{d.label}</span>
+                {d.icon === 'app' && <img src="/favicon.svg" alt="" width="48" height="48" class="size-12 scale-[1.18]" />}
+                {d.icon === 'prompt' && (
+                  <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7l5 5-5 5M13 17h6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                )}
+                {d.icon === 'board' && (
+                  <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg>
+                )}
+                {d.icon === 'lock' && (
+                  <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" fill="currentColor" /><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.4" /></svg>
+                )}
+                {d.icon === 'down' && (
+                  <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                )}
+              </a>
+              <span class="dot absolute -bottom-1.5 left-1/2 size-1 -translate-x-1/2 rounded-full bg-ink opacity-0" aria-hidden="true" />
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <style>
+      .flap {
+        position: absolute;
+        left: var(--x);
+        top: var(--y);
+        width: var(--w);
+        height: var(--h);
+        border-radius: 6vw;
+        background: var(--c);
+      }
+      /* Charnière des volets du fond d'écran */
+      .flap::after {
+        content: '';
+        position: absolute;
+        inset: 50% 0 auto;
+        height: 1.1vw;
+        min-height: 6px;
+        background: var(--color-amber-hi);
+        opacity: 0.9;
+      }
+      .cta { transition: transform 0.2s var(--ease-out-expo), background-color 0.2s; }
+      @media (hover: hover) and (min-width: 640px) {
+        .cta:hover { transform: translateY(-2px); }
+      }
+      /* Le Dock n'apparaît qu'une fois le héros dépassé : il ne masque jamais l'appel à l'action. */
+      .dock { transition: opacity 0.3s, transform 0.4s var(--ease-out-expo); }
+      .dock:not(.shown) { opacity: 0; transform: translate(-50%, 24px); pointer-events: none; }
+      .dock-item { transition: transform 0.25s var(--ease-out-expo); transform-origin: bottom center; }
+      @media (hover: hover) {
+        .dock-item:hover { transform: scale(1.18) translateY(-4px); }
+      }
+      .dock [aria-current='true'] + .dot { opacity: 1; }
+      @media (prefers-reduced-motion: reduce) {
+        .dock-item, .cta { transition: none; }
+        .dock-item:hover, .cta:hover { transform: none; }
+      }
+    </style>
+
+    <script>
+      import { animate, inView, stagger } from 'motion';
+
+      const root = document.documentElement;
+      if (root.hasAttribute('data-motion')) {
+        const groups = document.querySelectorAll<HTMLElement>('[data-reveal], [data-stagger]');
+        groups.forEach((g) => {
+          const targets = g.hasAttribute('data-stagger') ? Array.from(g.children) as HTMLElement[] : [g];
+          targets.forEach((el) => (el.style.opacity = '0'));
+        });
+        root.removeAttribute('data-motion');
+        groups.forEach((g) => {
+          const targets = g.hasAttribute('data-stagger') ? Array.from(g.children) as HTMLElement[] : [g];
+          inView(
+            g,
+            () => {
+              animate(
+                targets,
+                { opacity: [0, 1], y: [16, 0] },
+                { type: 'spring', stiffness: 240, damping: 30, delay: stagger(0.06) },
+              );
+            },
+            { amount: 0.2 },
+          );
+        });
+      }
+
+      // Pastille du Dock sous la section visible.
+      const items = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-dock]'));
+      const sections = items
+        .map((a) => document.getElementById(a.dataset.dock!))
+        .filter((s): s is HTMLElement => !!s);
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (!e.isIntersecting) return;
+            items.forEach((a) => a.setAttribute('aria-current', String(a.dataset.dock === e.target.id)));
+          });
+        },
+        { rootMargin: '-45% 0px -50% 0px' },
+      );
+      sections.forEach((s) => io.observe(s));
+
+      const bar = document.querySelector<HTMLElement>('[data-dock-bar]');
+      const hero = document.getElementById('top');
+      if (bar && hero) {
+        new IntersectionObserver(([e]) => bar.classList.toggle('shown', !e.isIntersecting), { threshold: 0.15 }).observe(hero);
+      }
+    </script>
+  </body>
+</html>

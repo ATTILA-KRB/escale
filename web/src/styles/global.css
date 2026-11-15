@@ -1,0 +1,68 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
+
+/* Palette tirée de l'icône (Escale/AppIcon.icon) : aplat ambre, volets sombres, invite jaune. */
+@theme {
+  --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', monospace;
+
+  --color-amber-hi: #ffd24a;   /* haut de l'icône, invite */
+  --color-amber-lo: #f59e0b;   /* bas de l'icône */
+  --color-amber-deep: #e88a00; /* aplat le plus sombre du fond d'écran */
+  --color-amber-pale: #ffe28a; /* aplat clair */
+  --color-panel: #16171b;      /* volet */
+  --color-panel-hi: #24262c;   /* moitié haute du volet */
+  --color-ink: #16171b;
+  --color-paper: #fbf7ec;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html,
+  body {
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+  }
+  html {
+    background: var(--color-amber-hi);
+    color: var(--color-ink);
+    scroll-behavior: smooth;
+    scroll-padding-top: 4rem;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+  a, button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 3px solid var(--color-ink); outline-offset: 3px; border-radius: 6px; }
+  ::selection { background: var(--color-ink); color: var(--color-amber-hi); }
+}
+
+.display {
+  font-stretch: 104%;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+.condensed { font-stretch: 78%; }
+
+/* Fenêtre macOS : barre de titre à feux tricolores. */
+.window {
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.35),
+    0 1px 0 rgb(255 255 255 / 0.06) inset,
+    0 30px 60px -20px rgb(80 40 0 / 0.45),
+    0 12px 24px -12px rgb(0 0 0 / 0.35);
+  overflow: clip;
+}
+.lights { display: flex; gap: 8px; }
+.lights i { width: 12px; height: 12px; border-radius: 99px; display: block; }
+.lights i:nth-child(1) { background: #ff5f57; }
+.lights i:nth-child(2) { background: #febc2e; }
+.lights i:nth-child(3) { background: #28c840; }
+
+/* Révélations : masquées seulement si le module de mouvement est actif (data-motion posé dans <head>). */
+[data-motion] :is([data-reveal], [data-stagger] > *) { opacity: 0; }
