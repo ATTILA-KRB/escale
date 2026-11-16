@@ -16,8 +16,8 @@ enum HostEditorTab: Hashable, CaseIterable {
         switch self {
         case .basic: String(localized: "Basique")
         case .advanced: String(localized: "Avancé")
-        case .terminal: "Terminal"
-        case .network: "Réseau"
+        case .terminal: String(localized: "Terminal")
+        case .network: String(localized: "Réseau")
         case .protocolSettings: HostEditorBanner.shortName(p)
         }
     }
