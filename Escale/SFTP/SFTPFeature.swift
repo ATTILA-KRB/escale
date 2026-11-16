@@ -34,9 +34,9 @@ final class SFTPFeature: AppFeature {
     /// Confirmation de remplacement d'un fichier distant (remplaçable dans les tests).
     @ObservationIgnored var confirmReplace: @MainActor ([String]) async -> Bool = { names in
         let alert = NSAlert()
-        alert.messageText = names.count == 1 ? "« \(names[0]) » existe déjà sur le serveur" : "\(names.count) éléments existent déjà sur le serveur"
-        alert.informativeText = "Voulez-vous les remplacer ?"
-        alert.addButton(withTitle: "Remplacer")
+        alert.messageText = names.count == 1 ? String(localized: "« \(names[0]) » existe déjà sur le serveur") : String(localized: "\(names.count) éléments existent déjà sur le serveur")
+        alert.informativeText = String(localized: "Voulez-vous les remplacer ?")
+        alert.addButton(withTitle: String(localized: "Remplacer"))
         alert.addButton(withTitle: "Annuler")
         alert.alertStyle = .warning
         return alert.runModal() == .alertFirstButtonReturn
