@@ -425,12 +425,26 @@ final class AppModel {
         }
     }
 
+    private var showsLocalBanner: Bool {
+        if let v = options.value("local-banner") { return v == "on" }
+        if options.isSelfTest { return false }
+        return UserDefaults.standard.object(forKey: "escale.localBanner") as? Bool ?? true
+    }
+
     private func launchLocal(_ tab: Pane, command: [String]?) {
         let (exe, args): (String, [String])
         if let cmd = command { (exe, args) = (Self.resolve(cmd[0]), Array(cmd.dropFirst())) } else {
             (exe, args) = (ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh", ["-l"])
         }
         let s = tab.session.engine.size
+        // Bannière d'accueil (façon MobaXterm) : shell interactif seulement, au premier lancement de l'écran (pas à
+        // la relance ni pour une commande), écrite dans l'écran et non envoyée au shell. Absente des recettes, sauf
+        // `--local-banner on` ; désactivable par `defaults write <bundle> escale.localBanner -bool NO`.
+        if command == nil, tab.session.state == .idle, showsLocalBanner {
+            let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+            tab.session.engine.feed(Data(WelcomeBanner.render(columns: s.columns, version: version,
+                                                              shell: URL(fileURLWithPath: exe).lastPathComponent).utf8))
+        }
         do {
             let p = try PTYProcess(executable: exe, arguments: args, environment: Self.environment(),
                                    columns: s.columns, rows: s.rows, currentDirectory: NSHomeDirectory())

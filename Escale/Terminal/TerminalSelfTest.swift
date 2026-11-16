@@ -377,6 +377,24 @@ final class TerminalSelfTest {
 
         bigWin.close()
         win.close()
+
+        // 10. Bannière d'accueil du terminal local (`--local-banner on` dans la recette) : écrite dans l'écran avant le
+        // shell, jamais envoyée au shell ; une commande explicite n'en a pas.
+        if model.options.value("local-banner") == "on", let main = model.mainWindow {
+            let local = model.openLocalTab()
+            let t = { local.session.engine.text(includingScrollback: true) }
+            let seen = await wait(10) { t().contains("client SSH pour macOS") }
+            check("banniere_terminal_local", seen && t().contains(WelcomeBanner.logo[0]), String(t().prefix(200)))
+            check("banniere_shell_actif", await wait(10) { local.status == .running })
+            await sleep(1.0)
+            await shot("10-banniere-terminal-local", main, local.session.engine)
+            let cmd = model.openLocalTab(command: ["/bin/sh"])
+            await sleep(0.8)
+            check("banniere_absente_pour_une_commande", !cmd.session.engine.text(includingScrollback: true).contains("ESCALE")
+                  && !cmd.session.engine.text(includingScrollback: true).contains("client SSH pour macOS"))
+            model.close(cmd)
+            model.close(local)
+        }
         notes["non_teste"] = "clavier AZERTY réel (CGEvent/changement de source de saisie : volerait le focus et modifierait les réglages de l'utilisateur) ; panneau de candidats dessiné par l'IME système ; lecture par VoiceOver réel ; sélection à la souris"
         return finish()
     }

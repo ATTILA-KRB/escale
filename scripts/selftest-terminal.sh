@@ -27,7 +27,7 @@ APP_BIN="${ESCALE_APP:-$DD/Build/Products/Debug/Escale.app}/Contents/MacOS/Escal
 set +e
 "$APP_BIN" --library "$WORK/lib/library.json" --ssh-config /dev/null \
   --keychain-service "com.attila-krb.Escale.selftest.terminal.$$" \
-  --selftest-terminal "$OUT" &
+  --selftest-terminal "$OUT" --local-banner on &
 APP_PID=$!
 ( sleep 180; kill -9 "$APP_PID" 2>/dev/null ) & WATCHDOG=$!
 wait "$APP_PID"; CODE=$?

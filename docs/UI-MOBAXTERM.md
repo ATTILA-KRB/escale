@@ -49,6 +49,11 @@ principale, navigateur SFTP latéral, monitoring distant, dialogue de session).
   seules (bouclage, ponts, veth, docker, tunnels écartés, sinon double compte).
 - **Mode compact** : choisir un volet rouvre temporairement la barre latérale (sinon le choix serait invisible) ;
   elle se replie à l'ouverture d'un onglet. Le mode de la barre d'outils d'avant est restauré en sortie.
+- **Bannière du terminal local** (`WelcomeBanner`, cœur) : logo « ESCALE » en blocs, dégradé jaune doré → orangé
+  en couleurs 24 bits (la palette 256 de SwiftTerm rend ces jaunes ternes), puis un cadre version / shell / raccourcis.
+  Écrite dans l'écran du moteur avant le shell (jamais envoyée au shell), au premier lancement seulement, pas pour une
+  commande explicite ; titre sur une ligne et sans cadre si l'écran est trop étroit. Aucun nom d'utilisateur ni de
+  machine. Absente des recettes sauf `--local-banner on` ; `escale.localBanner = NO` la coupe.
 - **Onglet détaché** : seul l'hébergement de la vue change (`TerminalTab.windowID`) ; l'onglet reste dans
   `Workspace.tabs` (compteurs, multi-exécution, macros le voient), moteur et pty jamais recréés.
 
