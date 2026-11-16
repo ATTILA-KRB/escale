@@ -84,7 +84,7 @@ Remarques :
 - Les builds Debug sont signés ad hoc et sans mises à jour (`ESCALE_FEED_URL` est vide par défaut).
 - Signature, notarisation et DMG demandent votre propre Developer ID Apple : voir [docs/RELEASE.md](docs/RELEASE.md).
 - Architecture, invariants et conventions : [AGENTS.md](AGENTS.md) ; décisions de conception : [docs/PLAN.md](docs/PLAN.md).
-  L'interface est actuellement uniquement en français.
+  L'interface est disponible en français et en anglais (langue du système). Les chaînes sont dans `Escale/Resources/Localizable.xcstrings` ; voir la section « Localisation » d'[AGENTS.md](AGENTS.md).
 
 ## Contribuer
 
