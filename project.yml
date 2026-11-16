@@ -67,6 +67,9 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Escale/Escale.entitlements
         # La phase « Serveur X11 integre » lit le cache ~/Library/Caches/Escale-build et build/x11.
         ENABLE_USER_SCRIPT_SANDBOXING: NO
+        # Catalogue de chaines : cles = chaines francaises (langue de developpement), extraites a la compilation.
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
         # Identite Release surchargeable par l'environnement (ESCALE_SIGN_IDENTITY).
         ESCALE_SIGN_IDENTITY: D0F93EE12C167056F3206C7CB7D208C0952E9728
       configs:

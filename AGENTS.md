@@ -21,6 +21,12 @@ Client SSH natif macOS (sessions, SFTP lateral, tunnels, multi-execution). Plan 
 - `scripts/release.sh [--skip-notarize]` : build Release Developer ID, notarisation, DMG, appcast (`docs/RELEASE.md`).
 - `scripts/publish.sh [--dry-run]` : met la release de `dist/` en ligne (DMG + appcast) sur escale-ssh.vercel.app, verifie en ligne.
 
+## Localisation
+Langue de developpement : francais ; anglais en plus, l'app suit la langue du systeme. Catalogue unique `Escale/Resources/Localizable.xcstrings`,
+cles = chaines francaises telles qu'ecrites dans le code (litteraux SwiftUI `Text`/`Button`/`Label`/`.help`... deja localisables). Une chaine
+non litterale (type `String`, message d'erreur, `NSAlert`) passe par `String(localized: "...")`. Nouvelle chaine : l'ajouter au catalogue
+avec sa traduction `en` (Xcode l'y fait apparaitre a la compilation). Ne jamais localiser les commandes, chemins ni valeurs de protocole.
+
 ## Invariants
 1. Aucun type SwiftTerm hors de `Escale/Terminal/` : tout passe par `TerminalEngine`.
 2. Tout client ssh secondaire passe `-o ControlMaster=no -o ProxyCommand=/usr/bin/false`
