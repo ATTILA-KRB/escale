@@ -19,7 +19,7 @@
 Escale is a session manager for people who live on remote machines. It drives your system's OpenSSH
 (`/usr/bin/ssh`) through a single `ControlMaster` connection per host, so your `~/.ssh/config`, `ProxyJump`, SSH agents
 and FIDO keys work as they are. The layout will feel familiar if you come from MobaXterm or Termius; the interface
-is native SwiftUI/AppKit. **The interface is currently in French only** (screenshots below included); an English UI is a welcome contribution.
+is native SwiftUI/AppKit. The interface is available in **English and French** and follows the system language (screenshots below may still show the French UI).
 No account, no subscription, no telemetry: apart from your own connections, Escale only contacts its update feed.
 
 ## Features
