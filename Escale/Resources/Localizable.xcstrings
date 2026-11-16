@@ -1,0 +1,171 @@
+{
+  "sourceLanguage" : "fr",
+  "strings" : {
+    "Annuler" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        }
+      }
+    },
+    "Cible non reconnue. Format attendu : utilisateur@hôte:port (utilisateur et port facultatifs)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unrecognized target. Expected format: user@host:port (user and port are optional)."
+          }
+        }
+      }
+    },
+    "Connecter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect"
+          }
+        }
+      }
+    },
+    "Connexion rapide" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Connect"
+          }
+        }
+      }
+    },
+    "Effacer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        }
+      }
+    },
+    "Le dossier « %@ » sera supprimé ; les hôtes qu'il contient remontent au niveau supérieur." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The folder “%@” will be deleted; the hosts it contains move up one level."
+          }
+        }
+      }
+    },
+    "Les sessions que vous ouvrez apparaîtront ici." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sessions you open will appear here."
+          }
+        }
+      }
+    },
+    "Modifier…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit…"
+          }
+        }
+      }
+    },
+    "Nouvel onglet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Tab"
+          }
+        }
+      }
+    },
+    "Ouvre une session SSH et l'enregistre dans la bibliothèque. ⇧⌘K depuis n'importe où." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens an SSH session and saves it to the library. ⇧⌘K from anywhere."
+          }
+        }
+      }
+    },
+    "Sessions SSH, fichiers distants, tunnels et multi-exécution" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SSH sessions, remote files, tunnels and multi-exec"
+          }
+        }
+      }
+    },
+    "Sessions récentes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recent Sessions"
+          }
+        }
+      }
+    },
+    "Supprimer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        }
+      }
+    },
+    "utilisateur@hôte:port" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "user@host:port"
+          }
+        }
+      }
+    },
+    "« %@ » sera retiré de la bibliothèque et ses onglets ouverts seront fermés." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” will be removed from the library and its open tabs will be closed."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
