@@ -55,13 +55,13 @@ final class Pane: Identifiable {
     var bannerMessage: String? {
         switch status {
         case .running: return nil
-        case .connecting: return "Connexion à \(baseTitle)…"
-        case .failed(let m): return "Échec de la connexion : \(m)"
+        case .connecting: return String(localized: "Connexion à \(baseTitle)…")
+        case .failed(let m): return String(localized: "Échec de la connexion : \(m)")
         case .ended: return session.statusText
         case .reconnecting:
             if case .reconnecting(let attempt, let retryIn)? = link?.state {
                 if let s = retryIn { return "Connexion perdue — nouvelle tentative dans \(s) s" }
-                return "Connexion perdue — reconnexion en cours (tentative \(attempt))…"
+                return String(localized: "Connexion perdue — reconnexion en cours (tentative \(attempt))…")
             }
             return "Connexion perdue — reconnexion…"
         }

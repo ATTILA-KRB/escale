@@ -63,7 +63,7 @@ final class SSHLink {
         if let e = error as? SSHTransportError {
             switch e {
             case .masterFailed(let m), .sessionRefused(let m), .subsystemUnavailable(let m), .forwardRefused(let m): return m
-            case .notConnected: return "connexion non établie"
+            case .notConnected: return String(localized: "connexion non établie")
             }
         }
         return error.localizedDescription
@@ -73,17 +73,17 @@ final class SSHLink {
     static func describe(_ error: SSHAuthenticationError, host: String?, knownHostsPath: String?) -> String {
         switch error {
         case .wrongSecret:
-            return "Secret refusé par le serveur (mot de passe, phrase de passe ou code incorrect)."
+            return String(localized: "Secret refusé par le serveur (mot de passe, phrase de passe ou code incorrect).")
         case .cancelled:
-            return "Authentification annulée."
+            return String(localized: "Authentification annulée.")
         case .hostKeyRejected:
-            return "Clé d'hôte non approuvée : connexion annulée."
+            return String(localized: "Clé d'hôte non approuvée : connexion annulée.")
         case .timedOut:
-            return "Délai dépassé : aucune réponse à l'invite d'authentification."
+            return String(localized: "Délai dépassé : aucune réponse à l'invite d'authentification.")
         case .hostKeyChanged:
-            let h = host.map { " de « \($0) »" } ?? ""
-            let f = knownHostsPath.map { " Fichier known_hosts concerné : \($0)." } ?? ""
-            return "La clé d'hôte\(h) a changé : connexion refusée par sécurité (serveur remplacé ou connexion interceptée).\(f)"
+            let h = host.map { String(localized: " de « \($0) »") } ?? ""
+            let f = knownHostsPath.map { String(localized: " Fichier known_hosts concerné : \($0).") } ?? ""
+            return String(localized: "La clé d'hôte\(h) a changé : connexion refusée par sécurité (serveur remplacé ou connexion interceptée).\(f)")
         }
     }
 
@@ -127,7 +127,7 @@ final class SSHLink {
         if case .connected = state { return }
         if reconnectTask != nil {
             if await waitReconnect() { return }
-            throw SSHTransportError.masterFailed(lastError ?? "reconnexion abandonnée")
+            throw SSHTransportError.masterFailed(lastError ?? String(localized: "reconnexion abandonnée"))
         }
         if let t = connectTask { return try await t.value }
         state = .connecting

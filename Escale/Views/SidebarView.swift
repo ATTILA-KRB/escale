@@ -34,7 +34,7 @@ private struct SidebarTabBar: View {
                     VStack(spacing: 2) {
                         Image(systemName: tab.symbolName).symbolVariant(active ? .fill : .none)
                             .font(.system(size: 14)).frame(height: 16)
-                        Text(tab.title).font(.system(size: 10, weight: active ? .semibold : .regular)).lineLimit(1)
+                        Text(LocalizedStringKey(tab.title)).font(.system(size: 10, weight: active ? .semibold : .regular)).lineLimit(1)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 5)
@@ -43,8 +43,8 @@ private struct SidebarTabBar: View {
                     .contentShape(RoundedRectangle(cornerRadius: 6))
                 }
                 .buttonStyle(.plain)
-                .help(tab.title)
-                .accessibilityLabel(tab.title)
+                .help(LocalizedStringKey(tab.title))
+                .accessibilityLabel(LocalizedStringKey(tab.title))
                 .accessibilityAddTraits(active ? [.isSelected] : [])
                 .accessibilityIdentifier("sidebar.tab.\(tab.rawValue)")
             }
@@ -302,14 +302,14 @@ struct ConnectionDot: View {
 
     static func label(_ s: SSHLink.State) -> String {
         switch s {
-        case .disconnected: "déconnecté"
-        case .connecting: "connexion en cours"
-        case .connected: "connecté"
-        case .failed(let m): "échec : \(m)"
-        case .reconnecting: "reconnexion en cours"
+        case .disconnected: String(localized: "déconnecté")
+        case .connecting: String(localized: "connexion en cours")
+        case .connected: String(localized: "connecté")
+        case .failed(let m): String(localized: "échec : \(m)")
+        case .reconnecting: String(localized: "reconnexion en cours")
         case .authRequired: "authentification requise"
-        case .cancelled: "authentification annulée"
-        case .hostKeyChanged: "clé d'hôte modifiée : connexion refusée"
+        case .cancelled: String(localized: "authentification annulée")
+        case .hostKeyChanged: String(localized: "clé d'hôte modifiée : connexion refusée")
         }
     }
 

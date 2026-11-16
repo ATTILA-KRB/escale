@@ -102,7 +102,7 @@ struct SessionImportSheet: View {
         var parts = [(s.user.map { "\($0)@" } ?? "") + s.host + (s.port.map { ":\($0)" } ?? "")]
         if s.connectionProtocol != .ssh { parts.insert(s.connectionProtocol.displayName, at: 0) }
         if let serial = s.serial {
-            parts[parts.count - 1] = serial.devicePath.isEmpty ? "port à choisir" : serial.devicePath
+            parts[parts.count - 1] = serial.devicePath.isEmpty ? String(localized: "port à choisir") : serial.devicePath
             parts.append("\(serial.baudRate) bauds")
         }
         if !s.folderPath.isEmpty { parts.append("Dossier : " + s.folderPath.joined(separator: " / ")) }
