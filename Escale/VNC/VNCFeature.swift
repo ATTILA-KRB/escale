@@ -139,8 +139,8 @@ struct VNCEditorSection: View {
             }
             Toggle("Lecture seule", isOn: $settings.viewOnly)
             Toggle("Session partagée (ne pas déconnecter les autres clients)", isOn: $settings.shared)
-            Text("Le mot de passe est demandé à la connexion ; il peut être mémorisé dans le Trousseau après une connexion réussie. "
-                 + "VNC n'est pas chiffré : préférez un tunnel SSH hors réseau de confiance.")
+            Text(String(localized: "Le mot de passe est demandé à la connexion ; il peut être mémorisé dans le Trousseau après une connexion réussie. ")
+                 + String(localized: "VNC n'est pas chiffré : préférez un tunnel SSH hors réseau de confiance."))
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

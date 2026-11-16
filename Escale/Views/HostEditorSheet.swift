@@ -8,39 +8,39 @@ enum HostFormValidation {
 
     static func host(_ s: String) -> String? {
         let t = s.trimmingCharacters(in: .whitespaces)
-        if t.isEmpty { return "L'hôte est obligatoire." }
-        if isSuspicious(t) { return "L'hôte ne peut pas commencer par « - »." }
-        if t.contains(where: \.isWhitespace) { return "L'hôte ne peut pas contenir d'espace." }
+        if t.isEmpty { return String(localized: "L'hôte est obligatoire.") }
+        if isSuspicious(t) { return String(localized: "L'hôte ne peut pas commencer par « - ».") }
+        if t.contains(where: \.isWhitespace) { return String(localized: "L'hôte ne peut pas contenir d'espace.") }
         return nil
     }
     static func port(_ s: String) -> String? {
         let t = s.trimmingCharacters(in: .whitespaces)
         if t.isEmpty { return nil }
-        guard let p = Int(t), (1...65535).contains(p) else { return "Le port doit être un nombre entre 1 et 65535." }
+        guard let p = Int(t), (1...65535).contains(p) else { return String(localized: "Le port doit être un nombre entre 1 et 65535.") }
         return nil
     }
     static func user(_ s: String) -> String? {
         let t = s.trimmingCharacters(in: .whitespaces)
         if t.isEmpty { return nil }
-        if isSuspicious(t) { return "L'utilisateur ne peut pas commencer par « - »." }
+        if isSuspicious(t) { return String(localized: "L'utilisateur ne peut pas commencer par « - ».") }
         if t.contains(where: \.isWhitespace) || t.contains("@") { return "Utilisateur invalide." }
         return nil
     }
     static func keyPath(_ s: String) -> String? {
         let t = s.trimmingCharacters(in: .whitespaces)
-        if t.isEmpty { return "Choisissez un fichier de clé." }
-        if isSuspicious(t) { return "Le chemin ne peut pas commencer par « - »." }
+        if t.isEmpty { return String(localized: "Choisissez un fichier de clé.") }
+        if isSuspicious(t) { return String(localized: "Le chemin ne peut pas commencer par « - ».") }
         return nil
     }
     static func jumpHosts(_ s: String) -> String? {
         for j in split(s) {
-            if isSuspicious(j) { return "Un bastion ne peut pas commencer par « - »." }
-            if j.contains(where: \.isWhitespace) { return "Bastions : séparez-les par des virgules, sans espace interne." }
+            if isSuspicious(j) { return String(localized: "Un bastion ne peut pas commencer par « - ».") }
+            if j.contains(where: \.isWhitespace) { return String(localized: "Bastions : séparez-les par des virgules, sans espace interne.") }
         }
         return nil
     }
     static func name(_ s: String) -> String? {
-        isSuspicious(s.trimmingCharacters(in: .whitespaces)) ? "Le nom ne peut pas commencer par « - »." : nil
+        isSuspicious(s.trimmingCharacters(in: .whitespaces)) ? String(localized: "Le nom ne peut pas commencer par « - ».") : nil
     }
     static func split(_ s: String) -> [String] {
         s.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
@@ -202,7 +202,7 @@ struct HostEditorSheet: View {
     private func forgetSecret() {
         let store = model.connections.secretStore, account = account
         Task {
-            do { try await store.removeSecret(for: account); hasStoredSecret = false; secretMessage = "Mot de passe oublié." }
+            do { try await store.removeSecret(for: account); hasStoredSecret = false; secretMessage = String(localized: "Mot de passe oublié.") }
             catch { secretMessage = "Suppression impossible : \(error)" }
         }
     }
@@ -214,8 +214,8 @@ struct HostEditorSheet: View {
         panel.allowsMultipleSelection = false
         panel.showsHiddenFiles = true
         panel.directoryURL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".ssh")
-        panel.prompt = "Choisir"
-        panel.message = "Choisissez le fichier de clé privée (il n'est jamais copié ni modifié)."
+        panel.prompt = String(localized: "Choisir")
+        panel.message = String(localized: "Choisissez le fichier de clé privée (il n'est jamais copié ni modifié).")
         if panel.runModal() == .OK, let url = panel.url { form.keyPath = url.path }
     }
 

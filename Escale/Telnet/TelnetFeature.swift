@@ -82,10 +82,10 @@ enum TelnetFeatureError: Error, CustomStringConvertible {
         switch self {
         case .unavailable: "Telnet : module indisponible."
         case .invalid(let m): m
-        case .viaHostMissing: "L'hôte SSH intermédiaire n'existe plus : choisissez-en un autre dans l'éditeur."
-        case .noLocalPort: "Aucun port local libre pour le tunnel."
-        case .tunnel(let m): "Tunnel vers l'hôte Telnet impossible : \(m)"
-        case .viaSSH(let m): "Connexion à l'hôte SSH intermédiaire impossible : \(m)"
+        case .viaHostMissing: String(localized: "L'hôte SSH intermédiaire n'existe plus : choisissez-en un autre dans l'éditeur.")
+        case .noLocalPort: String(localized: "Aucun port local libre pour le tunnel.")
+        case .tunnel(let m): String(localized: "Tunnel vers l'hôte Telnet impossible : \(m)")
+        case .viaSSH(let m): String(localized: "Connexion à l'hôte SSH intermédiaire impossible : \(m)")
         }
     }
 }

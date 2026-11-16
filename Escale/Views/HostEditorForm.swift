@@ -14,8 +14,8 @@ enum HostEditorTab: Hashable, CaseIterable {
 
     func title(for p: ConnectionProtocol) -> String {
         switch self {
-        case .basic: "Basique"
-        case .advanced: "Avancé"
+        case .basic: String(localized: "Basique")
+        case .advanced: String(localized: "Avancé")
         case .terminal: "Terminal"
         case .network: "Réseau"
         case .protocolSettings: HostEditorBanner.shortName(p)

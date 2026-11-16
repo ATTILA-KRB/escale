@@ -17,19 +17,19 @@ enum SessionImportKind: String, CaseIterable, Sendable {
 
     var menuTitle: String {
         switch self {
-        case .mobaXterm: "Depuis MobaXterm…"
-        case .putty: "Depuis PuTTY (.reg)…"
-        case .termius: "Depuis Termius (CSV)…"
-        case .csv: "Depuis un CSV…"
+        case .mobaXterm: String(localized: "Depuis MobaXterm…")
+        case .putty: String(localized: "Depuis PuTTY (.reg)…")
+        case .termius: String(localized: "Depuis Termius (CSV)…")
+        case .csv: String(localized: "Depuis un CSV…")
         }
     }
 
     var title: String {
         switch self {
-        case .mobaXterm: "Importer depuis MobaXterm"
-        case .putty: "Importer depuis PuTTY"
-        case .termius: "Importer depuis Termius"
-        case .csv: "Importer depuis un CSV"
+        case .mobaXterm: String(localized: "Importer depuis MobaXterm")
+        case .putty: String(localized: "Importer depuis PuTTY")
+        case .termius: String(localized: "Importer depuis Termius")
+        case .csv: String(localized: "Importer depuis un CSV")
         }
     }
 
@@ -44,10 +44,10 @@ enum SessionImportKind: String, CaseIterable, Sendable {
 
     var prompt: String {
         switch self {
-        case .mobaXterm: "Choisissez un export MobaXterm (.mxtsessions) ou MobaXterm.ini."
-        case .putty: "Choisissez l'export .reg de HKCU\\Software\\SimonTatham\\PuTTY\\Sessions."
-        case .termius: "Choisissez un CSV au format du modèle Termius (Groups, Label, Tags, Hostname/IP, Protocol, Port, Username, Password). Termius n'a pas d'export natif : modèle rempli ou exporteur tiers."
-        case .csv: "Choisissez un CSV (colonnes : name, host, port, user, folder, tags)."
+        case .mobaXterm: String(localized: "Choisissez un export MobaXterm (.mxtsessions) ou MobaXterm.ini.")
+        case .putty: String(localized: "Choisissez l'export .reg de HKCU\\Software\\SimonTatham\\PuTTY\\Sessions.")
+        case .termius: String(localized: "Choisissez un CSV au format du modèle Termius (Groups, Label, Tags, Hostname/IP, Protocol, Port, Username, Password). Termius n'a pas d'export natif : modèle rempli ou exporteur tiers.")
+        case .csv: String(localized: "Choisissez un CSV (colonnes : name, host, port, user, folder, tags).")
         }
     }
 }
@@ -92,7 +92,7 @@ final class SessionImportModel: Identifiable {
             selected = Set(r.sessions.filter { isImportable($0) && seen.insert($0.identityKey).inserted }.map(\.id))
         } catch {
             result = nil
-            self.error = "Lecture de « \(source.path) » impossible : \(error.localizedDescription)"
+            self.error = String(localized: "Lecture de « \(source.path) » impossible : \(error.localizedDescription)")
         }
     }
 

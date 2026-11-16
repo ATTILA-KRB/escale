@@ -34,8 +34,8 @@ final class TerminalSession: TerminalEngineDelegate {
     var statusText: String? {
         guard case .finished(let st) = state else { return nil }
         switch st {
-        case .exited(let c): return "Session terminée (code \(c))"
-        case .signaled(let s): return "Session terminée (signal \(s))"
+        case .exited(let c): return String(localized: "Session terminée (code \(c))")
+        case .signaled(let s): return String(localized: "Session terminée (signal \(s))")
         }
     }
 

@@ -85,8 +85,8 @@ final class RDPFeature: AppFeature {
     /// Ouverture demandée par l'utilisateur : toute erreur devient une alerte.
     func openFromUI(_ host: HostProfile) async {
         do { _ = try await open(host) } catch RDPFeatureError.clientMissing {
-            notice = Notice(kind: .clientMissing, title: "Client Bureau à distance introuvable",
-                            message: "Escale lance le client Bureau à distance de Microsoft (« Windows App »), qui n'est pas installé. Vous pouvez l'installer depuis l'App Store.")
+            notice = Notice(kind: .clientMissing, title: String(localized: "Client Bureau à distance introuvable"),
+                            message: String(localized: "Escale lance le client Bureau à distance de Microsoft (« Windows App »), qui n'est pas installé. Vous pouvez l'installer depuis l'App Store."))
         } catch is CancellationError {
         } catch {
             notice = Notice(kind: .error, title: "Impossible d'ouvrir « \(host.name) »", message: "\(error)")
@@ -202,7 +202,7 @@ final class RDPFeature: AppFeature {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = RDPFile.fileName(for: host)
         if let t = UTType(filenameExtension: "rdp") { panel.allowedContentTypes = [t] }
-        panel.message = "Fichier .rdp sans mot de passe, vers l'adresse enregistrée de l'hôte."
+        panel.message = String(localized: "Fichier .rdp sans mot de passe, vers l'adresse enregistrée de l'hôte.")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do { try export(host, to: url) } catch {
             notice = Notice(kind: .error, title: "Export impossible", message: "\(error)")
@@ -229,10 +229,10 @@ final class RDPFeature: AppFeature {
                 Task { @MainActor in
                     do {
                         let r = try self.importFile(url)
-                        self.notice = Notice(kind: .info, title: "Hôte « \(r.host.name) » importé",
-                                             message: r.warnings.isEmpty ? "Ajouté à la bibliothèque." : r.warnings.joined(separator: "\n"))
+                        self.notice = Notice(kind: .info, title: String(localized: "Hôte « \(r.host.name) » importé"),
+                                             message: r.warnings.isEmpty ? String(localized: "Ajouté à la bibliothèque.") : r.warnings.joined(separator: "\n"))
                     } catch {
-                        self.notice = Notice(kind: .error, title: "Import du fichier .rdp impossible", message: "\(error)")
+                        self.notice = Notice(kind: .error, title: String(localized: "Import du fichier .rdp impossible"), message: "\(error)")
                     }
                 }
             }
@@ -253,14 +253,14 @@ enum RDPFeatureError: Error, CustomStringConvertible {
 
     var description: String {
         switch self {
-        case .unavailable: "Bureau à distance : module indisponible."
-        case .clientMissing: "Le client Bureau à distance de Microsoft (« Windows App ») n'est pas installé."
+        case .unavailable: String(localized: "Bureau à distance : module indisponible.")
+        case .clientMissing: String(localized: "Le client Bureau à distance de Microsoft (« Windows App ») n'est pas installé.")
         case .invalid(let m): m
-        case .alreadyOpening: "Ouverture déjà en cours pour cet hôte."
-        case .viaHostMissing: "L'hôte SSH intermédiaire n'existe plus : choisissez-en un autre dans l'éditeur."
-        case .noLocalPort: "Aucun port local libre pour le tunnel."
-        case .tunnel(let m): "Tunnel vers l'hôte RDP impossible : \(m)"
-        case .viaSSH(let m): "Connexion à l'hôte SSH intermédiaire impossible : \(m)"
+        case .alreadyOpening: String(localized: "Ouverture déjà en cours pour cet hôte.")
+        case .viaHostMissing: String(localized: "L'hôte SSH intermédiaire n'existe plus : choisissez-en un autre dans l'éditeur.")
+        case .noLocalPort: String(localized: "Aucun port local libre pour le tunnel.")
+        case .tunnel(let m): String(localized: "Tunnel vers l'hôte RDP impossible : \(m)")
+        case .viaSSH(let m): String(localized: "Connexion à l'hôte SSH intermédiaire impossible : \(m)")
         }
     }
 }

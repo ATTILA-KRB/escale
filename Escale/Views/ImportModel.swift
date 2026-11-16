@@ -37,7 +37,7 @@ final class ImportModel: Identifiable {
         error = nil
         guard FileManager.default.fileExists(atPath: source.path) else {
             result = nil
-            error = "Aucun fichier de configuration SSH à « \(source.path) »."
+            error = String(localized: "Aucun fichier de configuration SSH à « \(source.path) ».")
             return
         }
         do {
@@ -49,7 +49,7 @@ final class ImportModel: Identifiable {
             selected = fresh
         } catch {
             result = nil
-            self.error = "Lecture de « \(source.path) » impossible : \(error.localizedDescription)"
+            self.error = String(localized: "Lecture de « \(source.path) » impossible : \(error.localizedDescription)")
         }
     }
 
