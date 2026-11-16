@@ -126,7 +126,7 @@ final class EscaleTerminalView: TerminalView {
     static let historyRows = 200
     static let notificationInterval: TimeInterval = 0.5
 
-    var terminalAccessibilityLabel = "Terminal"
+    var terminalAccessibilityLabel = String(localized: "Terminal")
     /// Notifications VoiceOver même sans VoiceOver actif (recette).
     var forceAccessibilityNotifications = false
     private(set) var accessibilityNotificationCount = 0

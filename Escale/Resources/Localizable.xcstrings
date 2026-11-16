@@ -67,6 +67,17 @@
         }
       }
     },
+    "%lld actifs" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld active"
+          }
+        }
+      }
+    },
     "%lld bauds" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -144,6 +155,17 @@
         }
       }
     },
+    "%lld étapes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld steps"
+          }
+        }
+      }
+    },
     "%lld/%lld terminés" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -173,6 +195,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "0: the server picks a free port (shown in the manager)."
+          }
+        }
+      }
+    },
+    "1 actif" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 active"
           }
         }
       }
@@ -342,6 +375,28 @@
         }
       }
     },
+    "Afficher la barre latérale" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Sidebar"
+          }
+        }
+      }
+    },
+    "Afficher la barre latérale (⌃⌘S)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Sidebar (⌃⌘S)"
+          }
+        }
+      }
+    },
     "Afficher le monitoring distant" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -485,6 +540,28 @@
         }
       }
     },
+    "Application" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Application"
+          }
+        }
+      }
+    },
+    "Application X11…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X11 Application…"
+          }
+        }
+      }
+    },
     "Arrêter" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -502,7 +579,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stop recording"
+            "value" : "Stop Recording"
           }
         }
       }
@@ -525,6 +602,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stop broadcasting input"
+          }
+        }
+      }
+    },
+    "Arrêter la diffusion de la saisie (⌥⌘I)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop broadcasting input (⌥⌘I)"
           }
         }
       }
@@ -822,6 +910,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Status Bar"
+          }
+        }
+      }
+    },
+    "Barre latérale" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sidebar"
           }
         }
       }
@@ -1266,6 +1365,17 @@
         }
       }
     },
+    "Coloration de la sortie" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Output Coloring"
+          }
+        }
+      }
+    },
     "Commande" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1376,6 +1486,17 @@
         }
       }
     },
+    "Connexion" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection"
+          }
+        }
+      }
+    },
     "Connexion SSH à %@…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1442,6 +1563,17 @@
         }
       }
     },
+    "Connexion rapide (⇧⌘K)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Connect (⇧⌘K)"
+          }
+        }
+      }
+    },
     "Connexion rapide ou recherche" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1449,6 +1581,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quick connect or search"
+          }
+        }
+      }
+    },
+    "Connexion rapide…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Connect…"
           }
         }
       }
@@ -1684,6 +1827,17 @@
         }
       }
     },
+    "Depuis ~/.ssh/config…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From ~/.ssh/config…"
+          }
+        }
+      }
+    },
     "Dernières commandes groupées (jamais celles qui contiennent un mot de passe)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1735,6 +1889,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Broadcast Input"
+          }
+        }
+      }
+    },
+    "Diffuser la saisie dans plusieurs panneaux (⌥⌘I)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Broadcast input to several panes (⌥⌘I)"
           }
         }
       }
@@ -2207,7 +2372,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Record a macro"
+            "value" : "Record a Macro"
           }
         }
       }
@@ -2487,6 +2652,17 @@
         }
       }
     },
+    "Exécuter une commande…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run a Command…"
+          }
+        }
+      }
+    },
     "Exécution non interactive (sans terminal) sur la connexion de chaque hôte ; les hôtes non connectés sont connectés d'abord." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2626,6 +2802,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Files"
+          }
+        }
+      }
+    },
+    "Fichiers distants (SFTP)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote Files (SFTP)"
+          }
+        }
+      }
+    },
+    "Fichiers distants, SFTP (⌥⌘F)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote files, SFTP (⌥⌘F)"
           }
         }
       }
@@ -2894,6 +3092,17 @@
         }
       }
     },
+    "Importer des sessions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import Sessions"
+          }
+        }
+      }
+    },
     "Information demandée par le serveur" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2938,6 +3147,17 @@
         }
       }
     },
+    "Jouer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play"
+          }
+        }
+      }
+    },
     "Jouer dans tous les panneaux de l'onglet" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2945,6 +3165,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Play in all panes of the tab"
+          }
+        }
+      }
+    },
+    "Jouer « %@ » dans le panneau actif" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play “%@” in the active pane"
           }
         }
       }
@@ -3165,6 +3396,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Launch"
+          }
+        }
+      }
+    },
+    "Lancer une application X11 sur l'hôte de l'onglet actif" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Launch an X11 application on the active tab's host"
           }
         }
       }
@@ -3532,6 +3774,17 @@
         }
       }
     },
+    "Macros du panneau actif" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macros for the active pane"
+          }
+        }
+      }
+    },
     "Masquer" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3539,6 +3792,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hide"
+          }
+        }
+      }
+    },
+    "Masquer la barre latérale" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Sidebar"
+          }
+        }
+      }
+    },
+    "Masquer la barre latérale (⌃⌘S)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Sidebar (⌃⌘S)"
           }
         }
       }
@@ -3583,6 +3858,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hardware (RTS/CTS)"
+          }
+        }
+      }
+    },
+    "Mode compact" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compact Mode"
           }
         }
       }
@@ -3748,6 +4034,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Multi-exec"
+          }
+        }
+      }
+    },
+    "MultiExec" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MultiExec"
           }
         }
       }
@@ -3983,6 +4280,17 @@
         }
       }
     },
+    "Nouvelle session (⌘N)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Session (⌘N)"
+          }
+        }
+      }
+    },
     "Onglet" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3990,6 +4298,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tab"
+          }
+        }
+      }
+    },
+    "Onglet %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tab %lld"
+          }
+        }
+      }
+    },
+    "Onglet précédent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous Tab"
+          }
+        }
+      }
+    },
+    "Onglet suivant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next Tab"
+          }
+        }
+      }
+    },
+    "Onglets" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tabs"
           }
         }
       }
@@ -4188,6 +4540,72 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Even"
+          }
+        }
+      }
+    },
+    "Panneau au-dessus" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pane Above"
+          }
+        }
+      }
+    },
+    "Panneau en dessous" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pane Below"
+          }
+        }
+      }
+    },
+    "Panneau précédent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous Pane"
+          }
+        }
+      }
+    },
+    "Panneau suivant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next Pane"
+          }
+        }
+      }
+    },
+    "Panneau à droite" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pane to the Right"
+          }
+        }
+      }
+    },
+    "Panneau à gauche" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pane to the Left"
           }
         }
       }
@@ -4445,6 +4863,17 @@
         }
       }
     },
+    "Rechercher les mises à jour…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for Updates…"
+          }
+        }
+      }
+    },
     "Reconnecter" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4588,6 +5017,17 @@
         }
       }
     },
+    "Réglage général (%@)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "General setting (%@)"
+          }
+        }
+      }
+    },
     "Réglages OpenSSH par défaut" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4617,6 +5057,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unexpected SFTP response: %@"
+          }
+        }
+      }
+    },
+    "Réseau" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Network"
           }
         }
       }
@@ -4672,6 +5123,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unable to save the library: %@"
+          }
+        }
+      }
+    },
+    "Scinder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Split"
+          }
+        }
+      }
+    },
+    "Scinder en bas" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Split Down"
+          }
+        }
+      }
+    },
+    "Scinder le panneau actif" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Split the active pane"
+          }
+        }
+      }
+    },
+    "Scinder à droite" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Split Right"
           }
         }
       }
@@ -4984,6 +5479,17 @@
         }
       }
     },
+    "Terminal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal"
+          }
+        }
+      }
+    },
     "Terminal local" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5024,6 +5530,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Text"
+          }
+        }
+      }
+    },
+    "Thème du terminal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal Theme"
           }
         }
       }
@@ -5178,6 +5695,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unable to open a tunnel to the Telnet host: %@"
+          }
+        }
+      }
+    },
+    "Tunnels SSH (⇧⌘T)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SSH Tunnels (⇧⌘T)"
+          }
+        }
+      }
+    },
+    "Tunnels SSH…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SSH Tunnels…"
           }
         }
       }
@@ -5402,6 +5941,17 @@
         }
       }
     },
+    "Volet %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Pane"
+          }
+        }
+      }
+    },
     "Voulez-vous les remplacer ?" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5442,6 +5992,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "application stopped"
+          }
+        }
+      }
+    },
+    "aucun terminal actif" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no active terminal"
           }
         }
       }
@@ -5622,6 +6183,17 @@
         }
       }
     },
+    "même frappe dans plusieurs panneaux" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "same keystrokes in several panes"
+          }
+        }
+      }
+    },
     "nom ou adresse IP" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5765,6 +6337,39 @@
         }
       }
     },
+    "sur %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "on %@"
+          }
+        }
+      }
+    },
+    "sur les hôtes connectés" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "on connected hosts"
+          }
+        }
+      }
+    },
+    "sélectionnez un onglet SSH" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "select an SSH tab"
+          }
+        }
+      }
+    },
     "terminé" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5805,6 +6410,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "user@host:port"
+          }
+        }
+      }
+    },
+    "volet Fichiers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Files pane"
           }
         }
       }
@@ -5959,6 +6575,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Overwrite Remote"
+          }
+        }
+      }
+    },
+    "Égaliser les panneaux" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Equalize Panes"
           }
         }
       }
