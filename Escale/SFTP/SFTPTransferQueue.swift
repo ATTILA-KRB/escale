@@ -39,9 +39,9 @@ final class SFTPTransfer: Identifiable {
     /// « repris à 42 % » (nil si la tentative est repartie de zéro).
     var resumeText: String? {
         guard resumedFrom > 0 else { return nil }
-        guard let t = total, t > 0 else { return "repris à \(SFTPFormat.size(resumedFrom))" }
+        guard let t = total, t > 0 else { return String(localized: "repris à \(SFTPFormat.size(resumedFrom))") }
         let pct = min(100, Int((Double(resumedFrom) / Double(t) * 100).rounded()))
-        return "repris à \(pct) %"
+        return String(localized: "repris à \(pct) %")
     }
 
     @ObservationIgnored fileprivate var task: Task<Void, Never>?
@@ -186,7 +186,7 @@ final class SFTPTransferQueue {
         let task: SFTPTransferTask = switch t.direction {
         case .download: client.startDownload(remotePath: t.remote, to: t.local, resume: resume, verification: .default)
         case .upload: client.startUpload(localURL: t.local, to: t.remote, resume: resume, verification: .default)
-        case .relay: throw SFTPError.localIO("relais traité à part")
+        case .relay: throw SFTPError.localIO(String(localized: "relais traité à part"))
         }
         let pump = Task { @MainActor [weak t] in for await s in task.progress { t?.update(s) } }
         defer { pump.cancel() }
@@ -222,7 +222,7 @@ final class SFTPTransferQueue {
                 offset = next
                 t.relayProgress(bytes: offset, total: total)
             }
-            if offset != total { throw SFTPError.localIO("fichier source modifié pendant la copie (\(offset) sur \(total) octets lus)") }
+            if offset != total { throw SFTPError.localIO(String(localized: "fichier source modifié pendant la copie (\(offset) sur \(total) octets lus)")) }
         } catch {
             // Un relais ne reprend pas : le fichier partiel ne sert à rien. Suppression hors de la tâche (déjà annulée
             // en cas d'annulation, ce qui couperait aussi la commande de nettoyage en mode shell).

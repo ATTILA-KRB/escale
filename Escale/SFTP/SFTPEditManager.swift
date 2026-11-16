@@ -70,10 +70,10 @@ final class SFTPEditManager {
     /// Demande quoi faire si le distant a changé depuis le téléchargement.
     @ObservationIgnored var resolveConflict: @MainActor (SFTPEdit) async -> SFTPConflictChoice = { edit in
         let alert = NSAlert()
-        alert.messageText = "« \(edit.name) » a changé sur le serveur"
-        alert.informativeText = "Le fichier distant a été modifié depuis son téléchargement. Écraser la version distante par votre version locale ?"
-        alert.addButton(withTitle: "Écraser le distant")
-        alert.addButton(withTitle: "Garder le distant")
+        alert.messageText = String(localized: "« \(edit.name) » a changé sur le serveur")
+        alert.informativeText = String(localized: "Le fichier distant a été modifié depuis son téléchargement. Écraser la version distante par votre version locale ?")
+        alert.addButton(withTitle: String(localized: "Écraser le distant"))
+        alert.addButton(withTitle: String(localized: "Garder le distant"))
         alert.alertStyle = .warning
         return alert.runModal() == .alertFirstButtonReturn ? .overwrite : .keepRemote
     }

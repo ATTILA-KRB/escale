@@ -23,6 +23,28 @@
         }
       }
     },
+    "%@ Reprise automatique à la reconnexion." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Automatic resume on reconnection."
+          }
+        }
+      }
+    },
+    "%@%@ sur %@ %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@%@ of %@ %@"
+          }
+        }
+      }
+    },
     "%lld bauds" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -78,6 +100,17 @@
         }
       }
     },
+    "%lld éléments existent déjà sur le serveur" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld items already exist on the server"
+          }
+        }
+      }
+    },
     "1 onglet" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -107,6 +140,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Home"
+          }
+        }
+      }
+    },
+    "Activer le suivi" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable tracking"
+          }
+        }
+      }
+    },
+    "Activer le suivi du dossier ?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable folder tracking?"
           }
         }
       }
@@ -151,6 +206,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Show remote monitoring"
+          }
+        }
+      }
+    },
+    "Afficher les fichiers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Files"
+          }
+        }
+      }
+    },
+    "Afficher les fichiers cachés" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show hidden files"
           }
         }
       }
@@ -210,6 +287,39 @@
         }
       }
     },
+    "Annulé" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelled"
+          }
+        }
+      }
+    },
+    "Annulé." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelled."
+          }
+        }
+      }
+    },
+    "Arrêté" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopped"
+          }
+        }
+      }
+    },
     "Aucun" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -239,6 +349,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No SSH configuration file at “%@”."
+          }
+        }
+      }
+    },
+    "Aucun hôte SSH" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No SSH host"
           }
         }
       }
@@ -474,6 +595,39 @@
         }
       }
     },
+    "Canal SFTP fermé (connexion perdue)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SFTP channel closed (connection lost)."
+          }
+        }
+      }
+    },
+    "Ce shell n'annonce pas son dossier." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This shell doesn't report its folder."
+          }
+        }
+      }
+    },
+    "Cette suppression est définitive : le contenu des dossiers est supprimé aussi." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This deletion is permanent: the contents of folders are deleted too."
+          }
+        }
+      }
+    },
     "Charge" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -492,6 +646,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "1-minute load average"
+          }
+        }
+      }
+    },
+    "Chemin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Path"
           }
         }
       }
@@ -716,6 +881,17 @@
         }
       }
     },
+    "Conflit : version distante conservée" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conflict: remote version kept"
+          }
+        }
+      }
+    },
     "Connecter" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -778,6 +954,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unable to connect"
+          }
+        }
+      }
+    },
+    "Connexion non établie." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection not established."
+          }
+        }
+      }
+    },
+    "Connexion perdue — le navigateur reprendra à la reconnexion." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection lost — the browser will resume on reconnection."
           }
         }
       }
@@ -903,6 +1101,17 @@
         }
       }
     },
+    "Copier le chemin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Path"
+          }
+        }
+      }
+    },
     "Créer" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -921,6 +1130,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ctrl-Alt-Del"
+          }
+        }
+      }
+    },
+    "Date" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date"
           }
         }
       }
@@ -1031,6 +1251,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Current folder reported by the shell"
+          }
+        }
+      }
+    },
+    "Dossier parent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parent folder"
+          }
+        }
+      }
+    },
+    "Dossier vide" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empty folder"
+          }
+        }
+      }
+    },
+    "Droits" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permissions"
           }
         }
       }
@@ -1189,6 +1442,17 @@
         }
       }
     },
+    "Effacer les terminés" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear Finished"
+          }
+        }
+      }
+    },
     "Empreinte" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1196,6 +1460,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fingerprint"
+          }
+        }
+      }
+    },
+    "En attente" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pending"
           }
         }
       }
@@ -1266,6 +1541,28 @@
         }
       }
     },
+    "Envoi…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uploading…"
+          }
+        }
+      }
+    },
+    "Envoyer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upload"
+          }
+        }
+      }
+    },
     "Envoyer BREAK" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1277,6 +1574,28 @@
         }
       }
     },
+    "Envoyer des fichiers…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upload Files…"
+          }
+        }
+      }
+    },
+    "Envoyer la fonction au shell" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send the function to the shell"
+          }
+        }
+      }
+    },
     "Envoyer le presse-papiers" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1284,6 +1603,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Send clipboard"
+          }
+        }
+      }
+    },
+    "Envoyé %lld fois" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uploaded %lld times"
           }
         }
       }
@@ -1306,6 +1636,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Escale opens this host with Microsoft's Remote Desktop client (“Windows App”). The username and password are requested by that client; Escale does not store them."
+          }
+        }
+      }
+    },
+    "Escale tape une fonction dans le shell distant (une fois, pour cette session) qui annonce le dossier courant à chaque invite (séquence OSC 7). Rien n'est écrit sur le serveur." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escale types a function into the remote shell (once, for this session) that reports the current folder at each prompt (OSC 7 sequence). Nothing is written to the server."
           }
         }
       }
@@ -1427,6 +1768,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Line ending on send"
+          }
+        }
+      }
+    },
+    "Garder le distant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep Remote"
           }
         }
       }
@@ -1640,6 +1992,17 @@
         }
       }
     },
+    "Introuvable sur le serveur." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not found on the server."
+          }
+        }
+      }
+    },
     "L'authenticité de cet hôte ne peut pas être vérifiée : sa clé n'est pas encore connue. Comparez l'empreinte avec celle de votre administrateur avant de faire confiance." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1838,6 +2201,17 @@
         }
       }
     },
+    "Le fichier distant a été modifié depuis son téléchargement. Écraser la version distante par votre version locale ?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The remote file was modified after you downloaded it. Overwrite the remote version with your local one?"
+          }
+        }
+      }
+    },
     "Le fichier est lu sans jamais être modifié. Les hôtes importés utilisent les réglages OpenSSH (ssh relit l'alias)." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1915,6 +2289,28 @@
         }
       }
     },
+    "Le serveur SFTP n'a pas répondu en %lld s." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The SFTP server did not respond within %lld s."
+          }
+        }
+      }
+    },
+    "Le serveur SFTP ne répond pas." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The SFTP server is not responding."
+          }
+        }
+      }
+    },
     "Le serveur a fermé la connexion." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1922,6 +2318,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The server closed the connection."
+          }
+        }
+      }
+    },
+    "Le serveur a refusé l'opération." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server refused the operation."
           }
         }
       }
@@ -2043,6 +2450,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hide remote monitoring of %@"
+          }
+        }
+      }
+    },
+    "Masquer les fichiers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Files"
           }
         }
       }
@@ -2245,6 +2663,17 @@
         }
       }
     },
+    "Nom du dossier" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder name"
+          }
+        }
+      }
+    },
     "Nom du port si vide" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2388,6 +2817,17 @@
         }
       }
     },
+    "Opération non supportée par le serveur." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Operation not supported by the server."
+          }
+        }
+      }
+    },
     "Oublier le mot de passe enregistré" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2406,6 +2846,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tools"
+          }
+        }
+      }
+    },
+    "Ouverture du canal SFTP…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opening SFTP channel…"
           }
         }
       }
@@ -2450,6 +2901,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Opens an SSH session and saves it to the library. ⇧⌘K from anywhere."
+          }
+        }
+      }
+    },
+    "Ouvrir" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open"
+          }
+        }
+      }
+    },
+    "Ouvrir avec l'éditeur" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open with Editor"
           }
         }
       }
@@ -2520,6 +2993,17 @@
         }
       }
     },
+    "Parcourir les fichiers (SFTP)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Browse Files (SFTP)"
+          }
+        }
+      }
+    },
     "Parité" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2575,6 +3059,17 @@
         }
       }
     },
+    "Permission refusée par le serveur." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission denied by the server."
+          }
+        }
+      }
+    },
     "Phrase de passe" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2626,6 +3121,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Processor (average since the previous sample)"
+          }
+        }
+      }
+    },
+    "Précédent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
           }
         }
       }
@@ -2707,6 +3213,17 @@
         }
       }
     },
+    "Remplacer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace"
+          }
+        }
+      }
+    },
     "Renommer" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2736,6 +3253,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rename…"
+          }
+        }
+      }
+    },
+    "Renvoyer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resend"
           }
         }
       }
@@ -2780,6 +3308,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Response"
+          }
+        }
+      }
+    },
+    "Réponse SFTP inattendue : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unexpected SFTP response: %@"
+          }
+        }
+      }
+    },
+    "SFTP indisponible" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SFTP unavailable"
           }
         }
       }
@@ -2846,6 +3396,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Shared session (don't disconnect other clients)"
+          }
+        }
+      }
+    },
+    "Session refusée : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session refused: %@"
           }
         }
       }
@@ -2938,6 +3499,39 @@
         }
       }
     },
+    "Sous-système SFTP indisponible : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SFTP subsystem unavailable: %@"
+          }
+        }
+      }
+    },
+    "Suivant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forward"
+          }
+        }
+      }
+    },
+    "Suivre le terminal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow terminal"
+          }
+        }
+      }
+    },
     "Supprimer" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2945,6 +3539,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Delete"
+          }
+        }
+      }
+    },
+    "Supprimer %lld éléments ?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete %lld items?"
           }
         }
       }
@@ -2982,6 +3587,39 @@
         }
       }
     },
+    "Surveillé — enregistrez pour envoyer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Watching — save to upload"
+          }
+        }
+      }
+    },
+    "Sélectionnez un onglet SSH, ou choisissez « Parcourir les fichiers (SFTP) » dans le menu d'un hôte." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select an SSH tab, or choose “Browse Files (SFTP)” from a host's menu."
+          }
+        }
+      }
+    },
+    "Taille" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Size"
+          }
+        }
+      }
+    },
     "Tapée dans le shell à chaque ouverture, puis le shell reste ouvert. Une seule ligne ; séparez les commandes par « ; »." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3015,6 +3653,17 @@
         }
       }
     },
+    "Terminer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish"
+          }
+        }
+      }
+    },
     "Touche Entrée" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3044,6 +3693,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deselect All"
+          }
+        }
+      }
+    },
+    "Transferts (%lld en cours)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transfers (%lld in progress)"
+          }
+        }
+      }
+    },
+    "Trier par" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sort by"
           }
         }
       }
@@ -3121,6 +3792,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Terminal type"
+          }
+        }
+      }
+    },
+    "Télécharger dans Téléchargements" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download to Downloads"
+          }
+        }
+      }
+    },
+    "Télécharger ici" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download Here"
+          }
+        }
+      }
+    },
+    "Télécharger vers…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download To…"
           }
         }
       }
@@ -3231,6 +3935,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "VNC is not encrypted: prefer an SSH tunnel outside a trusted network."
+          }
+        }
+      }
+    },
+    "Version SFTP %u non supportée." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SFTP version %u not supported."
+          }
+        }
+      }
+    },
+    "Voulez-vous les remplacer ?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Do you want to replace them?"
           }
         }
       }
@@ -3356,6 +4082,17 @@
         }
       }
     },
+    "fichier source modifié pendant la copie (%llu sur %llu octets lus)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "source file modified during the copy (%llu of %llu bytes read)"
+          }
+        }
+      }
+    },
     "inconnu" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3455,6 +4192,39 @@
         }
       }
     },
+    "relais traité à part" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "relay handled separately"
+          }
+        }
+      }
+    },
+    "repris à %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "resumed at %@"
+          }
+        }
+      }
+    },
+    "repris à %lld %%" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "resumed at %lld%%"
+          }
+        }
+      }
+    },
     "terminé" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3462,6 +4232,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ended"
+          }
+        }
+      }
+    },
+    "un dossier ne se glisse pas vers le Finder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "a folder can't be dragged to the Finder"
           }
         }
       }
@@ -3484,6 +4265,72 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "user@host:port"
+          }
+        }
+      }
+    },
+    "« %@ » a changé sur le serveur" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” changed on the server"
+          }
+        }
+      }
+    },
+    "« %@ » existe déjà dans le dossier de destination." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” already exists in the destination folder."
+          }
+        }
+      }
+    },
+    "« %@ » existe déjà sur le serveur" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” already exists on the server"
+          }
+        }
+      }
+    },
+    "« %@ » existe déjà." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” already exists."
+          }
+        }
+      }
+    },
+    "« %@ » n'est pas un dossier." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is not a folder."
+          }
+        }
+      }
+    },
+    "« %@ » ne peut pas être placé dans lui-même." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” can't be moved into itself."
           }
         }
       }
@@ -3528,6 +4375,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Local echo"
+          }
+        }
+      }
+    },
+    "Écraser le distant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overwrite Remote"
           }
         }
       }

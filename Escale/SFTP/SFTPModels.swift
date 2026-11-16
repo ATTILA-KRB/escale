@@ -69,7 +69,7 @@ enum SFTPPath {
 /// Colonne de tri du navigateur.
 enum SFTPSortKey: String, CaseIterable, Sendable {
     case name, size, date
-    var label: String { switch self { case .name: "Nom"; case .size: "Taille"; case .date: "Date" } }
+    var label: String { switch self { case .name: "Nom"; case .size: String(localized: "Taille"); case .date: String(localized: "Date") } }
 }
 
 /// Tri de la liste : dossiers d'abord, puis la colonne choisie (le nom départage les égalités).
@@ -127,27 +127,27 @@ enum SFTPMessages {
             switch e {
             case .status(let code, let message):
                 switch code {
-                case .noSuchFile: return "Introuvable sur le serveur."
-                case .permissionDenied: return "Permission refusée par le serveur."
-                case .opUnsupported: return "Opération non supportée par le serveur."
-                case .failure: return message.isEmpty ? "Le serveur a refusé l'opération." : message
+                case .noSuchFile: return String(localized: "Introuvable sur le serveur.")
+                case .permissionDenied: return String(localized: "Permission refusée par le serveur.")
+                case .opUnsupported: return String(localized: "Opération non supportée par le serveur.")
+                case .failure: return message.isEmpty ? String(localized: "Le serveur a refusé l'opération.") : message
                 default: return message.isEmpty ? "Erreur SFTP (\(code))." : message
                 }
-            case .protocolViolation(let m): return "Réponse SFTP inattendue : \(m)"
-            case .channelClosed: return "Canal SFTP fermé (connexion perdue)."
-            case .negotiationTimeout: return "Le serveur SFTP ne répond pas."
-            case .unsupportedVersion(let v): return "Version SFTP \(v) non supportée."
+            case .protocolViolation(let m): return String(localized: "Réponse SFTP inattendue : \(m)")
+            case .channelClosed: return String(localized: "Canal SFTP fermé (connexion perdue).")
+            case .negotiationTimeout: return String(localized: "Le serveur SFTP ne répond pas.")
+            case .unsupportedVersion(let v): return String(localized: "Version SFTP \(v) non supportée.")
             case .localIO(let m): return m
             case .invalidResumeOffset(let m): return m
-            case .cancelled: return "Annulé."
-            case .requestTimeout(let s): return "Le serveur SFTP n'a pas répondu en \(Int(s.rounded())) s."
+            case .cancelled: return String(localized: "Annulé.")
+            case .requestTimeout(let s): return String(localized: "Le serveur SFTP n'a pas répondu en \(Int(s.rounded())) s.")
             }
         }
         if let t = error as? SSHTransportError {
             switch t {
-            case .subsystemUnavailable(let m): return "Sous-système SFTP indisponible : \(m)"
-            case .sessionRefused(let m): return "Session refusée : \(m)"
-            case .notConnected: return "Connexion non établie."
+            case .subsystemUnavailable(let m): return String(localized: "Sous-système SFTP indisponible : \(m)")
+            case .sessionRefused(let m): return String(localized: "Session refusée : \(m)")
+            case .notConnected: return String(localized: "Connexion non établie.")
             case .masterFailed(let m): return m
             case .forwardRefused(let m): return m
             }
