@@ -5,6 +5,10 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- English interface: the app follows the system language (French or English) through a String Catalog
+  (`Escale/Resources/Localizable.xcstrings`).
+
 ### Changed
 - Source code published under the GNU GPL v3.0 (`LICENSE`, `THIRD_PARTY_NOTICES.md`), with English and French READMEs,
   issue forms and contributing guide.
