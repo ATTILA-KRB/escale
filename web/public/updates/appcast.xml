@@ -3,12 +3,12 @@
     <channel>
         <title>Escale</title>
         <item>
-            <title>1.0.0</title>
-            <pubDate>Sun, 15 Nov 2026 20:36:37 +0100</pubDate>
-            <sparkle:version>79</sparkle:version>
-            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <title>1.1.0</title>
+            <pubDate>Mon, 16 Nov 2026 23:42:24 +0100</pubDate>
+            <sparkle:version>109</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://escale-ssh.vercel.app/updates/Escale-1.0.0.dmg" length="27548582" type="application/octet-stream" sparkle:edSignature="dOM0F9flZhMZqfekLU/oaHCTiq4s59HYTj7AozES8J/M3dq6kjWyXz6ZSo9tcbCWFPwicMmqXL7kVPDcWrP0Cw=="/>
+            <enclosure url="https://escale-ssh.vercel.app/updates/Escale-1.1.0.dmg" length="27597712" type="application/octet-stream" sparkle:edSignature="48ohM1Rq8wenKAIK2WGoWL2OaKqT1ay86GT9Dhgrmv7queZAgbpqmqiwO1S8D+Wn65Ag9fhZGE5XN4B2lw7oAQ=="/>
         </item>
     </channel>
 </rss>
