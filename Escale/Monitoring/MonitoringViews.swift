@@ -62,7 +62,7 @@ struct MonitoringBar: View {
             Item(id: "mem", symbol: "memorychip", label: String(localized: "Mém"), value: memValue, help: String(localized: "Mémoire utilisée / totale (hors cache)")),
             Item(id: "load", symbol: "gauge.with.dots.needle.33percent", label: String(localized: "Charge"), value: MonitoringFormat.load(s.load1), help: String(localized: "Charge moyenne sur 1 minute")),
             Item(id: "disk", symbol: "internaldrive", label: String(localized: "Disque"), value: disk, help: diskHelp),
-            Item(id: "net", symbol: "arrow.up.arrow.down", label: "Réseau",
+            Item(id: "net", symbol: "arrow.up.arrow.down", label: String(localized: "Réseau"),
                  value: "↓ \(MonitoringFormat.rate(s.netInRate))  ↑ \(MonitoringFormat.rate(s.netOutRate))",
                  help: String(localized: "Débit réseau entrant et sortant (interfaces physiques)")),
             Item(id: "users", symbol: "person.2", label: String(localized: "Util."), value: s.users.map(String.init) ?? "—", help: String(localized: "Utilisateurs connectés")),

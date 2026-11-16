@@ -37,7 +37,7 @@ struct ToolsPane: View {
             Section("Importer des sessions") {
                 ToolRow("Depuis ~/.ssh/config…", symbol: "doc.text") { model.beginImport() }
                 ForEach(SessionImportKind.allCases, id: \.self) { kind in
-                    ToolRow(kind.menuTitle, symbol: "square.and.arrow.down") { model.imports.choose(kind) }
+                    ToolRow(verbatim: kind.menuTitle, symbol: "square.and.arrow.down") { model.imports.choose(kind) }
                 }
             }
             Section("Application") {
@@ -50,20 +50,25 @@ struct ToolsPane: View {
         .environment(\.defaultMinListRowHeight, 24)
     }
 
-    private var activeTunnelSummary: String? {
+    private var activeTunnelSummary: LocalizedStringKey? {
         let n = model.tunnels.states.values.filter(\.isActive).count
         return n == 0 ? nil : (n == 1 ? "1 actif" : "\(n) actifs")
     }
 }
 
 private struct ToolRow: View {
-    let title: String
+    let title: LocalizedStringKey
     let symbol: String
-    let detail: String?
+    let detail: LocalizedStringKey?
     let action: () -> Void
 
-    init(_ title: String, symbol: String, detail: String? = nil, action: @escaping () -> Void) {
+    init(_ title: LocalizedStringKey, symbol: String, detail: LocalizedStringKey? = nil, action: @escaping () -> Void) {
         self.title = title; self.symbol = symbol; self.detail = detail; self.action = action
+    }
+
+    /// Titre déjà résolu (nom d'import, etc.) : affiché tel quel.
+    init(verbatim title: String, symbol: String, action: @escaping () -> Void) {
+        self.init(LocalizedStringKey(title), symbol: symbol, action: action)
     }
 
     var body: some View {
