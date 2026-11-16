@@ -285,8 +285,8 @@ final class MultiExecFeature: AppFeature {
         let name = model?.library.folderPath(id) ?? "dossier"
         beginGroupExec(hosts: hosts(inFolder: id), source: "Dossier « \(name) »")
     }
-    func beginGroupExec(tag: String) { beginGroupExec(hosts: hosts(withTag: tag), source: "Étiquette #\(tag)") }
-    func beginGroupExecOnConnected() { beginGroupExec(hosts: connectedHosts, source: "Hôtes connectés") }
+    func beginGroupExec(tag: String) { beginGroupExec(hosts: hosts(withTag: tag), source: String(localized: "Étiquette #\(tag)")) }
+    func beginGroupExecOnConnected() { beginGroupExec(hosts: connectedHosts, source: String(localized: "Hôtes connectés")) }
 
     /// Remplace les cibles du brouillon (les surcharges des hôtes retirés sont oubliées).
     func retarget(_ hosts: [HostProfile], source: String) {
@@ -350,7 +350,7 @@ final class MultiExecFeature: AppFeature {
         let limits = GroupExecLimits(timeout: run.timeout, maxOutputBytes: Self.maxOutputBytes, maxConcurrent: 16)
         let targets = run.rows.map { row in
             GroupExecTarget(id: row.id, name: row.host.name, command: row.command) { [weak self] cmd, limits in
-                guard let self else { return RemoteExecResult(failure: "annulé") }
+                guard let self else { return RemoteExecResult(failure: String(localized: "annulé")) }
                 return await self.execute(on: row, command: cmd, limits: limits)
             }
         }
@@ -361,10 +361,10 @@ final class MultiExecFeature: AppFeature {
     /// Un hôte : lien maître (connecté d'abord si besoin, partagé avec les onglets ouverts), puis commande.
     /// Le lien est rattaché pour la durée de la commande : déconnexion différée ensuite si aucun onglet ne l'utilise.
     private func execute(on row: ExecRow, command: String, limits: GroupExecLimits) async -> RemoteExecResult {
-        guard let model else { return RemoteExecResult(failure: "application arrêtée") }
+        guard let model else { return RemoteExecResult(failure: String(localized: "application arrêtée")) }
         let link = model.connections.connection(for: row.host).acquireLink()
         defer { link.release() }
-        var result = RemoteExecResult(failure: "non exécuté")
+        var result = RemoteExecResult(failure: String(localized: "non exécuté"))
         for attempt in 0..<2 {
             row.phase = .connecting
             do { try await link.ensureConnected() } catch {
@@ -379,7 +379,7 @@ final class MultiExecFeature: AppFeature {
                 link.handleConnectionLost()
                 _ = await link.waitReconnect()
             } catch SSHTransportError.sessionRefused(let m) {
-                result = RemoteExecResult(failure: "session refusée : \(m)"); break
+                result = RemoteExecResult(failure: String(localized: "session refusée : \(m)")); break
             } catch {
                 result = RemoteExecResult(failure: SSHLink.describe(error)); break
             }
@@ -414,7 +414,7 @@ final class MultiExecFeature: AppFeature {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.commaSeparatedText, .plainText]
         panel.nameFieldStringValue = "multi-execution.csv"
-        panel.message = "Exporter le rapport (extension .csv pour un tableur, .txt pour du texte)"
+        panel.message = String(localized: "Exporter le rapport (extension .csv pour un tableur, .txt pour du texte)")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         if !exportReport(run, to: url) { NSSound.beep() }
     }
