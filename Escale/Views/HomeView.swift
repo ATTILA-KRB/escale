@@ -102,7 +102,7 @@ struct HomeView: View {
 }
 
 private struct HomeAction: View {
-    let title: String
+    let title: LocalizedStringKey
     let symbol: String
     let action: () -> Void
     @State private var hovered = false

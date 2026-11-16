@@ -71,7 +71,7 @@ struct VNCToolbar: View {
     /// Le titre de la fenêtre porte le nom de l'hôte (bibliothèque) ; le nom annoncé par le serveur est libellé « Bureau »
     /// et omis quand il est identique.
     static func statusText(desktopName: String, hostName: String, size: CGSize) -> String {
-        let dims = "\(Int(size.width))×\(Int(size.height))"
+        let dims = String(localized: "\(Int(size.width))×\(Int(size.height))")
         let name = desktopName.trimmingCharacters(in: .whitespacesAndNewlines)
         return name.isEmpty || name == hostName ? dims : "Bureau : \(name) — \(dims)"
     }
@@ -97,7 +97,7 @@ private struct VNCOverlay: View {
             VNCCredentialsCard(session: session)
         case .ended(let reason):
             card {
-                Text(reason ?? "Déconnecté.").multilineTextAlignment(.center)
+                Text(reason ?? String(localized: "Déconnecté.")).multilineTextAlignment(.center)
             }
         case .failed(let message):
             card {
