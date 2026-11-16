@@ -13,7 +13,7 @@ struct RemoteDragFile: Transferable, Sendable {
 
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .data) { file in
-            guard let fetch = file.fetch else { throw SFTPError.localIO("un dossier ne se glisse pas vers le Finder") }
+            guard let fetch = file.fetch else { throw SFTPError.localIO(String(localized: "un dossier ne se glisse pas vers le Finder")) }
             return SentTransferredFile(try await fetch(), allowAccessingOriginalFile: true)
         }
         ProxyRepresentation(exporting: \.payload)
@@ -124,7 +124,7 @@ private struct SFTPSessionView: View {
     }
 
     private var deleteTitle: String {
-        deleting.count == 1 ? "Supprimer « \(deleting[0].name) » ?" : "Supprimer \(deleting.count) éléments ?"
+        deleting.count == 1 ? "Supprimer « \(deleting[0].name) » ?" : String(localized: "Supprimer \(deleting.count) éléments ?")
     }
 
     // MARK: En-tête
@@ -364,7 +364,7 @@ private struct SFTPSessionView: View {
     private func chooseFilesToUpload() {
         let p = NSOpenPanel()
         p.canChooseFiles = true; p.canChooseDirectories = true; p.allowsMultipleSelection = true
-        p.prompt = "Envoyer"
+        p.prompt = String(localized: "Envoyer")
         guard p.runModal() == .OK else { return }
         let urls = p.urls
         Task { await session.upload(urls) }
@@ -373,7 +373,7 @@ private struct SFTPSessionView: View {
     private func chooseDownloadFolder(_ items: [SFTPItem]) {
         let p = NSOpenPanel()
         p.canChooseFiles = false; p.canChooseDirectories = true; p.canCreateDirectories = true
-        p.prompt = "Télécharger ici"
+        p.prompt = String(localized: "Télécharger ici")
         guard p.runModal() == .OK, let url = p.url else { return }
         Task { await session.download(items, to: url) }
     }
@@ -433,7 +433,7 @@ private struct SFTPActivityView: View {
                     .font(.caption2).foregroundStyle(.secondary)
             case .queued: Text("En attente").font(.caption2).foregroundStyle(.secondary)
             case .failed(let m):
-                Text(t.interrupted ? "\(m) Reprise automatique à la reconnexion." : m).font(.caption2).foregroundStyle(.red)
+                Text(t.interrupted ? String(localized: "\(m) Reprise automatique à la reconnexion.") : m).font(.caption2).foregroundStyle(.red)
             case .cancelled: Text("Annulé").font(.caption2).foregroundStyle(.secondary)
             case .done:
                 Text("\(t.resumeText.map { $0 + " · " } ?? "")\(SFTPFormat.size(t.total))").font(.caption2).foregroundStyle(.secondary)
@@ -456,11 +456,11 @@ private struct SFTPActivityView: View {
 
     private func status(_ e: SFTPEdit) -> String {
         switch e.state {
-        case .watching: e.uploads == 0 ? "Surveillé — enregistrez pour envoyer" : "Envoyé \(e.uploads) fois"
-        case .uploading: "Envoi…"
-        case .conflict: "Conflit : version distante conservée"
+        case .watching: e.uploads == 0 ? String(localized: "Surveillé — enregistrez pour envoyer") : String(localized: "Envoyé \(e.uploads) fois")
+        case .uploading: String(localized: "Envoi…")
+        case .conflict: String(localized: "Conflit : version distante conservée")
         case .failed(let m): m
-        case .stopped: "Arrêté"
+        case .stopped: String(localized: "Arrêté")
         }
     }
 }
