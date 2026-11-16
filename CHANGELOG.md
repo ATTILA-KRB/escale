@@ -5,6 +5,8 @@ the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-17
+
 ### Added
 - English interface: the app follows the system language (French or English) through a String Catalog
   (`Escale/Resources/Localizable.xcstrings`).

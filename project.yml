@@ -25,7 +25,7 @@ settings:
     CODE_SIGN_IDENTITY: "-"
     DEVELOPMENT_TEAM: ""
     # Version pilotee par variables (surchargeables : xcodebuild MARKETING_VERSION=... ou scripts/release.sh --version).
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "1.1.0"
     CURRENT_PROJECT_VERSION: "1"
     # URL du flux Sparkle (appcast). Vide par defaut : mises a jour desactivees (voir docs/RELEASE.md).
     ESCALE_FEED_URL: ""
