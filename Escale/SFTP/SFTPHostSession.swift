@@ -248,7 +248,7 @@ final class SFTPHostSession: Identifiable {
         do {
             let real = Data(try await client.canonicalPath(p).utf8)
             let attrs = try await client.attributes(of: real)
-            guard attrs.type == .directory else { errorMessage = "« \(SFTPPath.lastComponent(real)) » n'est pas un dossier."; return }
+            guard attrs.type == .directory else { errorMessage = String(localized: "« \(SFTPPath.lastComponent(real)) » n'est pas un dossier."); return }
             await load(real)
         } catch { handle(error) }
     }
@@ -309,7 +309,7 @@ final class SFTPHostSession: Identifiable {
         guard let client, valid(newName), newName != item.name else { return }
         let dest = SFTPPath.join(SFTPPath.parent(item.path), newName)
         do {
-            if (try? await client.attributes(of: dest, followLinks: false)) != nil { errorMessage = "« \(newName) » existe déjà."; return }
+            if (try? await client.attributes(of: dest, followLinks: false)) != nil { errorMessage = String(localized: "« \(newName) » existe déjà."); return }
             try await client.renameItem(item.path, to: dest)
             await refresh()
             selection = [dest]
@@ -460,7 +460,7 @@ final class SFTPHostSession: Identifiable {
             let dest = SFTPPath.join(directory, it.name)
             do {
                 if (try? await client.attributes(of: dest, followLinks: false)) != nil {
-                    problems.append("« \(it.name) » existe déjà dans le dossier de destination."); continue
+                    problems.append(String(localized: "« \(it.name) » existe déjà dans le dossier de destination.")); continue
                 }
                 made += try await expandRelay(it.path, isDirectory: it.isDirectory, name: it.name, to: dest,
                                                origin: origin, originClient: originClient, client: client)
@@ -505,11 +505,11 @@ final class SFTPHostSession: Identifiable {
             let dest = SFTPPath.join(directory, it.name)
             if SFTPPath.parent(it.path) == SFTPPath.normalized(directory) && !copy { continue } // déjà là
             if it.path == dest || SFTPPath.isInside(directory, of: it.path) {
-                problems.append("« \(it.name) » ne peut pas être placé dans lui-même."); continue
+                problems.append(String(localized: "« \(it.name) » ne peut pas être placé dans lui-même.")); continue
             }
             do {
                 if (try? await client.attributes(of: dest, followLinks: false)) != nil {
-                    problems.append("« \(it.name) » existe déjà dans le dossier de destination."); continue
+                    problems.append(String(localized: "« \(it.name) » existe déjà dans le dossier de destination.")); continue
                 }
                 if copy { try await copyItem(it, to: dest, client: client) } else { try await client.renameItem(it.path, to: dest) }
                 done += 1
