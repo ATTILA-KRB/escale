@@ -1,6 +1,204 @@
 {
   "sourceLanguage" : "fr",
   "strings" : {
+    " Fichier known_hosts concerné : %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " Affected known_hosts file: %@."
+          }
+        }
+      }
+    },
+    " de « %@ »" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " of “%@”"
+          }
+        }
+      }
+    },
+    "%lld bauds" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld baud"
+          }
+        }
+      }
+    },
+    "%lld hôtes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld hosts"
+          }
+        }
+      }
+    },
+    "%lld onglets" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tabs"
+          }
+        }
+      }
+    },
+    "%lld panneaux" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld panes"
+          }
+        }
+      }
+    },
+    "%lld tunnels" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tunnels"
+          }
+        }
+      }
+    },
+    "1 onglet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 tab"
+          }
+        }
+      }
+    },
+    "1 tunnel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 tunnel"
+          }
+        }
+      }
+    },
+    "Accueil" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Home"
+          }
+        }
+      }
+    },
+    "Actualiser" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh"
+          }
+        }
+      }
+    },
+    "Actualiser la liste des ports" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh the port list"
+          }
+        }
+      }
+    },
+    "Affichage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Display"
+          }
+        }
+      }
+    },
+    "Afficher le monitoring distant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show remote monitoring"
+          }
+        }
+      }
+    },
+    "Agent ssh, clés par défaut et ~/.ssh/config." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ssh agent, default keys and ~/.ssh/config."
+          }
+        }
+      }
+    },
+    "Ajouter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        }
+      }
+    },
+    "Ajouter un hôte ou un dossier" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a host or folder"
+          }
+        }
+      }
+    },
+    "Ajouté à la bibliothèque." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added to the library."
+          }
+        }
+      }
+    },
     "Annuler" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8,6 +206,391 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cancel"
+          }
+        }
+      }
+    },
+    "Aucun" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
+          }
+        }
+      }
+    },
+    "Aucun (connexion directe)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None (direct connection)"
+          }
+        }
+      }
+    },
+    "Aucun fichier de configuration SSH à « %@ »." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No SSH configuration file at “%@”."
+          }
+        }
+      }
+    },
+    "Aucun hôte enregistré" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No saved hosts"
+          }
+        }
+      }
+    },
+    "Aucun hôte trouvé dans ce fichier." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hosts found in this file."
+          }
+        }
+      }
+    },
+    "Aucun port local libre pour le tunnel." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No free local port for the tunnel."
+          }
+        }
+      }
+    },
+    "Aucun résultat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No results"
+          }
+        }
+      }
+    },
+    "Aucune" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
+          }
+        }
+      }
+    },
+    "Aucune session importable trouvée dans ce fichier." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No importable sessions found in this file."
+          }
+        }
+      }
+    },
+    "Authentification" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Authentication"
+          }
+        }
+      }
+    },
+    "Authentification annulée." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Authentication cancelled."
+          }
+        }
+      }
+    },
+    "Authentification…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Authenticating…"
+          }
+        }
+      }
+    },
+    "Autre…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other…"
+          }
+        }
+      }
+    },
+    "Avancé" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Advanced"
+          }
+        }
+      }
+    },
+    "Barre d'état" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status Bar"
+          }
+        }
+      }
+    },
+    "Basculer DTR" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toggle DTR"
+          }
+        }
+      }
+    },
+    "Basculer RTS" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toggle RTS"
+          }
+        }
+      }
+    },
+    "Basique" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Basic"
+          }
+        }
+      }
+    },
+    "Bastions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jump hosts"
+          }
+        }
+      }
+    },
+    "Bastions : séparez-les par des virgules, sans espace interne." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jump hosts: separate them with commas, with no inner spaces."
+          }
+        }
+      }
+    },
+    "Bits de données" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data bits"
+          }
+        }
+      }
+    },
+    "Bits de stop" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop bits"
+          }
+        }
+      }
+    },
+    "Bureau à distance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote Desktop"
+          }
+        }
+      }
+    },
+    "Bureau à distance : module indisponible." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote Desktop: module unavailable."
+          }
+        }
+      }
+    },
+    "Charge" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Load"
+          }
+        }
+      }
+    },
+    "Charge moyenne sur 1 minute" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1-minute load average"
+          }
+        }
+      }
+    },
+    "Chemin du périphérique" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Device path"
+          }
+        }
+      }
+    },
+    "Choisir" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose"
+          }
+        }
+      }
+    },
+    "Choisir…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose…"
+          }
+        }
+      }
+    },
+    "Choisissez l'export .reg de HKCU\\Software\\SimonTatham\\PuTTY\\Sessions." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the .reg export of HKCU\\Software\\SimonTatham\\PuTTY\\Sessions."
+          }
+        }
+      }
+    },
+    "Choisissez le fichier de clé privée (il n'est jamais copié ni modifié)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the private key file (it is never copied or modified)."
+          }
+        }
+      }
+    },
+    "Choisissez un CSV (colonnes : name, host, port, user, folder, tags)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a CSV (columns: name, host, port, user, folder, tags)."
+          }
+        }
+      }
+    },
+    "Choisissez un CSV au format du modèle Termius (Groups, Label, Tags, Hostname/IP, Protocol, Port, Username, Password). Termius n'a pas d'export natif : modèle rempli ou exporteur tiers." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a CSV in the Termius template format (Groups, Label, Tags, Hostname/IP, Protocol, Port, Username, Password). Termius has no native export: use a filled-in template or a third-party exporter."
+          }
+        }
+      }
+    },
+    "Choisissez un export MobaXterm (.mxtsessions) ou MobaXterm.ini." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a MobaXterm export (.mxtsessions) or MobaXterm.ini."
+          }
+        }
+      }
+    },
+    "Choisissez un fichier de clé." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a key file."
           }
         }
       }
@@ -23,6 +606,116 @@
         }
       }
     },
+    "Client Bureau à distance introuvable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote Desktop client not found"
+          }
+        }
+      }
+    },
+    "Clé : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key: %@"
+          }
+        }
+      }
+    },
+    "Clé d'hôte modifiée" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host key changed"
+          }
+        }
+      }
+    },
+    "Clé d'hôte non approuvée : connexion annulée." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host key not trusted: connection cancelled."
+          }
+        }
+      }
+    },
+    "Clé privée" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Private key"
+          }
+        }
+      }
+    },
+    "Code de vérification" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verification code"
+          }
+        }
+      }
+    },
+    "Code de vérification requis" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verification code required"
+          }
+        }
+      }
+    },
+    "Commande" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command"
+          }
+        }
+      }
+    },
+    "Commande de connexion" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startup command"
+          }
+        }
+      }
+    },
+    "Compte macOS requis" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS account required"
+          }
+        }
+      }
+    },
     "Connecter" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -30,6 +723,72 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connect"
+          }
+        }
+      }
+    },
+    "Connecter %lld hôtes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect %lld Hosts"
+          }
+        }
+      }
+    },
+    "Connecter à %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect to %@"
+          }
+        }
+      }
+    },
+    "Connecté" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connected"
+          }
+        }
+      }
+    },
+    "Connexion SSH à %@…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting over SSH to %@…"
+          }
+        }
+      }
+    },
+    "Connexion impossible" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to connect"
+          }
+        }
+      }
+    },
+    "Connexion perdue — reconnexion en cours (tentative %lld)…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection lost — reconnecting (attempt %lld)…"
           }
         }
       }
@@ -45,6 +804,380 @@
         }
       }
     },
+    "Connexion rapide ou recherche" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick connect or search"
+          }
+        }
+      }
+    },
+    "Connexion à %@:%lld…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting to %@:%lld…"
+          }
+        }
+      }
+    },
+    "Connexion à %@…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting to %@…"
+          }
+        }
+      }
+    },
+    "Connexion à l'hôte SSH intermédiaire impossible : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to connect to the intermediate SSH host: %@"
+          }
+        }
+      }
+    },
+    "Connexion à « %@ »" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting to “%@”"
+          }
+        }
+      }
+    },
+    "Connexion…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting…"
+          }
+        }
+      }
+    },
+    "Continuer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue"
+          }
+        }
+      }
+    },
+    "Continuer sans enregistrer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue without saving"
+          }
+        }
+      }
+    },
+    "Contrôle de flux" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flow control"
+          }
+        }
+      }
+    },
+    "Créer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create"
+          }
+        }
+      }
+    },
+    "Ctrl-Alt-Suppr" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ctrl-Alt-Del"
+          }
+        }
+      }
+    },
+    "Depuis MobaXterm…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From MobaXterm…"
+          }
+        }
+      }
+    },
+    "Depuis PuTTY (.reg)…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From PuTTY (.reg)…"
+          }
+        }
+      }
+    },
+    "Depuis Termius (CSV)…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From Termius (CSV)…"
+          }
+        }
+      }
+    },
+    "Depuis un CSV…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From a CSV…"
+          }
+        }
+      }
+    },
+    "Diffusion : %lld panneaux" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Broadcasting: %lld panes"
+          }
+        }
+      }
+    },
+    "Disque" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disk"
+          }
+        }
+      }
+    },
+    "Disque de /" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disk of /"
+          }
+        }
+      }
+    },
+    "Disque de / : %@ utilisés sur %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disk of /: %@ used of %@"
+          }
+        }
+      }
+    },
+    "Dossier" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder"
+          }
+        }
+      }
+    },
+    "Dossier courant annoncé par le shell" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current folder reported by the shell"
+          }
+        }
+      }
+    },
+    "Dupliquer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duplicate"
+          }
+        }
+      }
+    },
+    "Dupliquer l'onglet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duplicate Tab"
+          }
+        }
+      }
+    },
+    "Durée depuis le démarrage du serveur" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time since the server started"
+          }
+        }
+      }
+    },
+    "Débit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baud rate"
+          }
+        }
+      }
+    },
+    "Débit (bauds)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baud rate (bauds)"
+          }
+        }
+      }
+    },
+    "Débit réseau entrant et sortant (interfaces physiques)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incoming and outgoing network throughput (physical interfaces)"
+          }
+        }
+      }
+    },
+    "Déconnecter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disconnect"
+          }
+        }
+      }
+    },
+    "Déconnecté" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disconnected"
+          }
+        }
+      }
+    },
+    "Déconnecté." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disconnected."
+          }
+        }
+      }
+    },
+    "Délai de connexion : %lld s" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection timeout: %lld s"
+          }
+        }
+      }
+    },
+    "Délai dépassé : aucune réponse à l'invite d'authentification." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timed out: no response to the authentication prompt."
+          }
+        }
+      }
+    },
+    "Déplacer vers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move to"
+          }
+        }
+      }
+    },
+    "Détacher l'onglet dans une nouvelle fenêtre" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detach tab into a new window"
+          }
+        }
+      }
+    },
     "Effacer" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -52,6 +1185,644 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Clear"
+          }
+        }
+      }
+    },
+    "Empreinte" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fingerprint"
+          }
+        }
+      }
+    },
+    "Encodage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encoding"
+          }
+        }
+      }
+    },
+    "Enregistrement" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording"
+          }
+        }
+      }
+    },
+    "Enregistrer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
+          }
+        }
+      }
+    },
+    "Enregistré seulement après une connexion réussie." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved only after a successful connection."
+          }
+        }
+      }
+    },
+    "Envoie Ctrl + Alt + Suppr au serveur" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sends Ctrl + Alt + Del to the server"
+          }
+        }
+      }
+    },
+    "Envoie le texte copié sur ce Mac au bureau distant (le texte copié à distance arrive ici automatiquement)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sends text copied on this Mac to the remote desktop (text copied remotely arrives here automatically)"
+          }
+        }
+      }
+    },
+    "Envoyer BREAK" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send BREAK"
+          }
+        }
+      }
+    },
+    "Envoyer le presse-papiers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send clipboard"
+          }
+        }
+      }
+    },
+    "Escale lance le client Bureau à distance de Microsoft (« Windows App »), qui n'est pas installé. Vous pouvez l'installer depuis l'App Store." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escale launches Microsoft's Remote Desktop client (“Windows App”), which is not installed. You can install it from the App Store."
+          }
+        }
+      }
+    },
+    "Escale ouvre cet hôte avec le client Bureau à distance de Microsoft (« Windows App »). L'identifiant et le mot de passe sont demandés par ce client ; Escale ne les enregistre pas." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escale opens this host with Microsoft's Remote Desktop client (“Windows App”). The username and password are requested by that client; Escale does not store them."
+          }
+        }
+      }
+    },
+    "Exporter le fichier .rdp…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export .rdp File…"
+          }
+        }
+      }
+    },
+    "Faire confiance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trust"
+          }
+        }
+      }
+    },
+    "Fermer %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close %@"
+          }
+        }
+      }
+    },
+    "Fermer l'onglet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close Tab"
+          }
+        }
+      }
+    },
+    "Fermer le panneau" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close pane"
+          }
+        }
+      }
+    },
+    "Fermer le tunnel (127.0.0.1:%@)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close tunnel (127.0.0.1:%@)"
+          }
+        }
+      }
+    },
+    "Fermer les autres onglets" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close Other Tabs"
+          }
+        }
+      }
+    },
+    "Fichier .rdp sans mot de passe, vers l'adresse enregistrée de l'hôte." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ".rdp file without a password, pointing to the host's saved address."
+          }
+        }
+      }
+    },
+    "Fichier de clé" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key file"
+          }
+        }
+      }
+    },
+    "Fichiers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Files"
+          }
+        }
+      }
+    },
+    "Fin de ligne à l'envoi" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Line ending on send"
+          }
+        }
+      }
+    },
+    "Garder les dossiers d'origine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep original folders"
+          }
+        }
+      }
+    },
+    "Hauteur : %lld px" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Height: %lld px"
+          }
+        }
+      }
+    },
+    "Hôte" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host"
+          }
+        }
+      }
+    },
+    "Hôte inconnu" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown host"
+          }
+        }
+      }
+    },
+    "Hôte « %@ » importé" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host “%@” imported"
+          }
+        }
+      }
+    },
+    "Hôtes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hosts"
+          }
+        }
+      }
+    },
+    "Identique à l'hôte si vide" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Same as host if empty"
+          }
+        }
+      }
+    },
+    "Impaire" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odd"
+          }
+        }
+      }
+    },
+    "Import du fichier .rdp impossible" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to import the .rdp file"
+          }
+        }
+      }
+    },
+    "Importer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import"
+          }
+        }
+      }
+    },
+    "Importer %lld hôte%@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import %lld host%@"
+          }
+        }
+      }
+    },
+    "Importer depuis MobaXterm" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from MobaXterm"
+          }
+        }
+      }
+    },
+    "Importer depuis PuTTY" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from PuTTY"
+          }
+        }
+      }
+    },
+    "Importer depuis Termius" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from Termius"
+          }
+        }
+      }
+    },
+    "Importer depuis un CSV" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from a CSV"
+          }
+        }
+      }
+    },
+    "Importer depuis ~/.ssh/config" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from ~/.ssh/config"
+          }
+        }
+      }
+    },
+    "Importer depuis ~/.ssh/config…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from ~/.ssh/config…"
+          }
+        }
+      }
+    },
+    "Information demandée par le serveur" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Information requested by the server"
+          }
+        }
+      }
+    },
+    "Interpolation linéaire en agrandissement (par défaut : pixels nets à partir de ×2)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linear interpolation when enlarging (default: sharp pixels from ×2)"
+          }
+        }
+      }
+    },
+    "L'authenticité de cet hôte ne peut pas être vérifiée : sa clé n'est pas encore connue. Comparez l'empreinte avec celle de votre administrateur avant de faire confiance." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This host's authenticity can't be verified: its key is not known yet. Compare the fingerprint with the one from your administrator before trusting it."
+          }
+        }
+      }
+    },
+    "L'hôte SSH du tunnel n'existe plus dans la bibliothèque." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The tunnel's SSH host no longer exists in the library."
+          }
+        }
+      }
+    },
+    "L'hôte SSH intermédiaire n'existe plus : choisissez-en un autre dans l'éditeur." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The intermediate SSH host no longer exists: choose another one in the editor."
+          }
+        }
+      }
+    },
+    "L'hôte est obligatoire." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The host is required."
+          }
+        }
+      }
+    },
+    "L'hôte et le port ci-dessus sont ceux du serveur VNC vus depuis l'hôte SSH choisi (souvent 127.0.0.1)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The host and port above are those of the VNC server as seen from the chosen SSH host (often 127.0.0.1)."
+          }
+        }
+      }
+    },
+    "L'hôte ne peut pas commencer par « - »." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The host can't start with “-”."
+          }
+        }
+      }
+    },
+    "L'hôte ne peut pas contenir d'espace." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The host can't contain a space."
+          }
+        }
+      }
+    },
+    "L'identifiant et le mot de passe se saisissent dans le terminal à l'invite du serveur ; Escale ne les enregistre pas." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter the username and password in the terminal at the server's prompt; Escale does not store them."
+          }
+        }
+      }
+    },
+    "L'utilisateur ne peut pas commencer par « - »." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The user can't start with “-”."
+          }
+        }
+      }
+    },
+    "La bibliothèque d'hôtes a été écrite par une version plus récente d'Escale (format %lld, cette version gère jusqu'au format %lld). Le fichier n'a pas été modifié et rien n'y sera écrit." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The host library was written by a newer version of Escale (format %lld; this version supports up to format %lld). The file has not been modified and nothing will be written to it."
+          }
+        }
+      }
+    },
+    "La bibliothèque d'hôtes « %@ » est illisible (fichier corrompu). Le fichier n'a pas été modifié et rien n'y sera écrit tant que vous n'aurez pas choisi de repartir d'une bibliothèque vide." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The host library “%@” is unreadable (corrupted file). The file has not been modified and nothing will be written to it until you choose to start over with an empty library."
+          }
+        }
+      }
+    },
+    "La clé d'hôte%@ a changé : connexion refusée par sécurité (serveur remplacé ou connexion interceptée).%@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The host key%@ has changed: connection refused for security (server replaced or connection intercepted).%@"
+          }
+        }
+      }
+    },
+    "La saisie précédente a été refusée par le serveur." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The previous entry was rejected by the server."
+          }
+        }
+      }
+    },
+    "Laisser le client demander les identifiants" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Let the client ask for credentials"
+          }
+        }
+      }
+    },
+    "Largeur : %lld px" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Width: %lld px"
+          }
+        }
+      }
+    },
+    "Le chemin ne peut pas commencer par « - »." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The path can't start with “-”."
+          }
+        }
+      }
+    },
+    "Le client Bureau à distance de Microsoft (« Windows App ») n'est pas installé." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microsoft's Remote Desktop client (“Windows App”) is not installed."
           }
         }
       }
@@ -67,6 +1838,138 @@
         }
       }
     },
+    "Le fichier est lu sans jamais être modifié. Les hôtes importés utilisent les réglages OpenSSH (ssh relit l'alias)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file is read and never modified. Imported hosts use OpenSSH settings (ssh re-reads the alias)."
+          }
+        }
+      }
+    },
+    "Le fichier est lu sans jamais être modifié. Les mots de passe ne sont jamais importés." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file is read and never modified. Passwords are never imported."
+          }
+        }
+      }
+    },
+    "Le mot de passe enregistré a été refusé. %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The saved password was rejected. %@"
+          }
+        }
+      }
+    },
+    "Le mot de passe est demandé à la connexion ; il peut être mémorisé dans le Trousseau après une connexion réussie. " : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The password is requested on connection; it can be remembered in the Keychain after a successful connection. "
+          }
+        }
+      }
+    },
+    "Le mot de passe est demandé à la première connexion. La case « Mémoriser dans le Trousseau » l'enregistre, après une connexion réussie." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The password is requested on the first connection. The “Remember in Keychain” checkbox saves it after a successful connection."
+          }
+        }
+      }
+    },
+    "Le nom ne peut pas commencer par « - »." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The name can't start with “-”."
+          }
+        }
+      }
+    },
+    "Le port doit être un nombre entre 1 et 65535." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The port must be a number between 1 and 65535."
+          }
+        }
+      }
+    },
+    "Le serveur a fermé la connexion." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server closed the connection."
+          }
+        }
+      }
+    },
+    "Lecture de la bibliothèque d'hôtes « %@ » impossible : %@. Le fichier n'a pas été modifié." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to read the host library “%@”: %@. The file has not been modified."
+          }
+        }
+      }
+    },
+    "Lecture de la bibliothèque impossible : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to read the library: %@"
+          }
+        }
+      }
+    },
+    "Lecture de « %@ » impossible : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to read “%@”: %@"
+          }
+        }
+      }
+    },
+    "Lecture seule" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View only"
+          }
+        }
+      }
+    },
     "Les sessions que vous ouvrez apparaîtront ici." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -74,6 +1977,94 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sessions you open will appear here."
+          }
+        }
+      }
+    },
+    "Liaison" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link"
+          }
+        }
+      }
+    },
+    "Lissage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smoothing"
+          }
+        }
+      }
+    },
+    "Logiciel (XON/XOFF)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Software (XON/XOFF)"
+          }
+        }
+      }
+    },
+    "Masquer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide"
+          }
+        }
+      }
+    },
+    "Masquer le monitoring distant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide remote monitoring"
+          }
+        }
+      }
+    },
+    "Masquer le monitoring distant de %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide remote monitoring of %@"
+          }
+        }
+      }
+    },
+    "Matériel (RTS/CTS)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hardware (RTS/CTS)"
+          }
+        }
+      }
+    },
+    "Modifier l'hôte" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit Host"
           }
         }
       }
@@ -89,6 +2080,281 @@
         }
       }
     },
+    "Monitoring distant de %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote monitoring of %@"
+          }
+        }
+      }
+    },
+    "Monitoring en pause (connexion perdue)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Monitoring paused (connection lost)"
+          }
+        }
+      }
+    },
+    "Monitoring indisponible : sessions du serveur épuisées" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Monitoring unavailable: server sessions exhausted"
+          }
+        }
+      }
+    },
+    "Monitoring indisponible sur ce système" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Monitoring unavailable on this system"
+          }
+        }
+      }
+    },
+    "Mot de passe" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Password"
+          }
+        }
+      }
+    },
+    "Mot de passe (Trousseau)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Password (Keychain)"
+          }
+        }
+      }
+    },
+    "Mot de passe VNC" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VNC password"
+          }
+        }
+      }
+    },
+    "Mot de passe oublié." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Password forgotten."
+          }
+        }
+      }
+    },
+    "Mot de passe requis" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Password required"
+          }
+        }
+      }
+    },
+    "Mém" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mem"
+          }
+        }
+      }
+    },
+    "Mémoire utilisée / totale (hors cache)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memory used / total (excluding cache)"
+          }
+        }
+      }
+    },
+    "Mémoriser dans le Trousseau" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remember in Keychain"
+          }
+        }
+      }
+    },
+    "Méthode" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Method"
+          }
+        }
+      }
+    },
+    "Nom" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name"
+          }
+        }
+      }
+    },
+    "Nom d'utilisateur" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Username"
+          }
+        }
+      }
+    },
+    "Nom du port si vide" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Port name if empty"
+          }
+        }
+      }
+    },
+    "Non (connexion directe)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No (direct connection)"
+          }
+        }
+      }
+    },
+    "Nouveau dossier" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Folder"
+          }
+        }
+      }
+    },
+    "Nouveau dossier…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Folder…"
+          }
+        }
+      }
+    },
+    "Nouveau sous-dossier…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Subfolder…"
+          }
+        }
+      }
+    },
+    "Nouveau terminal local" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Local Terminal"
+          }
+        }
+      }
+    },
+    "Nouveau terminal local (⌘T)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Local Terminal (⌘T)"
+          }
+        }
+      }
+    },
+    "Nouvel hôte" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Host"
+          }
+        }
+      }
+    },
+    "Nouvel hôte ici…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Host Here…"
+          }
+        }
+      }
+    },
+    "Nouvel hôte…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Host…"
+          }
+        }
+      }
+    },
     "Nouvel onglet" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -100,6 +2366,83 @@
         }
       }
     },
+    "Nouvelle session" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Session"
+          }
+        }
+      }
+    },
+    "Onglet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tab"
+          }
+        }
+      }
+    },
+    "Oublier le mot de passe enregistré" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forget saved password"
+          }
+        }
+      }
+    },
+    "Outils" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tools"
+          }
+        }
+      }
+    },
+    "Ouverture du tunnel vers %@:%lld…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opening the tunnel to %@:%lld…"
+          }
+        }
+      }
+    },
+    "Ouverture déjà en cours pour cet hôte." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Already opening for this host."
+          }
+        }
+      }
+    },
+    "Ouvre une session SSH et l'enregistre dans la bibliothèque (Entrée)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens an SSH session and saves it to the library (Return)"
+          }
+        }
+      }
+    },
     "Ouvre une session SSH et l'enregistre dans la bibliothèque. ⇧⌘K depuis n'importe où." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -107,6 +2450,435 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Opens an SSH session and saves it to the library. ⇧⌘K from anywhere."
+          }
+        }
+      }
+    },
+    "Ouvrir ce serveur dans l'app Partage d'écran de macOS (comptes macOS, chiffrement)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open this server in macOS's Screen Sharing app (macOS accounts, encryption)"
+          }
+        }
+      }
+    },
+    "Ouvrir dans Partage d'écran" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in Screen Sharing"
+          }
+        }
+      }
+    },
+    "Ouvrir l'App Store" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the App Store"
+          }
+        }
+      }
+    },
+    "Ouvrir un terminal local" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open a Local Terminal"
+          }
+        }
+      }
+    },
+    "Ouvrir via un hôte SSH" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open through an SSH host"
+          }
+        }
+      }
+    },
+    "Paire" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Even"
+          }
+        }
+      }
+    },
+    "Parité" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parity"
+          }
+        }
+      }
+    },
+    "Partage d'écran" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen Sharing"
+          }
+        }
+      }
+    },
+    "Partager le presse-papiers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share clipboard"
+          }
+        }
+      }
+    },
+    "Partager un dossier…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share a Folder…"
+          }
+        }
+      }
+    },
+    "Passerelle Bureau à distance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote Desktop Gateway"
+          }
+        }
+      }
+    },
+    "Phrase de passe" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passphrase"
+          }
+        }
+      }
+    },
+    "Phrase de passe requise" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passphrase required"
+          }
+        }
+      }
+    },
+    "Port détecté" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detected port"
+          }
+        }
+      }
+    },
+    "Port série" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serial Port"
+          }
+        }
+      }
+    },
+    "Processeur (moyenne depuis le relevé précédent)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Processor (average since the previous sample)"
+          }
+        }
+      }
+    },
+    "Prêt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready"
+          }
+        }
+      }
+    },
+    "Racine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Root"
+          }
+        }
+      }
+    },
+    "Ramener dans la fenêtre principale" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move back to the main window"
+          }
+        }
+      }
+    },
+    "Reconnecter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconnect"
+          }
+        }
+      }
+    },
+    "Reconnecter maintenant sans attendre le décompte" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconnect now without waiting for the countdown"
+          }
+        }
+      }
+    },
+    "Redirection X11 demandée pour cet hôte" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X11 forwarding requested for this host"
+          }
+        }
+      }
+    },
+    "Relancer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart"
+          }
+        }
+      }
+    },
+    "Renommer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename"
+          }
+        }
+      }
+    },
+    "Renommer le dossier" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename Folder"
+          }
+        }
+      }
+    },
+    "Renommer…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename…"
+          }
+        }
+      }
+    },
+    "Repartir d'une bibliothèque vide" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start over with an empty library"
+          }
+        }
+      }
+    },
+    "Réessayer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        }
+      }
+    },
+    "Réglages OpenSSH par défaut" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default OpenSSH settings"
+          }
+        }
+      }
+    },
+    "Réponse" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Response"
+          }
+        }
+      }
+    },
+    "Saisie" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Input"
+          }
+        }
+      }
+    },
+    "Saisie libre" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manual entry"
+          }
+        }
+      }
+    },
+    "Sauvegarde de la bibliothèque impossible : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to save the library: %@"
+          }
+        }
+      }
+    },
+    "Se connecter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign In"
+          }
+        }
+      }
+    },
+    "Secret refusé par le serveur (mot de passe, phrase de passe ou code incorrect)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secret rejected by the server (incorrect password, passphrase or code)."
+          }
+        }
+      }
+    },
+    "Session partagée (ne pas déconnecter les autres clients)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared session (don't disconnect other clients)"
+          }
+        }
+      }
+    },
+    "Session terminée (code %d)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session ended (code %d)"
+          }
+        }
+      }
+    },
+    "Session terminée (signal %d)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session ended (signal %d)"
+          }
+        }
+      }
+    },
+    "Sessions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sessions"
           }
         }
       }
@@ -133,6 +2905,39 @@
         }
       }
     },
+    "Si la clé est protégée par une phrase de passe, elle vous sera demandée à la connexion." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If the key is protected by a passphrase, you'll be asked for it when connecting."
+          }
+        }
+      }
+    },
+    "Si le serveur exige un compte macOS ou un chiffrement, utilisez « Partage d'écran »." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If the server requires a macOS account or encryption, use “Screen Sharing”."
+          }
+        }
+      }
+    },
+    "Son" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sound"
+          }
+        }
+      }
+    },
     "Supprimer" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -140,6 +2945,534 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Delete"
+          }
+        }
+      }
+    },
+    "Supprimer l'hôte « %@ » ?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete the host “%@”?"
+          }
+        }
+      }
+    },
+    "Supprimer le dossier « %@ » ?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete the folder “%@”?"
+          }
+        }
+      }
+    },
+    "Supprimer…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete…"
+          }
+        }
+      }
+    },
+    "Tapée dans le shell à chaque ouverture, puis le shell reste ouvert. Une seule ligne ; séparez les commandes par « ; »." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typed into the shell on each open, then the shell stays open. Single line; separate commands with “;”."
+          }
+        }
+      }
+    },
+    "Telnet n'est pas chiffré : le mot de passe circule en clair." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telnet is not encrypted: the password travels in clear text."
+          }
+        }
+      }
+    },
+    "Terminal local" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local Terminal"
+          }
+        }
+      }
+    },
+    "Touche Entrée" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter key"
+          }
+        }
+      }
+    },
+    "Tout cocher" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select All"
+          }
+        }
+      }
+    },
+    "Tout décocher" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deselect All"
+          }
+        }
+      }
+    },
+    "Tunnel SSH" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SSH tunnel"
+          }
+        }
+      }
+    },
+    "Tunnel SSH non établi." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SSH tunnel not established."
+          }
+        }
+      }
+    },
+    "Tunnel vers l'hôte RDP impossible : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to open a tunnel to the RDP host: %@"
+          }
+        }
+      }
+    },
+    "Tunnel vers l'hôte Telnet impossible : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to open a tunnel to the Telnet host: %@"
+          }
+        }
+      }
+    },
+    "Tunnels actifs sur cet hôte" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Active tunnels on this host"
+          }
+        }
+      }
+    },
+    "Type de clé" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key type"
+          }
+        }
+      }
+    },
+    "Type de terminal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal type"
+          }
+        }
+      }
+    },
+    "Un bastion ne peut pas commencer par « - »." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A jump host can't start with “-”."
+          }
+        }
+      }
+    },
+    "Un mot de passe est enregistré dans le Trousseau." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A password is saved in the Keychain."
+          }
+        }
+      }
+    },
+    "Un tunnel local est ouvert sur la connexion SSH de cet hôte ; le trajet jusqu'à lui est alors chiffré." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A local tunnel is opened on this host's SSH connection; the path to it is then encrypted."
+          }
+        }
+      }
+    },
+    "Un tunnel local est ouvert sur la connexion SSH de cet hôte tant que l'hôte reste ouvert (menu « Fermer le tunnel »). Le client peut signaler un nom de certificat différent : l'adresse visée est 127.0.0.1." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A local tunnel is opened on this host's SSH connection for as long as the host stays open (“Close tunnel” menu). The client may report a different certificate name: the target address is 127.0.0.1."
+          }
+        }
+      }
+    },
+    "Util." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Users"
+          }
+        }
+      }
+    },
+    "Utilisateur" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "User"
+          }
+        }
+      }
+    },
+    "Utilisateur courant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current user"
+          }
+        }
+      }
+    },
+    "Utilisateurs connectés" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logged-in users"
+          }
+        }
+      }
+    },
+    "Utiliser tous les écrans" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use all displays"
+          }
+        }
+      }
+    },
+    "VNC n'est pas chiffré : préférez un tunnel SSH hors réseau de confiance." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VNC is not encrypted: prefer an SSH tunnel outside a trusted network."
+          }
+        }
+      }
+    },
+    "actif" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "active"
+          }
+        }
+      }
+    },
+    "authentification annulée" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "authentication cancelled"
+          }
+        }
+      }
+    },
+    "clé d'hôte modifiée : connexion refusée" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "host key changed: connection refused"
+          }
+        }
+      }
+    },
+    "connecté" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "connected"
+          }
+        }
+      }
+    },
+    "connexion en cours" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "connecting"
+          }
+        }
+      }
+    },
+    "connexion non établie" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "connection not established"
+          }
+        }
+      }
+    },
+    "connexion…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "connecting…"
+          }
+        }
+      }
+    },
+    "déconnecté" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "disconnected"
+          }
+        }
+      }
+    },
+    "déjà présent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "already present"
+          }
+        }
+      }
+    },
+    "ex. tmux attach || tmux new" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "e.g. tmux attach || tmux new"
+          }
+        }
+      }
+    },
+    "facultatif" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "optional"
+          }
+        }
+      }
+    },
+    "inconnu" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "unknown"
+          }
+        }
+      }
+    },
+    "indisponible" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "unavailable"
+          }
+        }
+      }
+    },
+    "nom ou adresse IP" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "name or IP address"
+          }
+        }
+      }
+    },
+    "nom, adresse IP ou alias ssh_config" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "name, IP address or ssh_config alias"
+          }
+        }
+      }
+    },
+    "port à choisir" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "port to choose"
+          }
+        }
+      }
+    },
+    "prod, web" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "prod, web"
+          }
+        }
+      }
+    },
+    "reconnexion abandonnée" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reconnection abandoned"
+          }
+        }
+      }
+    },
+    "reconnexion en cours" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reconnecting"
+          }
+        }
+      }
+    },
+    "reconnexion…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reconnecting…"
+          }
+        }
+      }
+    },
+    "terminé" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ended"
+          }
+        }
+      }
+    },
+    "user@bastion:22, autre-bastion" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "user@bastion:22, other-bastion"
           }
         }
       }
@@ -162,6 +3495,83 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” will be removed from the library and its open tabs will be closed."
+          }
+        }
+      }
+    },
+    "Échec de la connexion : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection failed: %@"
+          }
+        }
+      }
+    },
+    "Échelle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scaling"
+          }
+        }
+      }
+    },
+    "Écho local" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local echo"
+          }
+        }
+      }
+    },
+    "Étiquettes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tags"
+          }
+        }
+      }
+    },
+    "échec" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "failed"
+          }
+        }
+      }
+    },
+    "échec : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "failed: %@"
+          }
+        }
+      }
+    },
+    "↓ 999,9 Ko/s  ↑ 999,9 Ko/s" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↓ 999.9 KB/s  ↑ 999.9 KB/s"
           }
         }
       }

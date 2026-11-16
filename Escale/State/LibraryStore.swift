@@ -61,7 +61,7 @@ final class LibraryStore {
                 savingBlocked = true
             }
         } catch {
-            loadProblem = "Lecture de la bibliothèque impossible : \(error.localizedDescription)"
+            loadProblem = String(localized: "Lecture de la bibliothèque impossible : \(error.localizedDescription)")
             savingBlocked = true
         }
         isLoaded = true
@@ -77,11 +77,11 @@ final class LibraryStore {
     static func describe(_ error: HostRepositoryError) -> String {
         switch error {
         case .corrupted(let path, _):
-            return "La bibliothèque d'hôtes « \(path) » est illisible (fichier corrompu). Le fichier n'a pas été modifié et rien n'y sera écrit tant que vous n'aurez pas choisi de repartir d'une bibliothèque vide."
+            return String(localized: "La bibliothèque d'hôtes « \(path) » est illisible (fichier corrompu). Le fichier n'a pas été modifié et rien n'y sera écrit tant que vous n'aurez pas choisi de repartir d'une bibliothèque vide.")
         case .unsupportedVersion(let found, let supported):
-            return "La bibliothèque d'hôtes a été écrite par une version plus récente d'Escale (format \(found), cette version gère jusqu'au format \(supported)). Le fichier n'a pas été modifié et rien n'y sera écrit."
+            return String(localized: "La bibliothèque d'hôtes a été écrite par une version plus récente d'Escale (format \(found), cette version gère jusqu'au format \(supported)). Le fichier n'a pas été modifié et rien n'y sera écrit.")
         case .io(let path, let reason):
-            return "Lecture de la bibliothèque d'hôtes « \(path) » impossible : \(reason). Le fichier n'a pas été modifié."
+            return String(localized: "Lecture de la bibliothèque d'hôtes « \(path) » impossible : \(reason). Le fichier n'a pas été modifié.")
         }
     }
 
@@ -109,7 +109,7 @@ final class LibraryStore {
         saveTask = Task { [weak self] in
             await previous?.value
             do { try await repo.save(snapshot) } catch {
-                self?.lastError = "Sauvegarde de la bibliothèque impossible : \(error.localizedDescription)"
+                self?.lastError = String(localized: "Sauvegarde de la bibliothèque impossible : \(error.localizedDescription)")
             }
         }
     }
@@ -119,7 +119,7 @@ final class LibraryStore {
     private func apply(_ op: (inout HostLibrary) throws -> Void) -> Bool {
         var copy = library
         do { try op(&copy) } catch {
-            lastError = "Modification de la bibliothèque refusée : \(error)"
+            lastError = String(localized: "Modification de la bibliothèque refusée : \(error)")
             return false
         }
         library = copy

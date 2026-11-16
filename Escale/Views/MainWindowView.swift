@@ -76,8 +76,8 @@ struct MainWindowView: View {
 
     private var deletionTitle: String {
         switch model.pendingDeletion {
-        case .host(let h): "Supprimer l'hôte « \(h.name) » ?"
-        case .folder(let f): "Supprimer le dossier « \(f.name) » ?"
+        case .host(let h): String(localized: "Supprimer l'hôte « \(h.name) » ?")
+        case .folder(let f): String(localized: "Supprimer le dossier « \(f.name) » ?")
         case nil: ""
         }
     }

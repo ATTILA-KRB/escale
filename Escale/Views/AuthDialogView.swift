@@ -70,10 +70,10 @@ struct AuthDialogView: View {
                 .font(.callout).fixedSize(horizontal: false, vertical: true)
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 10, verticalSpacing: 6) {
                 GridRow { Text("Hôte").foregroundStyle(.secondary); Text(displayHost(host)).textSelection(.enabled) }
-                GridRow { Text("Type de clé").foregroundStyle(.secondary); Text(keyType ?? "inconnu").textSelection(.enabled) }
+                GridRow { Text("Type de clé").foregroundStyle(.secondary); Text(keyType ?? String(localized: "inconnu")).textSelection(.enabled) }
                 GridRow(alignment: .top) {
                     Text("Empreinte").foregroundStyle(.secondary)
-                    Text(fingerprint ?? "indisponible")
+                    Text(fingerprint ?? String(localized: "indisponible"))
                         .font(.system(size: 11.5, design: .monospaced)).textSelection(.enabled)
                         .lineLimit(1).minimumScaleFactor(0.7) // jamais coupée au milieu : une empreinte se compare d'un coup d'œil
                 }
@@ -119,12 +119,12 @@ struct AuthDialogView: View {
 
     private var title: String {
         switch dialog.request.kind {
-        case .password: "Mot de passe requis"
-        case .passphrase: "Phrase de passe requise"
-        case .verificationCode: "Code de vérification requis"
-        case .hostKeyConfirmation: "Hôte inconnu"
-        case .hostKeyChanged: "Clé d'hôte modifiée"
-        case .other: "Information demandée par le serveur"
+        case .password: String(localized: "Mot de passe requis")
+        case .passphrase: String(localized: "Phrase de passe requise")
+        case .verificationCode: String(localized: "Code de vérification requis")
+        case .hostKeyConfirmation: String(localized: "Hôte inconnu")
+        case .hostKeyChanged: String(localized: "Clé d'hôte modifiée")
+        case .other: String(localized: "Information demandée par le serveur")
         }
     }
 

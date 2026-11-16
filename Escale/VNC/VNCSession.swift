@@ -23,7 +23,7 @@ final class VNCSession: Identifiable {
     private(set) var settings: VNCSettings
     @ObservationIgnored unowned let model: AppModel
 
-    private(set) var phase: Phase = .connecting("Connexion…")
+    private(set) var phase: Phase = .connecting(String(localized: "Connexion…"))
     private(set) var serverInfo: RFBServerInfo?
     /// Taille de l'écran distant (suit `DesktopSize`).
     private(set) var remoteSize = CGSize.zero
@@ -90,7 +90,7 @@ final class VNCSession: Identifiable {
         runTask = nil
         triedStored = false
         promptError = nil
-        phase = .connecting("Connexion…")
+        phase = .connecting(String(localized: "Connexion…"))
         start()
     }
 
@@ -132,7 +132,7 @@ final class VNCSession: Identifiable {
         while !Task.isCancelled && !closing {
             do {
                 let endpoint = try await resolveEndpoint()
-                phase = .connecting("Connexion à \(endpoint.host):\(endpoint.port)…")
+                phase = .connecting(String(localized: "Connexion à \(endpoint.host):\(endpoint.port)…"))
                 let transport = try await RFBNetworkTransport.connect(host: endpoint.host, port: endpoint.port)
                 let client = RFBClient(transport: transport, configuration: RFBConfiguration(settings: settings))
                 self.client = client
@@ -152,11 +152,11 @@ final class VNCSession: Identifiable {
                 await dropClient()
                 if case .authenticationFailed(let m) = error {
                     // Le serveur ferme après un refus : on se reconnecte pour une nouvelle saisie.
-                    promptError = storedPasswordUsed ? "Le mot de passe enregistré a été refusé. \(m)" : m
+                    promptError = storedPasswordUsed ? String(localized: "Le mot de passe enregistré a été refusé. \(m)") : m
                     typedPassword = nil
                     continue
                 }
-                if error == .authenticationCancelled { phase = .ended("Authentification annulée."); return }
+                if error == .authenticationCancelled { phase = .ended(String(localized: "Authentification annulée.")); return }
                 if Task.isCancelled || closing { return }
                 phase = .failed(error.description)
                 return
@@ -197,7 +197,7 @@ final class VNCSession: Identifiable {
                 if closing { return }
                 self.client = nil
                 if let err, err != .connectionClosed { phase = .failed(err.description) }
-                else { phase = .ended(err == nil ? nil : "Le serveur a fermé la connexion.") }
+                else { phase = .ended(err == nil ? nil : String(localized: "Le serveur a fermé la connexion.")) }
                 if let spec = tunnelSpec, let controller { _ = await controller.stop(spec.id); tunnelSpec = nil; tunnelPort = nil }
                 return
             }
@@ -230,7 +230,7 @@ final class VNCSession: Identifiable {
         credentialContinuation = nil
         if let username { self.username = username }
         typedPassword = password
-        phase = .connecting("Authentification…")
+        phase = .connecting(String(localized: "Authentification…"))
         c.resume(returning: RFBCredentials(username: self.username, password: password))
     }
 
@@ -246,7 +246,7 @@ final class VNCSession: Identifiable {
         defer { typedPassword = nil }
         guard rememberPassword, let pw = typedPassword, !pw.isEmpty else { return }
         do { try await model.connections.secretStore.setSecret(Secret(pw), for: storedAccount) }
-        catch { notice = "Mot de passe non enregistré dans le Trousseau (\(error))." }
+        catch { notice = String(localized: "Mot de passe non enregistré dans le Trousseau (\(error)).") }
     }
 
     // MARK: Tunnel SSH
@@ -254,11 +254,11 @@ final class VNCSession: Identifiable {
     private func resolveEndpoint() async throws -> (host: String, port: Int) {
         guard let viaID = settings.viaSSHHostID else { return (host.host, port) }
         guard let via = model.library.host(viaID), via.connectionProtocol == .ssh else {
-            throw VNCSessionError("L'hôte SSH du tunnel n'existe plus dans la bibliothèque.")
+            throw VNCSessionError(String(localized: "L'hôte SSH du tunnel n'existe plus dans la bibliothèque."))
         }
         // Reconnexion : l'ancien tunnel est fermé avant d'en ouvrir un nouveau.
         if let spec = tunnelSpec, let controller { _ = await controller.stop(spec.id); tunnelSpec = nil }
-        phase = .connecting("Connexion SSH à \(via.name)…")
+        phase = .connecting(String(localized: "Connexion SSH à \(via.name)…"))
         let link: SSHLink
         if let l = self.link { link = l } else {
             link = model.connections.connection(for: via).acquireLink()
@@ -267,13 +267,13 @@ final class VNCSession: Identifiable {
         do { try await link.ensureConnected() } catch { throw VNCSessionError("Tunnel SSH : \(link.message(for: error))") }
         let controller = self.controller ?? TunnelController(transport: link.transport)
         self.controller = controller
-        guard let local = Self.freeLocalPort() else { throw VNCSessionError("Aucun port local libre pour le tunnel.") }
+        guard let local = Self.freeLocalPort() else { throw VNCSessionError(String(localized: "Aucun port local libre pour le tunnel.")) }
         let spec = TunnelSpec(kind: .local, bindPort: local, destinationHost: host.host, destinationPort: port, name: "VNC \(host.name)")
-        phase = .connecting("Ouverture du tunnel vers \(host.host):\(port)…")
+        phase = .connecting(String(localized: "Ouverture du tunnel vers \(host.host):\(port)…"))
         let state = await controller.start(spec)
         guard state == .active else {
             if case .failed(let m) = state { throw VNCSessionError("Tunnel SSH : \(m)") }
-            throw VNCSessionError("Tunnel SSH non établi.")
+            throw VNCSessionError(String(localized: "Tunnel SSH non établi."))
         }
         tunnelSpec = spec
         tunnelPort = local

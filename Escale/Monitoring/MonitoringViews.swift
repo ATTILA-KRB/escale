@@ -56,17 +56,17 @@ struct MonitoringBar: View {
         if let u = s.memUsed, let t = s.memTotal { memValue = "\(MonitoringFormat.bytes(u)) / \(MonitoringFormat.bytes(t))" } else { memValue = "—" }
         let disk = s.diskPercent.map { "\($0) %" } ?? "—"
         let diskHelp: String
-        if let u = s.diskUsed, let t = s.diskTotal { diskHelp = "Disque de / : \(MonitoringFormat.bytes(u)) utilisés sur \(MonitoringFormat.bytes(t))" } else { diskHelp = "Disque de /" }
+        if let u = s.diskUsed, let t = s.diskTotal { diskHelp = String(localized: "Disque de / : \(MonitoringFormat.bytes(u)) utilisés sur \(MonitoringFormat.bytes(t))") } else { diskHelp = String(localized: "Disque de /") }
         return [
-            Item(id: "cpu", symbol: "cpu", label: "CPU", value: MonitoringFormat.percent(s.cpuPercent), help: "Processeur (moyenne depuis le relevé précédent)"),
-            Item(id: "mem", symbol: "memorychip", label: "Mém", value: memValue, help: "Mémoire utilisée / totale (hors cache)"),
-            Item(id: "load", symbol: "gauge.with.dots.needle.33percent", label: "Charge", value: MonitoringFormat.load(s.load1), help: "Charge moyenne sur 1 minute"),
-            Item(id: "disk", symbol: "internaldrive", label: "Disque", value: disk, help: diskHelp),
+            Item(id: "cpu", symbol: "cpu", label: "CPU", value: MonitoringFormat.percent(s.cpuPercent), help: String(localized: "Processeur (moyenne depuis le relevé précédent)")),
+            Item(id: "mem", symbol: "memorychip", label: String(localized: "Mém"), value: memValue, help: String(localized: "Mémoire utilisée / totale (hors cache)")),
+            Item(id: "load", symbol: "gauge.with.dots.needle.33percent", label: String(localized: "Charge"), value: MonitoringFormat.load(s.load1), help: String(localized: "Charge moyenne sur 1 minute")),
+            Item(id: "disk", symbol: "internaldrive", label: String(localized: "Disque"), value: disk, help: diskHelp),
             Item(id: "net", symbol: "arrow.up.arrow.down", label: "Réseau",
                  value: "↓ \(MonitoringFormat.rate(s.netInRate))  ↑ \(MonitoringFormat.rate(s.netOutRate))",
-                 help: "Débit réseau entrant et sortant (interfaces physiques)"),
-            Item(id: "users", symbol: "person.2", label: "Util.", value: s.users.map(String.init) ?? "—", help: "Utilisateurs connectés"),
-            Item(id: "up", symbol: "clock", label: "Actif", value: MonitoringFormat.uptime(s.uptime), help: "Durée depuis le démarrage du serveur"),
+                 help: String(localized: "Débit réseau entrant et sortant (interfaces physiques)")),
+            Item(id: "users", symbol: "person.2", label: String(localized: "Util."), value: s.users.map(String.init) ?? "—", help: String(localized: "Utilisateurs connectés")),
+            Item(id: "up", symbol: "clock", label: "Actif", value: MonitoringFormat.uptime(s.uptime), help: String(localized: "Durée depuis le démarrage du serveur")),
         ]
     }
 
@@ -104,9 +104,9 @@ struct MonitoringBar: View {
             if let s = monitor.snapshot { metrics(s) } else { message("Monitoring distant…", spinner: true) }
         case .starting: message("Monitoring distant…", spinner: true)
         case .waiting:
-            if let s = monitor.snapshot { metrics(s).opacity(0.45) } else { message("Monitoring en pause (connexion perdue)", spinner: false) }
-        case .unsupported: message("Monitoring indisponible sur ce système", spinner: false)
-        case .busy: message("Monitoring indisponible : sessions du serveur épuisées", spinner: false)
+            if let s = monitor.snapshot { metrics(s).opacity(0.45) } else { message(String(localized: "Monitoring en pause (connexion perdue)"), spinner: false) }
+        case .unsupported: message(String(localized: "Monitoring indisponible sur ce système"), spinner: false)
+        case .busy: message(String(localized: "Monitoring indisponible : sessions du serveur épuisées"), spinner: false)
         case .failed(let m): message("Monitoring indisponible : \(m)", spinner: false)
         }
     }
