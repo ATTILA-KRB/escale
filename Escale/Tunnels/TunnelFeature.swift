@@ -126,8 +126,8 @@ final class TunnelFeature: AppFeature {
         await refreshAllocatedPort(spec.id, ctx)
         if let e = r.error {
             editErrors[spec.id] = r.restored
-                ? "Modification non appliquée : \(e) L'ancien tunnel a été rétabli."
-                : "Modification non appliquée : \(e)"
+                ? String(localized: "Modification non appliquée : \(e) L'ancien tunnel a été rétabli.")
+                : String(localized: "Modification non appliquée : \(e)")
             if !r.state.isActive { ctx.wanted.remove(spec.id) }
             show(host: host.id) // l'erreur doit se voir
         } else { editErrors[spec.id] = nil }

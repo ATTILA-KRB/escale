@@ -64,8 +64,8 @@ private struct MacroRecordingBar: View {
     let feature: MacroFeature
     var body: some View {
         StatusBanner(tone: .live, icon: .symbol("record.circle.fill"),
-                     title: "Enregistrement de la macro — \(feature.recordedStepCount) étape\(feature.recordedStepCount > 1 ? "s" : "")",
-                     detail: "Ne tapez pas de mot de passe : il serait enregistré en clair.") {
+                     title: String(localized: "Enregistrement de la macro — \(feature.recordedStepCount) étape\(feature.recordedStepCount > 1 ? "s" : "")"),
+                     detail: String(localized: "Ne tapez pas de mot de passe : il serait enregistré en clair.")) {
             Button("Abandonner") { feature.stopRecording(keep: false) }.buttonStyle(.bannerSecondary)
             Button("Terminer") { feature.stopRecording() }.buttonStyle(.bannerPrimary)
                 .keyboardShortcut(.escape, modifiers: [.control, .option])
@@ -157,7 +157,7 @@ struct MacroManagerView: View {
     private func scopeLabel(_ s: MacroScope) -> String {
         switch s {
         case .global: "Tous les hôtes"
-        case .host(let id): model.library.library.hosts.first { $0.id == id }.map { "Hôte : \($0.name)" } ?? "Hôte supprimé"
+        case .host(let id): model.library.library.hosts.first { $0.id == id }.map { "Hôte : \($0.name)" } ?? String(localized: "Hôte supprimé")
         }
     }
 }
@@ -290,7 +290,7 @@ struct X11LaunchSheet: View {
     @State private var detection = X11Detection()
 
     private var error: String? {
-        if !host.x11Forwarding { return "La redirection X11 est désactivée pour cet hôte : activez-la dans son édition, puis rouvrez ses onglets." }
+        if !host.x11Forwarding { return String(localized: "La redirection X11 est désactivée pour cet hôte : activez-la dans son édition, puis rouvrez ses onglets.") }
         if !detection.isReady { return detection.explanation }
         if case .failure(let e) = X11LaunchCommand.validate(command) { return e.message }
         return nil
