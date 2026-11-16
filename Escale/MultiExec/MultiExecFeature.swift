@@ -219,7 +219,7 @@ final class MultiExecFeature: AppFeature {
         /// Commande propre à un hôte (remplace la commande commune) ; absente ou vide = commune.
         var overrides: [UUID: String] = [:]
         /// D'où viennent les cibles (affiché dans la feuille).
-        var source = "Sélection"
+        var source = String(localized: "Sélection")
     }
 
     /// Commande réellement envoyée à `host` : surcharge sinon commune, variables substituées.
@@ -265,7 +265,7 @@ final class MultiExecFeature: AppFeature {
     static let maxOutputBytes = 64 * 1024
 
     /// Ouvre la feuille pour les hôtes donnés.
-    func beginGroupExec(hosts: [HostProfile], source: String = "Sélection") {
+    func beginGroupExec(hosts: [HostProfile], source: String = String(localized: "Sélection")) {
         guard !hosts.isEmpty, model?.activeFeatureSheet == nil else { return }
         var d = ExecDraft(hosts: hosts)
         d.source = source
