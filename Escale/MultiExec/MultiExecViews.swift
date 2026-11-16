@@ -97,8 +97,8 @@ private struct BroadcastBanner: View {
     let feature: MultiExecFeature
     var body: some View {
         StatusBanner(tone: .live, icon: .symbol("dot.radiowaves.left.and.right"),
-                     title: "Diffusion de la saisie vers \(feature.broadcastPaneIDs.count) panneaux",
-                     detail: "Sortie sans diffuser la touche : ⌥⌘I, ⌃⌥Échap ou Échap Échap") {
+                     title: String(localized: "Diffusion de la saisie vers \(feature.broadcastPaneIDs.count) panneaux"),
+                     detail: String(localized: "Sortie sans diffuser la touche : ⌥⌘I, ⌃⌥Échap ou Échap Échap")) {
             Button("Choisir les panneaux…") { feature.openBroadcastSheet() }.buttonStyle(.bannerSecondary)
             Button("Arrêter la diffusion") { feature.stopBroadcast() }.buttonStyle(.bannerPrimary)
                 .help("⌥⌘I. Échap Échap rapide : le premier Échap est retenu 0,35 s pour les autres panneaux ; si un second suit, la diffusion s'arrête et aucun des deux n'est envoyé.")
@@ -215,7 +215,7 @@ private struct ExecSheet: View {
                 }
                 .frame(maxHeight: 150)
                 if let h = draft.hosts.first, !draft.command.isEmpty || draft.overrides[h.id] != nil {
-                    Text("Aperçu pour \(h.name) : " + MultiExecFeature.resolvedCommand(common: draft.command, overrides: draft.overrides, host: h))
+                    Text(String(localized: "Aperçu pour \(h.name) : ") + MultiExecFeature.resolvedCommand(common: draft.command, overrides: draft.overrides, host: h))
                         .font(.system(.caption2, design: .monospaced)).foregroundStyle(.secondary).lineLimit(2)
                 }
             }
@@ -239,7 +239,7 @@ private struct ExecSheet: View {
     }
 
     private func remove(_ h: HostProfile) {
-        feature.retarget(draft.hosts.filter { $0.id != h.id }, source: draft.source + " (modifiée)")
+        feature.retarget(draft.hosts.filter { $0.id != h.id }, source: draft.source + String(localized: " (modifiée)"))
     }
 
     private var targetsMenu: some View {
@@ -255,7 +255,7 @@ private struct ExecSheet: View {
                 }
                 Menu("Étiquette") {
                     ForEach(lib.library.tagCounts, id: \.tag) { t in
-                        Button("#\(t.tag) (\(t.count))") { feature.retarget(feature.hosts(withTag: t.tag), source: "Étiquette #\(t.tag)") }
+                        Button("#\(t.tag) (\(t.count))") { feature.retarget(feature.hosts(withTag: t.tag), source: String(localized: "Étiquette #\(t.tag)")) }
                     }
                 }
             }
@@ -335,8 +335,8 @@ private struct ExecRowView: View {
                 }
             }
             if expanded, let r = row.result {
-                if !r.stdout.isEmpty { output(r.stdout + (r.stdoutTruncated ? "\n[tronquée]" : ""), error: false) }
-                if !r.stderr.isEmpty { output(r.stderr + (r.stderrTruncated ? "\n[tronquée]" : ""), error: true) }
+                if !r.stdout.isEmpty { output(r.stdout + (r.stdoutTruncated ? String(localized: "\n[tronquée]") : ""), error: false) }
+                if !r.stderr.isEmpty { output(r.stderr + (r.stderrTruncated ? String(localized: "\n[tronquée]") : ""), error: true) }
             }
         }
         .padding(.horizontal, 12).padding(.vertical, 4)
@@ -359,9 +359,9 @@ private struct ExecRowView: View {
 
     private var statusText: String {
         switch row.phase {
-        case .waiting: "en attente"
-        case .connecting: "connexion…"
-        case .running: "exécution…"
+        case .waiting: String(localized: "en attente")
+        case .connecting: String(localized: "connexion…")
+        case .running: String(localized: "exécution…")
         case .done: row.result?.summary ?? ""
         }
     }

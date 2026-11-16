@@ -117,9 +117,9 @@ extension TunnelSpec.Kind {
 
     var label: String {
         switch self {
-        case .local: "Local"
-        case .remote: "Distant"
-        case .dynamic: "SOCKS"
+        case .local: String(localized: "Local")
+        case .remote: String(localized: "Distant")
+        case .dynamic: String(localized: "SOCKS")
         }
     }
 }
@@ -193,10 +193,10 @@ private struct TunnelHostHeader: View {
 
     private func label(_ s: SSHLink.State) -> String {
         switch s {
-        case .connected: "connecté"
-        case .connecting: "connexion…"
-        case .reconnecting: "reconnexion…"
-        default: "non connecté"
+        case .connected: String(localized: "connecté")
+        case .connecting: String(localized: "connexion…")
+        case .reconnecting: String(localized: "reconnexion…")
+        default: String(localized: "non connecté")
         }
     }
 }

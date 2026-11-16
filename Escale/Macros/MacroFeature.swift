@@ -74,7 +74,7 @@ final class MacroFeature: AppFeature {
                 : (detection.embedded ? model.connections.x11ServerError : nil)
             guard let notice else { return }
             for pane in model.workspace.tabs.flatMap(\.panes) where pane.link === link {
-                pane.session.appendNotice("X11 non activé : " + notice)
+                pane.session.appendNotice(String(localized: "X11 non activé : ") + notice)
             }
         }
     }
@@ -112,8 +112,8 @@ final class MacroFeature: AppFeature {
 
     static func describe(_ error: Error) -> String {
         switch error as? MacroRepositoryError {
-        case .corrupted(let path, _)?: "Le fichier \(path) est illisible ; il sera mis de côté au prochain enregistrement."
-        case .unsupportedVersion(let found, let supported)?: "Fichier de macros de version \(found) (cette version d'Escale lit jusqu'à \(supported))."
+        case .corrupted(let path, _)?: String(localized: "Le fichier \(path) est illisible ; il sera mis de côté au prochain enregistrement.")
+        case .unsupportedVersion(let found, let supported)?: String(localized: "Fichier de macros de version \(found) (cette version d'Escale lit jusqu'à \(supported)).")
         case .io(let path, let reason)?: "\(path) : \(reason)"
         case nil: error.localizedDescription
         }
@@ -131,7 +131,7 @@ final class MacroFeature: AppFeature {
         library.upsert(cleaned)
         if await persist() { draft = cleaned; draftIsNew = false; return [] }
         library = before
-        return [MacroIssue(.error, "Enregistrement impossible sur le disque.")]
+        return [MacroIssue(.error, String(localized: "Enregistrement impossible sur le disque."))]
     }
 
     func delete(_ id: UUID) async {
@@ -169,7 +169,7 @@ final class MacroFeature: AppFeature {
         let panes = allPanes ? tab.panes : [tab.activePane]
         let targets = panes.filter { $0.session.state == .running }
         guard !targets.isEmpty else {
-            notice = MacroNotice(title: "Macro « \(macro.name) »", message: "Le panneau actif n'a pas de session en cours.")
+            notice = MacroNotice(title: "Macro « \(macro.name) »", message: String(localized: "Le panneau actif n'a pas de session en cours."))
             return nil
         }
         let token = UUID()
@@ -224,10 +224,10 @@ final class MacroFeature: AppFeature {
         recorder = MacroRecorder()
         guard keep else { return }
         guard !steps.isEmpty else {
-            notice = MacroNotice(title: "Enregistrement vide", message: "Aucune saisie n'a été capturée.")
+            notice = MacroNotice(title: "Enregistrement vide", message: String(localized: "Aucune saisie n'a été capturée."))
             return
         }
-        draft = Macro(name: "Macro enregistrée", steps: steps, scope: hostID.map { .host($0) } ?? .global)
+        draft = Macro(name: String(localized: "Macro enregistrée"), steps: steps, scope: hostID.map { .host($0) } ?? .global)
         draftIsNew = true
         managerOpen = true
     }
@@ -248,7 +248,7 @@ final class MacroFeature: AppFeature {
         case .success(let c): cmd = c
         }
         guard host.x11Forwarding else {
-            return .failed("La redirection X11 est désactivée pour « \(host.name) » : activez-la dans l'édition de l'hôte.")
+            return .failed(String(localized: "La redirection X11 est désactivée pour « \(host.name) » : activez-la dans l'édition de l'hôte."))
         }
         let detection = model.connections.x11Detect()
         guard detection.isReady else { return .failed(detection.explanation) }
@@ -256,11 +256,11 @@ final class MacroFeature: AppFeature {
         let link = model.connections.connection(for: host).acquireLink()
         guard link.profile.x11Forwarding else {
             link.release()
-            return .failed("Cette connexion a été ouverte avant l'activation de X11 : fermez les onglets de l'hôte, puis relancez.")
+            return .failed(String(localized: "Cette connexion a été ouverte avant l'activation de X11 : fermez les onglets de l'hôte, puis relancez."))
         }
         guard link.transport.configuration.ssh.x11 != nil else {
             link.release()
-            return .failed("Cette connexion a été ouverte sans X11 (aucun serveur X disponible) : fermez les onglets de l'hôte, puis relancez.")
+            return .failed(String(localized: "Cette connexion a été ouverte sans X11 (aucun serveur X disponible) : fermez les onglets de l'hôte, puis relancez."))
         }
         let shell: ShellCommand
         do {
@@ -303,7 +303,7 @@ final class MacroFeature: AppFeature {
             pipe.fileHandleForReading.readabilityHandler = nil
             shell.lease?.release()
             link.release()
-            return .failed("lancement de ssh impossible : \(error.localizedDescription)")
+            return .failed(String(localized: "lancement de ssh impossible : \(error.localizedDescription)"))
         }
         x11Processes[process.processIdentifier] = process
 
