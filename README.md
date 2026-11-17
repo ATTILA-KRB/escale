@@ -41,6 +41,9 @@ No account, no subscription, no telemetry: apart from your own connections, Esca
   optionally through SSH), RDP (generates a `.rdp` file for Windows App, optionally through an SSH tunnel).
 - **Macros**: record a keystroke sequence and replay it with `⌃⌥1` to `⌃⌥9`, on one pane or all.
 - **Monitoring**: CPU, memory, load, disk and throughput under the terminal, with nothing installed on the server.
+- **AI agent access (MCP)**: let Claude Code, Cursor or any MCP client run commands, type into terminals, read and
+  write files and drive tunnels on the hosts you choose, over the connections you already opened. Off by default, per-host
+  level (read only, confirm each action, or free), local socket only, every call logged. See [docs/MCP.md](docs/MCP.md).
 - **Quick connect** (`⇧⌘K`, `user@host:port`) and **import** from MobaXterm, PuTTY, CSV or `~/.ssh/config`.
 
 <p align="center">

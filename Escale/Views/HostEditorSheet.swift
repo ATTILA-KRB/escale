@@ -183,6 +183,7 @@ struct HostEditorSheet: View {
             TextField("Bastions", text: $form.jumpHosts, prompt: Text("user@bastion:22, autre-bastion"))
         }
         X11EditorSection(isOn: $form.x11Forwarding, detect: { [connections = model.connections] in connections.x11Detect() })
+        AgentAccessEditorSection(access: $form.agentAccess)
     }
 
     private func load() {

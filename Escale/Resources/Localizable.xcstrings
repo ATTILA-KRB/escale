@@ -45,6 +45,17 @@
         }
       }
     },
+    "%@ (%lld octets)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (%lld bytes)"
+          }
+        }
+      }
+    },
     "%@ Reprise automatique à la reconnexion." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -52,6 +63,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ Automatic resume on reconnection."
+          }
+        }
+      }
+    },
+    "%@ demande : %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wants to %@"
           }
         }
       }
@@ -74,6 +96,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld active"
+          }
+        }
+      }
+    },
+    "%lld agent(s) connecté(s)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld agent(s) connected"
+          }
+        }
+      }
+    },
+    "%lld autre(s) demande(s) en attente" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld more request(s) waiting"
           }
         }
       }
@@ -276,6 +320,28 @@
         }
       }
     },
+    "Accès des agents (MCP)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent access (MCP)"
+          }
+        }
+      }
+    },
+    "Accès des agents (MCP)…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent Access (MCP)…"
+          }
+        }
+      }
+    },
     "Actif" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -283,6 +349,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Active"
+          }
+        }
+      }
+    },
+    "Action d'un agent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent action"
+          }
+        }
+      }
+    },
+    "Actions avec confirmation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actions with confirmation"
+          }
+        }
+      }
+    },
+    "Actions sans confirmation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actions without confirmation"
           }
         }
       }
@@ -694,6 +793,17 @@
         }
       }
     },
+    "Aucun hôte : réglez « Accès des agents » dans la fiche d'un hôte SSH." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No host: set “Agent access” in an SSH host's settings."
+          }
+        }
+      }
+    },
     "Aucun hôte SSH" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -877,6 +987,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Authenticating…"
+          }
+        }
+      }
+    },
+    "Autoriser" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow"
+          }
+        }
+      }
+    },
+    "Autoriser l'accès des agents" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow agent access"
           }
         }
       }
@@ -1090,6 +1222,17 @@
         }
       }
     },
+    "Chaque commande, saisie, écriture ou tunnel attend votre accord." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every command, input, write or tunnel waits for your approval."
+          }
+        }
+      }
+    },
     "Charge" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1288,6 +1431,17 @@
         }
       }
     },
+    "Claude Code" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code"
+          }
+        }
+      }
+    },
     "Client Bureau à distance introuvable" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1427,6 +1581,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS account required"
+          }
+        }
+      }
+    },
+    "Configuration du client" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client configuration"
           }
         }
       }
@@ -1680,6 +1845,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Flow control"
+          }
+        }
+      }
+    },
+    "Copier" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
           }
         }
       }
@@ -2234,6 +2410,17 @@
         }
       }
     },
+    "Désactivé" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off"
+          }
+        }
+      }
+    },
     "Désactivé par défaut : les programmes distants passent par l'extension SECURITY d'X11. Activé, un hôte compromis peut lire l'écran et le clavier de ce Mac. Réglage commun à tous les hôtes ; s'applique à la prochaine connexion." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2307,6 +2494,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pending"
+          }
+        }
+      }
+    },
+    "En écoute, aucun agent connecté" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listening, no agent connected"
           }
         }
       }
@@ -2494,6 +2692,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Uploaded %lld times"
+          }
+        }
+      }
+    },
+    "Escale expose ses hôtes aux agents IA (Claude Code, Hermes, Cursor…) par le protocole MCP, sur un socket local réservé à votre compte. Un agent n'utilise que les connexions que vous avez déjà ouvertes et seulement les hôtes dont l'accès est réglé dans leur fiche (onglet Avancé)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escale exposes its hosts to AI agents (Claude Code, Hermes, Cursor…) through the MCP protocol, on a local socket restricted to your account. An agent only uses connections you already opened, and only on hosts whose access is set in their settings (Advanced tab)."
           }
         }
       }
@@ -2927,6 +3136,17 @@
         }
       }
     },
+    "Hôte invisible pour les agents IA." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host hidden from AI agents."
+          }
+        }
+      }
+    },
     "Hôte supprimé" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2967,6 +3187,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connected hosts"
+          }
+        }
+      }
+    },
+    "Hôtes exposés" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exposed hosts"
           }
         }
       }
@@ -3147,6 +3378,17 @@
         }
       }
     },
+    "JSON (Cursor, Claude Desktop, Hermes…)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON (Cursor, Claude Desktop, Hermes…)"
+          }
+        }
+      }
+    },
     "Jouer" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3176,6 +3418,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Play “%@” in the active pane"
+          }
+        }
+      }
+    },
+    "Journal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log"
           }
         }
       }
@@ -3671,6 +3924,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "View only"
+          }
+        }
+      }
+    },
+    "Les agents agissent sans demander (actions journalisées). À réserver aux machines de test." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents act without asking (actions are logged). Best kept for test machines."
+          }
+        }
+      }
+    },
+    "Les agents lisent les terminaux, fichiers et tunnels, sans rien modifier." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents read terminals, files and tunnels, without changing anything."
           }
         }
       }
@@ -4918,6 +5193,17 @@
         }
       }
     },
+    "Refuser" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deny"
+          }
+        }
+      }
+    },
     "Relancer" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6018,6 +6304,17 @@
         }
       }
     },
+    "autorisé" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "allowed"
+          }
+        }
+      }
+    },
     "clé d'hôte modifiée : connexion refusée" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6025,6 +6322,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "host key changed: connection refused"
+          }
+        }
+      }
+    },
+    "confirmé" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "approved"
           }
         }
       }
@@ -6117,6 +6425,17 @@
         }
       }
     },
+    "exécuter une commande" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "run a command"
+          }
+        }
+      }
+    },
     "exécution…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6135,6 +6454,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "optional"
+          }
+        }
+      }
+    },
+    "fermer un tunnel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "stop a tunnel"
           }
         }
       }
@@ -6172,6 +6502,17 @@
         }
       }
     },
+    "interdit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "forbidden"
+          }
+        }
+      }
+    },
     "lancement de ssh impossible : %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6179,6 +6520,72 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "unable to launch ssh: %@"
+          }
+        }
+      }
+    },
+    "lire un fichier" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "read a file"
+          }
+        }
+      }
+    },
+    "lire un terminal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "read a terminal"
+          }
+        }
+      }
+    },
+    "lister les hôtes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "list hosts"
+          }
+        }
+      }
+    },
+    "lister les sessions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "list sessions"
+          }
+        }
+      }
+    },
+    "lister les tunnels" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "list tunnels"
+          }
+        }
+      }
+    },
+    "lister un dossier" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "list a folder"
           }
         }
       }
@@ -6238,6 +6645,17 @@
         }
       }
     },
+    "ouvrir un tunnel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "start a tunnel"
+          }
+        }
+      }
+    },
     "port à choisir" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6293,6 +6711,17 @@
         }
       }
     },
+    "refusé" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "denied"
+          }
+        }
+      }
+    },
     "relais traité à part" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6322,6 +6751,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "resumed at %lld%%"
+          }
+        }
+      }
+    },
+    "saisir dans un terminal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "type into a terminal"
           }
         }
       }
@@ -6652,6 +7092,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "failed: %@"
+          }
+        }
+      }
+    },
+    "écrire un fichier" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "write a file"
           }
         }
       }

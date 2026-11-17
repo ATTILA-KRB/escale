@@ -37,23 +37,26 @@ public struct HostProfile: Codable, Hashable, Identifiable, Sendable {
     public var telnet: TelnetSettings?
     public var vnc: VNCSettings?
     public var rdp: RDPSettings?
+    /// Accès des agents IA (serveur MCP d'Escale). Absent des bibliothèques antérieures : `none` (hôte invisible).
+    public var agentAccess: AgentAccess
 
     public init(
         id: UUID = UUID(), name: String, host: String, port: Int? = nil, user: String? = nil,
         auth: Auth = .openSSHDefaults, jumpHosts: [String] = [], tags: [String] = [], folderID: UUID? = nil,
         tunnels: [TunnelSpec] = [], x11Forwarding: Bool = false, startupCommand: String? = nil,
         connectionProtocol: ConnectionProtocol = .ssh, serial: SerialSettings? = nil, telnet: TelnetSettings? = nil,
-        vnc: VNCSettings? = nil, rdp: RDPSettings? = nil
+        vnc: VNCSettings? = nil, rdp: RDPSettings? = nil, agentAccess: AgentAccess = .none
     ) {
         self.id = id; self.name = name; self.host = host; self.port = port; self.user = user
         self.auth = auth; self.jumpHosts = jumpHosts; self.tags = tags; self.folderID = folderID
         self.tunnels = tunnels; self.x11Forwarding = x11Forwarding; self.startupCommand = startupCommand
         self.connectionProtocol = connectionProtocol; self.serial = serial; self.telnet = telnet; self.vnc = vnc; self.rdp = rdp
+        self.agentAccess = agentAccess
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, host, port, user, auth, jumpHosts, tags, folderID, tunnels, x11Forwarding, startupCommand
-        case connectionProtocol, serial, telnet, vnc, rdp
+        case connectionProtocol, serial, telnet, vnc, rdp, agentAccess
     }
 
     /// Décodage tolérant : les champs ajoutés après la première version ont une valeur par défaut,
@@ -77,6 +80,8 @@ public struct HostProfile: Codable, Hashable, Identifiable, Sendable {
         telnet = try c.decodeIfPresent(TelnetSettings.self, forKey: .telnet)
         vnc = try c.decodeIfPresent(VNCSettings.self, forKey: .vnc)
         rdp = try c.decodeIfPresent(RDPSettings.self, forKey: .rdp)
+        // Valeur inconnue (version plus récente) : repli sur `none`, jamais sur un accès plus large.
+        agentAccess = (try? c.decodeIfPresent(AgentAccess.self, forKey: .agentAccess)) ?? AgentAccess.none
     }
 
     /// Cible passée à ssh (`user@host` ou `host`).

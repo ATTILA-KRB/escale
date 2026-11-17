@@ -591,3 +591,13 @@ Cinq flux paralleles, fusionnes sur `main`. Detail et decisions : `docs/UI-MOBAX
   Remplace par l'item `barre-laterale` de `MainToolbar` (placement `.navigation`, meme format que les autres) et par
   « Afficher/Masquer la barre latérale » (⌃⌘S) du menu Presentation, tous deux sur `CompactMode.toggleSidebar()`.
   Recette `selftest-compact` : absence du bouton systeme, presence du notre, raccourci, aller-retour.
+
+### Acces des agents IA : serveur MCP (2026-11-18, branche `feat/mcp`)
+- Decision : Escale est **serveur** MCP (pas client ni agent embarque) ; JSON-RPC maison (aucune dependance), UTCP ecarte.
+  Fonction gratuite (app open source). Parite avec Tamio et SSHive (§2), plus : reutilise les maitres deja authentifies.
+- Coeur `EscaleCore/MCP/` : `JSONValue`, `MCPSession` (initialize, ping, tools/list, tools/call ; versions 2025-06-18,
+  2025-03-26, 2024-11-05), `MCPCatalog` (11 outils, lecture/action), `MCPPolicy` (none/read/confirm/full),
+  `MCPSocketServer` (threads POSIX, une tache par requete, annulation a la deconnexion), `MCPRelay` (`Escale --mcp`).
+- App `Escale/MCP/` : `MCPFeature` (outils sur liens connectes, confirmation par panneau flottant non activant, journal),
+  `MCPViews` (reglages, confirmation, niveau dans l'onglet Avance de la fiche d'hote). Invariant 21. Doc : `docs/MCP.md`.
+- Tests : `MCPTests` (session, politique, socket, relais, compatibilite de `HostProfile`) ; recette `selftest-mcp`.
