@@ -93,7 +93,8 @@ final class AppModel {
     let updates = UpdateFeature()
     let monitoring = MonitoringFeature()
     let colors = TerminalColorsFeature()
-    var features: [any AppFeature] { [sftp, tunnels, multiExec, macros, imports, updates, monitoring, colors, serial, telnet, vnc, rdp] }
+    let mcp = MCPFeature()
+    var features: [any AppFeature] { [sftp, tunnels, multiExec, macros, imports, updates, monitoring, colors, serial, telnet, vnc, rdp, mcp] }
 
     // Modules de protocoles (V1.2/V2), même contrat `AppFeature`.
     let serial = SerialFeature()
@@ -151,6 +152,7 @@ final class AppModel {
             ("selftest-compact", { await CompactSelfTest(directory: $0, model: self).run() }),
             ("selftest-tabs", { await TabsSelfTest(directory: $0, model: self).run() }),
             ("selftest-colors", { await TerminalColorsSelfTest(directory: $0, model: self).run() }),
+            ("selftest-mcp", { await MCPSelfTest(directory: $0, model: self).run() }),
         ]
     }
 

@@ -51,6 +51,7 @@ final class HostEditorForm {
     var folderID: UUID?
     var tunnels: [TunnelSpec] = []
     var x11Forwarding = false
+    var agentAccess: AgentAccess = .none
     var startupCommand = ""
     var connectionProtocol: ConnectionProtocol = .ssh
     var serial = SerialSettings()
@@ -83,7 +84,7 @@ final class HostEditorForm {
         hostID = h.id
         name = h.name; hostname = h.host; port = h.port.map(String.init) ?? ""; user = h.user ?? ""
         jumpHosts = h.jumpHosts.joined(separator: ", "); tags = h.tags.joined(separator: ", ")
-        tunnels = h.tunnels; x11Forwarding = h.x11Forwarding; startupCommand = h.startupCommand ?? ""
+        tunnels = h.tunnels; x11Forwarding = h.x11Forwarding; agentAccess = h.agentAccess; startupCommand = h.startupCommand ?? ""
         connectionProtocol = h.connectionProtocol
         serial = h.serial ?? SerialSettings(); telnet = h.telnet ?? TelnetSettings()
         vnc = h.vnc ?? VNCSettings(); rdp = h.rdp ?? RDPSettings()
@@ -140,6 +141,8 @@ final class HostEditorForm {
         h.folderID = folderID
         h.tunnels = tunnels
         h.x11Forwarding = x11Forwarding
+        // Protocoles non SSH : jamais exposés aux agents.
+        h.agentAccess = connectionProtocol == .ssh ? agentAccess : .none
         h.startupCommand = StartupCommand.normalized(startupCommand)
         return h
     }

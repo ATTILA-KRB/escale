@@ -26,6 +26,7 @@ struct FeatureCommands: Commands {
         UpdateCommands(model: model)
         MonitoringCommands(model: model)
         TerminalColorsCommands(model: model)
+        MCPCommands(model: model)
     }
 }
 
@@ -46,6 +47,7 @@ struct FeatureScenes: ViewModifier {
             .modifier(TelnetScene(model: model))
             .modifier(VNCScene(model: model))
             .modifier(RDPScene(model: model))
+            .modifier(MCPScene(model: model))
     }
 }
 

@@ -42,6 +42,10 @@ contacte que son flux de mises à jour.
 - **Autres protocoles** : Telnet (tunnel SSH optionnel), port série (vitesse, parité, BREAK, DTR/RTS), VNC (client RFB natif,
   éventuellement via SSH), RDP (génère un fichier `.rdp` pour Windows App, éventuellement via tunnel SSH).
 - **Macros** : enregistrez une suite de frappes et rejouez-la avec `⌃⌥1` à `⌃⌥9`, sur un panneau ou tous.
+- **Accès des agents IA (MCP)** : Claude Code, Cursor ou tout client MCP exécutent des commandes, saisissent dans les
+  terminaux, lisent et écrivent des fichiers et pilotent les tunnels des hôtes que vous choisissez, sur les connexions déjà
+  ouvertes. Désactivé par défaut, niveau par hôte (lecture, confirmation de chaque action, libre), socket local uniquement,
+  chaque appel journalisé. Voir [docs/MCP.md](docs/MCP.md).
 - **Supervision** : CPU, mémoire, charge, disque et débit sous le terminal, sans rien installer sur le serveur.
 - **Connexion rapide** (`⇧⌘K`, `utilisateur@hôte:port`) et **import** depuis MobaXterm, PuTTY, CSV ou `~/.ssh/config`.
 

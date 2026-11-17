@@ -9,6 +9,8 @@ import EscaleCore
 enum Launcher {
     static func main() {
         AskpassClient.runIfRequested()
+        // `Escale --mcp` : relais stdio du client MCP vers l'app en service (voir `MCPRelay`), sans AppKit.
+        MCPRelay.runIfRequested()
         EscaleApp.main()
     }
 }
