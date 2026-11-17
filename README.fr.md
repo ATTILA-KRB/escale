@@ -10,7 +10,7 @@
 ![Plateforme](https://img.shields.io/badge/macOS-15%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-6-orange)
 
-[Site](https://escale-ssh.vercel.app) · [Télécharger](https://github.com/ATTILA-KRB/escale/releases/latest) · [Discussions](https://github.com/ATTILA-KRB/escale/discussions) · [English](README.md)
+[Site](https://www.escalecompany.com) · [Télécharger](https://github.com/ATTILA-KRB/escale/releases/latest) · [Discussions](https://github.com/ATTILA-KRB/escale/discussions) · [English](README.md)
 
 <img src="web/src/assets/shots/hero.png" width="860" alt="Fenêtre d'Escale : sessions par dossier à gauche, terminal ouvert sur un serveur web, barre d'état en bas">
 
@@ -61,7 +61,7 @@ contacte que son flux de mises à jour.
 ## Téléchargement
 
 Récupérez l'image disque notarisée la plus récente sur la [page des releases](https://github.com/ATTILA-KRB/escale/releases/latest)
-(ou sur le [site](https://escale-ssh.vercel.app)), ouvrez-la et glissez Escale dans Applications. Il faut **macOS 15 ou
+(ou sur le [site](https://www.escalecompany.com)), ouvrez-la et glissez Escale dans Applications. Il faut **macOS 15 ou
 plus récent** ; l'application est universelle (Apple silicon et Intel). Elle est signée Developer ID, notarisée par Apple et
 se met à jour avec [Sparkle](https://sparkle-project.org). Elle n'est pas sur le Mac App Store : le bac à sable exclurait
 l'OpenSSH du système et `~/.ssh/config`.

@@ -10,7 +10,7 @@
 ![Platform](https://img.shields.io/badge/macOS-15%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-6-orange)
 
-[Website](https://escale-ssh.vercel.app) · [Download](https://github.com/ATTILA-KRB/escale/releases/latest) · [Discussions](https://github.com/ATTILA-KRB/escale/discussions) · [Français](README.fr.md)
+[Website](https://www.escalecompany.com) · [Download](https://github.com/ATTILA-KRB/escale/releases/latest) · [Discussions](https://github.com/ATTILA-KRB/escale/discussions) · [Français](README.fr.md)
 
 <img src="web/src/assets/shots/hero.png" width="860" alt="Escale window: sessions by folder on the left, a terminal open on a web server, status bar at the bottom">
 
@@ -58,7 +58,7 @@ No account, no subscription, no telemetry: apart from your own connections, Esca
 ## Download
 
 Grab the latest notarized disk image from the [Releases page](https://github.com/ATTILA-KRB/escale/releases/latest)
-(or from the [website](https://escale-ssh.vercel.app)), open it and drag Escale to Applications. Requires **macOS 15 or later**;
+(or from the [website](https://www.escalecompany.com)), open it and drag Escale to Applications. Requires **macOS 15 or later**;
 the app is a universal binary (Apple silicon and Intel). It is signed with a Developer ID and notarized by Apple, and
 updates itself through [Sparkle](https://sparkle-project.org). It is not on the Mac App Store because the sandbox rules out
 your system's OpenSSH and `~/.ssh/config`.
