@@ -53,6 +53,11 @@ final class MCPFeature: AppFeature {
     private(set) var pending: [Confirmation] = []
     /// Liens SSH ouverts à la demande pour les agents (conservés entre appels jusqu'à l'arrêt ou la désactivation).
     private(set) var agentRetainedLinks: [UUID: SSHLink] = [:]
+    /// État détecté des clients IA (`agy`, Claude Code, Claude Desktop, Codex).
+    private(set) var clientStatuses: [AIClientKind: AIClientStatus] = [:]
+    /// Message de retour suite à une action de configuration / copie d'un client IA.
+    private(set) var clientActionMessage: String?
+    private(set) var clientActionIsError = false
     var isSettingsPresented = false
 
     /// Recettes : réponse automatique aux confirmations (aucun panneau). nil = demander à l'utilisateur.
@@ -61,6 +66,7 @@ final class MCPFeature: AppFeature {
     @ObservationIgnored private var server: MCPSocketServer?
     @ObservationIgnored private var defaults: UserDefaults = .standard
     @ObservationIgnored private lazy var panel = MCPConfirmationPanel(feature: self)
+    @ObservationIgnored var clientConfigurator = AIClientConfigurator()
 
     let socketPath = MCPEndpoint.socketPath()
 
@@ -155,16 +161,77 @@ final class MCPFeature: AppFeature {
 
     /// Commande à copier pour déclarer Escale à un client MCP.
     var executablePath: String { Bundle.main.executablePath ?? "/Applications/Escale.app/Contents/MacOS/Escale" }
-    var claudeCodeCommand: String { "claude mcp add escale -- \(ShellQuote.word(executablePath)) --mcp" }
-    var jsonConfiguration: String {
-        let path = executablePath.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-        return """
-            {
-              "mcpServers": {
-                "escale": { "command": "\(path)", "args": ["--mcp"] }
-              }
-            }
-            """
+    var claudeCodeCommand: String { AIClientConfigurator.copySnippet(for: .claudeCode, executablePath: executablePath) }
+    var jsonConfiguration: String { AIClientConfigurator.jsonSnippet(executablePath: executablePath) }
+    var codexTOMLConfiguration: String { AIClientConfigurator.codexTOMLSnippet(executablePath: executablePath) }
+
+    // MARK: Configuration des clients IA (agy, Claude, Codex)
+
+    func refreshClientStatuses() {
+        let exe = executablePath
+        var next: [AIClientKind: AIClientStatus] = [:]
+        for client in AIClientKind.allCases {
+            next[client] = clientConfigurator.status(for: client, executablePath: exe)
+        }
+        clientStatuses = next
+    }
+
+    func status(for client: AIClientKind) -> AIClientStatus {
+        clientStatuses[client] ?? clientConfigurator.status(for: client, executablePath: executablePath)
+    }
+
+    func installClient(_ client: AIClientKind) {
+        do {
+            try clientConfigurator.install(for: client, executablePath: executablePath)
+            if !isEnabled { setEnabled(true) }
+            refreshClientStatuses()
+            clientActionIsError = false
+            clientActionMessage = String(localized: "\(client.displayName) configuré (\(client.displayConfigPath)).")
+        } catch {
+            refreshClientStatuses()
+            clientActionIsError = true
+            clientActionMessage = String(localized: "Impossible de configurer \(client.displayName) : \(error.localizedDescription)")
+        }
+    }
+
+    func uninstallClient(_ client: AIClientKind) {
+        do {
+            try clientConfigurator.uninstall(for: client)
+            refreshClientStatuses()
+            clientActionIsError = false
+            clientActionMessage = String(localized: "Entrée Escale retirée de \(client.displayName).")
+        } catch {
+            refreshClientStatuses()
+            clientActionIsError = true
+            clientActionMessage = String(localized: "Impossible de modifier \(client.displayName) : \(error.localizedDescription)")
+        }
+    }
+
+    func copySnippet(for client: AIClientKind) {
+        let snippet = AIClientConfigurator.copySnippet(for: client, executablePath: executablePath)
+        copyToPasteboard(snippet, label: client.displayName)
+    }
+
+    func copyToPasteboard(_ text: String, label: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        clientActionIsError = false
+        clientActionMessage = String(localized: "Configuration copiée pour \(label).")
+    }
+
+    /// Tous les hôtes SSH enregistrés dans la bibliothèque, triés par nom.
+    var sshHosts: [HostProfile] {
+        (model?.library.library.hosts ?? [])
+            .filter { $0.connectionProtocol == .ssh }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Met à jour le niveau d'accès agent d'un hôte SSH directement depuis la fenêtre Agents IA.
+    func setHostAccess(_ access: AgentAccess, for host: HostProfile) {
+        guard host.agentAccess != access else { return }
+        var updated = host
+        updated.agentAccess = access
+        model?.library.upsert(updated)
     }
 
     // MARK: Confirmations
