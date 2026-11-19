@@ -280,7 +280,25 @@ final class MCPFeature: AppFeature {
         (model?.library.library.hosts ?? []).filter { $0.connectionProtocol == .ssh && $0.agentAccess.allowsVisibility }
     }
 
-    private struct ToolFailure: Error { let message: String }
+    private struct ToolFailure: Error {
+        let message: String
+        var alreadyLogged = false
+    }
+
+    private func isHostConnected(_ host: HostProfile) -> Bool {
+        model?.connections.existing(host.id)?.links.contains(where: { $0.state == .connected }) == true
+    }
+
+    private func toolRequiresConnectedLink(_ tool: MCPCatalog.Tool) -> Bool {
+        switch tool {
+        case .connectHost, .exec, .listFiles, .readFile, .writeFile, .startTunnel: true
+        case .listHosts, .listSessions, .readTerminal, .sendInput, .listTunnels, .stopTunnel: false
+        }
+    }
+
+    private static func notConnectedMessage(for host: HostProfile) -> String {
+        "host '\(host.name)' is not connected: ask the user to open it in Escale first (or enable on-demand agent connections in Escale)"
+    }
 
     private func host(_ args: MCPArguments) throws -> HostProfile {
         let key = try args.string("host").trimmingCharacters(in: .whitespaces)
@@ -302,14 +320,14 @@ final class MCPFeature: AppFeature {
             return existing
         }
         guard allowAutoConnect else {
-            throw ToolFailure(message: "host '\(host.name)' is not connected: ask the user to open it in Escale first (or enable on-demand agent connections in Escale)")
+            throw ToolFailure(message: Self.notConnectedMessage(for: host))
         }
         guard let model else { throw ToolFailure(message: "application stopped") }
         let targetDetail = host.port.map { "\(host.target):\($0)" } ?? host.target
         if host.agentAccess == .confirm && !alreadyConfirmed {
             guard await confirm(.connectHost, client: client, host: host, detail: targetDetail) else {
                 log(client, .connectHost, host, targetDetail, .refusedByUser)
-                throw ToolFailure(message: "the user refused this action in Escale")
+                throw ToolFailure(message: "the user refused this action in Escale", alreadyLogged: true)
             }
             log(client, .connectHost, host, targetDetail, .approved)
         }
@@ -381,8 +399,27 @@ final class MCPFeature: AppFeature {
             }
             target = h
             let summary = try describe(tool, call.arguments, host: h)
+            var decision = MCPPolicy.decide(tool.operation, access: h.agentAccess)
+            if tool == .connectHost {
+                let openTab = try call.arguments.bool("open_tab", default: false)
+                // Sur un hôte en lecture seule, connect_host (sans ouvrir d'onglet) reste cohérent avec list_files/read_file.
+                if h.agentAccess == .read && !openTab {
+                    decision = .allow
+                } else if decision == .confirm && isHostConnected(h) && !openTab {
+                    // Réutilisation sans nouvelle connexion ni onglet : pas de confirmation inutile.
+                    decision = .allow
+                }
+            }
+            if case .deny(let m) = decision {
+                log(client, tool, h, summary, .denied(m))
+                return .error(m)
+            }
+            // Refuser immédiatement si l'hôte est déconnecté et l'auto-connexion désactivée (avant toute confirmation).
+            if toolRequiresConnectedLink(tool) && !isHostConnected(h) && !allowAutoConnect {
+                throw ToolFailure(message: Self.notConnectedMessage(for: h))
+            }
             var confirmed = false
-            switch MCPPolicy.decide(tool.operation, access: h.agentAccess) {
+            switch decision {
             case .deny(let m):
                 log(client, tool, h, summary, .denied(m))
                 return .error(m)
@@ -398,7 +435,7 @@ final class MCPFeature: AppFeature {
             }
             return try await run(tool, call.arguments, host: h, pane: p, client: client, alreadyConfirmed: confirmed)
         } catch let e as ToolFailure {
-            if let target { markFailure(client, tool, target, e.message) }
+            if let target, !e.alreadyLogged { markFailure(client, tool, target, e.message) }
             return .error(e.message)
         } catch let e as MCPArgumentError {
             return .error(e.message)

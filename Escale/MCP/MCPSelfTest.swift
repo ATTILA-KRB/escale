@@ -229,27 +229,41 @@ struct MCPSelfTest {
             await check("list_hosts_aucun_secret", !lh.isError && rawHosts.contains("Hôte libre") && !lh.text.contains("Hôte caché") && !rawHosts.contains("Hôte caché")
                         && !rawHosts.contains("keyFile") && !rawHosts.contains("\"path\"") && (keyPath.isEmpty || !rawHosts.contains(keyPath)), keyPath)
 
-            // 4. exec / connect_host sur un hôte non connecté (autoConnect désactivé) : refus, aucun maître ouvert
+            // 4. exec / connect_host sur un hôte non connecté (autoConnect désactivé) : refus sans confirmation, aucun maître ouvert
             let acc0 = acceptedCount
+            var confirmPromptedWhileDisconnected = false
+            mcp.confirmationOverride = { _ in confirmPromptedWhileDisconnected = true; return true }
             let dis = await call(c, "exec", ["host": "Hôte libre", "command": "echo MCP-$((6*7))"])
             let disConn = await call(c, "connect_host", ["host": "Hôte libre"])
+            let disConfirm = await call(c, "connect_host", ["host": "Hôte confirm"])
+            mcp.confirmationOverride = nil
             await sleep(1.0)
             await check("exec_deconnecte_refuse", dis.isError && dis.text.contains("not connected"), dis.text)
-            await check("connect_host_deconnecte_refuse", disConn.isError && disConn.text.contains("not connected"), disConn.text)
+            await check("connect_host_deconnecte_refuse", disConn.isError && disConn.text.contains("not connected")
+                        && disConfirm.isError && disConfirm.text.contains("not connected") && !confirmPromptedWhileDisconnected, disConfirm.text)
             await check("exec_deconnecte_aucun_maitre", model.connections.existing(hFull.id)?.links.contains { $0.state == .connected } != true
                         && acceptedCount == acc0, "accepted \(acceptedCount) vs \(acc0)")
 
-            // 4b. Connexion à la demande (allowAutoConnect = true) : confirmation sur confirm, ouverture + réutilisation sur libre, libération à la coupure
+            // 4b. Connexion à la demande (allowAutoConnect = true) : lecture (sans open_tab), confirmation sur confirm, ouverture + réutilisation sur libre, libération à la coupure
             mcp.setAutoConnect(true)
             let lhAuto = await call(c, "list_hosts", [:])
             await check("list_hosts_auto_connect_true", (lhAuto.structured["auto_connect"] as? Bool) == true)
+            let readConnTabDenied = await call(c, "connect_host", ["host": "Hôte lecture", "open_tab": true])
+            await check("connect_host_lecture_open_tab_refuse", readConnTabDenied.isError && readConnTabDenied.text.contains("read-only"), readConnTabDenied.text)
+            let readConnOK = await call(c, "connect_host", ["host": "Hôte lecture"])
+            await check("connect_host_lecture_ok", !readConnOK.isError && (readConnOK.structured["state"] as? String) == "connected", readConnOK.text)
+            let jnRefuse0 = mcp.journal.count
             mcp.confirmationOverride = { _ in false }
             let refuseConn = await call(c, "connect_host", ["host": "Hôte confirm"])
             await check("connect_host_confirm_refuse", refuseConn.isError && refuseConn.text.contains("refused"), refuseConn.text)
+            let refuseReadAuto = await call(c, "list_files", ["host": "Hôte confirm", "path": "."])
+            let refuseEntries = mcp.journal.dropFirst(jnRefuse0)
+            await check("list_files_confirm_refuse_sans_doublon_journal", refuseReadAuto.isError && refuseReadAuto.text.contains("refused")
+                        && !refuseEntries.contains { if case .failed = $0.outcome { true } else { false } }, refuseReadAuto.text)
             mcp.confirmationOverride = nil
             let autoConn = await call(c, "connect_host", ["host": "Hôte libre"])
             await check("connect_host_libre_ok", !autoConn.isError && (autoConn.structured["state"] as? String) == "connected"
-                        && (autoConn.structured["already_connected"] as? Bool) == false && mcp.activeAgentLinkCount == 1, autoConn.text)
+                        && (autoConn.structured["already_connected"] as? Bool) == false && mcp.activeAgentLinkCount == 2, autoConn.text)
             let autoExec = await call(c, "exec", ["host": "Hôte libre", "command": "echo AUTO-$((6*7))"])
             await check("auto_connect_exec_reutilise_maitre", !autoExec.isError && (autoExec.structured["stdout"] as? String)?.contains("AUTO-42") == true, autoExec.text)
             mcp.setAutoConnect(false)
@@ -296,6 +310,12 @@ struct MCPSelfTest {
             // Nom ou identifiant : les deux résolvent
             let byID = await call(c, "exec", ["host": hFull.id.uuidString, "command": "exit 3"])
             await check("exec_par_identifiant_code_3", !byID.isError && (byID.structured["exit_code"] as? Int) == 3, byID.text)
+            var confirmPromptedAlreadyConnected = false
+            mcp.confirmationOverride = { _ in confirmPromptedAlreadyConnected = true; return false }
+            let alreadyConnConfirm = await call(c, "connect_host", ["host": "Hôte confirm"])
+            await check("connect_host_confirm_deja_connecte_sans_confirmation",
+                        !alreadyConnConfirm.isError && (alreadyConnConfirm.structured["already_connected"] as? Bool) == true && !confirmPromptedAlreadyConnected,
+                        alreadyConnConfirm.text)
             mcp.confirmationOverride = { _ in false }
             let refused = await call(c, "exec", ["host": "Hôte confirm", "command": "echo CONF-$((2*3))"])
             await check("exec_confirm_refuse_par_utilisateur", refused.isError && refused.text.contains("refused"), refused.text)
