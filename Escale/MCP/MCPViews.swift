@@ -79,6 +79,7 @@ struct MCPConfirmationView: View {
     static func title(_ t: MCPCatalog.Tool) -> String {
         switch t {
         case .exec: String(localized: "exécuter une commande")
+        case .connectHost: String(localized: "ouvrir la connexion SSH")
         case .sendInput: String(localized: "saisir dans un terminal")
         case .writeFile: String(localized: "écrire un fichier")
         case .startTunnel: String(localized: "ouvrir un tunnel")
