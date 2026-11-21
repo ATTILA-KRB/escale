@@ -1,39 +1,116 @@
 ---
-// Fenêtre qui encadre une capture réelle de l'app. Sans capture disponible : fenêtre vide marquée « à venir ».
-import { Image } from 'astro:assets';
-import { shot } from '../lib/shots';
+// Fenêtre qui encadre une capture réelle de l'app, zoomable au clic (lightbox unique dans Landing).
+// Si une boucle vidéo existe (public/clips/<nom>.mp4), elle remplace la capture dans la même fenêtre
+// et la capture sert d'affiche. Sans capture ni vidéo : rien n'est rendu (jamais de cadre vide).
+import { getImage } from 'astro:assets';
+import { shot, clip } from '../lib/shots';
 
 interface Props {
   name: string;
   alt: string;
-  placeholder: string;
+  /** Libellé accessible du bouton de zoom. */
+  zoomLabel: string;
   class?: string;
+  imgClass?: string;
   eager?: boolean;
   sizes?: string;
+  /** Largeurs souhaitées ; ramenées à la taille réelle de la capture (jamais d'agrandissement). */
+  widths?: number[];
+  /** Recadrage portrait servi sous 768 px si présent (sinon la capture principale). */
+  mobile?: string;
+  mobileSizes?: string;
+  /** Autorise la boucle vidéo (fonctions seulement). */
+  video?: boolean;
+  /** Ombre légère (tuiles). */
+  small?: boolean;
 }
-const { name, alt, placeholder, class: klass = '', eager = false, sizes = '(min-width: 1024px) 60vw, 100vw' } = Astro.props;
+const {
+  name,
+  alt,
+  zoomLabel,
+  class: klass = '',
+  imgClass = 'block h-auto w-full',
+  eager = false,
+  sizes = '(min-width: 1024px) 60vw, 100vw',
+  widths: wanted = [900, 1400, 2880],
+  mobile,
+  mobileSizes = 'calc(100vw - 40px)',
+  video = false,
+  small = false,
+} = Astro.props;
+
 const src = shot(name);
+const clipUrl = video ? clip(name) : undefined;
+
+const fit = (m: { width: number }, list: number[]) => [...new Set(list.map((w) => Math.min(w, m.width)))].sort((a, b) => a - b);
+// Variante servie par défaut : la deuxième largeur (ou la seule).
+const variants = async (m: NonNullable<typeof src>, list: number[]) => {
+  const widths = fit(m, list);
+  return getImage({ src: m, widths, width: widths[Math.min(1, widths.length - 1)], format: 'webp' });
+};
+// Plus grande variante, pour la lightbox : webp à la largeur native.
+const full = async (m: NonNullable<typeof src>) => (await getImage({ src: m, width: m.width, format: 'webp' })).src;
+
+const img = src ? await variants(src, wanted) : undefined;
+const fullSrc = src ? await full(src) : undefined;
+const mSrc = mobile ? shot(mobile) : undefined;
+const mImg = mSrc ? await variants(mSrc, [600, 900, 1200]) : undefined;
+const mFull = mSrc ? await full(mSrc) : undefined;
+const poster = src && clipUrl ? (await getImage({ src, width: Math.min(1400, src.width), format: 'webp' })).src : undefined;
+const ratio = src ? `${src.width} / ${src.height}` : '16 / 10';
 ---
 
 {
-  src ? (
-    <figure class:list={['window bg-panel', klass]}>
-      <Image
-        src={src}
-        alt={alt}
-        widths={[Math.min(src.width, 900), Math.min(src.width, 1400), src.width]}
-        sizes={sizes}
-        loading={eager ? 'eager' : 'lazy'}
-        fetchpriority={eager ? 'high' : 'auto'}
-        class="block h-auto w-full"
-      />
+  clipUrl ? (
+    <figure class:list={['window bg-panel', small && 'window-sm', klass]}>
+      <video
+        data-clip
+        muted
+        loop
+        playsinline
+        preload="none"
+        poster={poster}
+        aria-label={alt}
+        class="block h-auto w-full bg-panel object-contain"
+        style={`aspect-ratio:${ratio}`}
+      >
+        <source src={clipUrl} type="video/mp4" />
+      </video>
     </figure>
-  ) : (
-    <figure class:list={['window bg-panel text-amber-hi/70', klass]} aria-label={alt}>
-      <div class="flex h-9 items-center gap-3 bg-panel-hi px-3.5">
-        <span class="lights" aria-hidden="true"><i /><i /><i /></span>
-      </div>
-      <div class="grid aspect-[16/10] place-items-center font-mono text-sm">{placeholder}</div>
+  ) : img ? (
+    <figure class:list={['window bg-panel', small && 'window-sm', klass]}>
+      <button
+        type="button"
+        data-zoom={fullSrc}
+        data-zoom-m={mFull}
+        data-zoom-alt={alt}
+        aria-label={zoomLabel}
+        class="block w-full cursor-zoom-in"
+      >
+        <picture>
+          {mImg && (
+            <source
+              media="(max-width: 767px)"
+              srcset={mImg.srcSet.attribute}
+              sizes={mobileSizes}
+              width={mImg.attributes.width}
+              height={mImg.attributes.height}
+            />
+          )}
+          <img
+            src={img.src}
+            srcset={img.srcSet.attribute}
+            sizes={sizes}
+            alt={alt}
+            width={img.attributes.width}
+            height={img.attributes.height}
+            loading={eager ? 'eager' : 'lazy'}
+            fetchpriority={eager ? 'high' : 'auto'}
+            decoding={eager ? 'sync' : 'async'}
+            class={imgClass}
+          />
+        </picture>
+      </button>
     </figure>
-  )
+  ) : null
 }

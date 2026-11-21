@@ -7,12 +7,15 @@ export const fr = {
     title: 'Escale — client SSH gratuit pour Mac',
     description:
       'Terminal, fichiers SFTP, tunnels, multi-exécution et serveur X11 intégré dans une app Mac native. Gratuit, notarisé par Apple.',
+    locale: 'fr_FR',
+    ogAlt: 'Escale, client SSH pour macOS : terminal, volet Fichiers et tunnels dans une seule fenêtre.',
   },
   nav: {
     features: 'Fonctions',
     protocols: 'Protocoles',
     security: 'Sécurité',
     faq: 'Questions',
+    more: 'Et aussi',
     download: 'Télécharger',
     otherLang: 'EN',
     otherLangLabel: 'English version',
@@ -22,11 +25,18 @@ export const fr = {
     kicker: 'Client SSH pour macOS · gratuit',
     title: ['Toutes vos connexions.', 'Une seule escale.'],
     lead:
-      'Terminal à onglets, fichiers SFTP à côté du shell, tunnels et multi-exécution, dans une app Mac native qui s’appuie sur l’OpenSSH de votre système.',
+      'Terminal à onglets, SFTP à côté du shell, tunnels et multi-exécution, dans une app Mac native qui s’appuie sur l’OpenSSH de votre système.',
     cta: 'Télécharger pour macOS',
     meta: [`Version ${release.version}`, 'macOS 15 ou plus', 'Apple Silicon et Intel', `${release.sizeMB} Mo`],
+    // Repères posés sur la capture (md et plus) : x et y en % de l’image (volet Fichiers, bouton MultiExec, barre de monitoring, journal coloré).
+    callouts: [
+      { label: 'Fichiers SFTP', href: '#sftp', x: 11, y: 63 },
+      { label: 'Onglets et panneaux', href: '#more', x: 80, y: 10 },
+      { label: 'Monitoring', href: '#more', x: 87, y: 53 },
+      { label: 'Sortie colorée', href: '#more', x: 78, y: 74 },
+    ],
     shotAlt:
-      'Fenêtre d’Escale : sessions classées par dossier à gauche, terminal ouvert sur un serveur web, barre d’état en bas.',
+      'Fenêtre d’Escale : trois onglets ouverts, le serveur web-01 scindé en deux terminaux (état de nginx, journal coloré), monitoring du serveur sous chaque panneau et volet Fichiers qui suit le dossier du terminal.',
   },
   features: {
     title: 'Le poste de travail d’un admin, rangé dans une fenêtre',
@@ -73,15 +83,17 @@ export const fr = {
       },
     ],
   },
+  // Tuiles « Et tout ce qu’on attend » : `id` = nom de la capture tile-<id>.png (si elle existe), `wide` = tuile élargie.
   more: {
     title: 'Et tout ce qu’on attend d’un client complet',
     items: [
-      { t: 'Onglets et panneaux', d: 'Scindez, détachez un onglet dans sa propre fenêtre, passez en mode compact.' },
-      { t: 'Reconnexion', d: 'Après une coupure, la session revient dans le même onglet, écran et historique conservés.' },
-      { t: 'Monitoring', d: 'CPU, mémoire, charge, disque et débit du serveur sous le terminal. Rien n’est déposé sur le serveur.' },
-      { t: 'Macros', d: 'Enregistrez une suite de frappes, rejouez-la avec ⌃⌥1 à 9, sur un panneau ou sur tous.' },
-      { t: 'Connexion rapide', d: '⇧⌘K, utilisateur@hôte:port, et l’hôte rejoint votre bibliothèque.' },
-      { t: 'Import', d: 'Reprenez vos sessions MobaXterm, PuTTY, Termius ou votre ~/.ssh/config.' },
+      { id: 'monitoring', wide: true, t: 'Monitoring', d: 'CPU, mémoire, charge, disque et débit du serveur sous le terminal. Rien n’est déposé sur le serveur.', alt: 'Barre de monitoring sous le terminal : CPU, mémoire, charge, disque, débit réseau, utilisateurs et durée de fonctionnement du serveur.' },
+      { id: 'reconnect', wide: false, t: 'Reconnexion', d: 'Après une coupure, la session revient dans le même onglet, écran et historique conservés.', alt: 'Onglet qui se reconnecte après une coupure, avec l’historique du terminal conservé.' },
+      { id: 'macros', wide: false, t: 'Macros', d: 'Enregistrez une suite de frappes, rejouez-la avec ⌃⌥1 à 9, sur un panneau ou sur tous.', alt: 'Volet Macros : « Déployer l’app » sur ⌃⌥1, « Espace disque » sur ⌃⌥2, et une macro propre à l’hôte.' },
+      { id: 'quickconnect', wide: false, t: 'Connexion rapide', d: '⇧⌘K, utilisateur@hôte:port, et l’hôte rejoint votre bibliothèque.', alt: 'Champ de connexion rapide au-dessus de la bibliothèque d’hôtes classés par dossier : Infra, Préprod, Production.' },
+      { id: 'import', wide: false, t: 'Import', d: 'Reprenez vos sessions MobaXterm, PuTTY, Termius ou votre ~/.ssh/config.', alt: 'Volet Outils : import des sessions depuis ~/.ssh/config, MobaXterm, PuTTY, Termius ou un CSV.' },
+      { id: 'colors', wide: true, t: 'Thèmes et coloration', d: 'Sept thèmes de terminal (Solarized, Dracula, Tango…) et surlignage de la sortie\u00a0: erreurs en rouge, avertissements en jaune, adresses IP et URL en couleur.', alt: 'Terminal en thème Dracula : dans le journal, ERROR en rouge, WARNING en jaune, réussites en vert.' },
+      { id: 'panes', wide: false, t: 'Onglets et panneaux', d: 'Scindez, détachez un onglet dans sa propre fenêtre, passez en mode compact.', alt: 'Onglet web-01 scindé en deux panneaux, chacun avec sa barre de monitoring, à côté des onglets db-primary et bastion.' },
     ],
   },
   protocols: {
@@ -175,12 +187,12 @@ export const fr = {
     download: 'Télécharger',
   },
   shots: {
-    sftp: 'Volet Fichiers ouvert à côté d’un terminal : liste des fichiers du projet web avec taille, date et droits.',
-    tunnels: 'Gestionnaire de tunnels du bastion : une redirection locale vers la base PostgreSQL et un proxy SOCKS, tous deux actifs.',
-    multiexec: 'Exécution groupée sur l’étiquette web : deux serveurs répondent « active » avec le code 0, le troisième, injoignable, est signalé en échec.',
+    sftp: 'Volet Fichiers ouvert à côté du terminal : il suit le dossier /var/www/app du shell et liste les fichiers avec taille, date et droits.',
+    tunnels: 'Gestionnaire de tunnels : quatre redirections du bastion actives (PostgreSQL, Redis, Grafana, proxy SOCKS) ; sur web-01, un tunnel refusé par le serveur est signalé en échec avec son message d’erreur.',
+    multiexec: 'Exécution groupée sur l’étiquette web : web-01 et web-02 répondent avec le code 0, staging-web, injoignable, est signalé en échec.',
     x11: 'Application graphique distante affichée dans une fenêtre macOS.',
-    placeholder: 'Capture à venir',
   },
+  zoom: { open: 'Agrandir la capture', close: 'Fermer l’aperçu' },
 };
 
 export type Dict = typeof fr;

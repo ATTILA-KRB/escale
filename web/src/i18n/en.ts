@@ -8,12 +8,15 @@ export const en: Dict = {
     title: 'Escale — free SSH client for Mac',
     description:
       'Terminal, SFTP files, tunnels, multi-execution and a built-in X11 server in a native Mac app. Free, notarized by Apple.',
+    locale: 'en_US',
+    ogAlt: 'Escale, SSH client for macOS: terminal, Files pane and tunnels in a single window.',
   },
   nav: {
     features: 'Features',
     protocols: 'Protocols',
     security: 'Security',
     faq: 'FAQ',
+    more: 'And more',
     download: 'Download',
     otherLang: 'FR',
     otherLangLabel: 'Version française',
@@ -23,11 +26,17 @@ export const en: Dict = {
     kicker: 'SSH client for macOS · free',
     title: ['Every connection.', 'One stopover.'],
     lead:
-      'Tabbed terminal, SFTP files beside the shell, tunnels and multi-execution, in a native Mac app built on your system’s OpenSSH.',
+      'Tabbed terminal, SFTP beside the shell, tunnels and multi-execution, in a native Mac app built on your system’s OpenSSH.',
     cta: 'Download for macOS',
     meta: [`Version ${release.version}`, 'macOS 15 or later', 'Apple silicon and Intel', `${release.sizeMB} MB`],
+    callouts: [
+      { label: 'SFTP files', href: '#sftp', x: 11, y: 63 },
+      { label: 'Tabs and panes', href: '#more', x: 80, y: 10 },
+      { label: 'Monitoring', href: '#more', x: 87, y: 53 },
+      { label: 'Colored output', href: '#more', x: 78, y: 74 },
+    ],
     shotAlt:
-      'Escale window: sessions sorted by folder on the left, a terminal open on a web server, status bar at the bottom.',
+      'Escale window: three tabs open, the web-01 server split into two terminals (nginx status, highlighted log), server monitoring under each pane and a Files pane that follows the terminal’s folder.',
   },
   features: {
     title: 'A sysadmin’s workbench, tidied into one window',
@@ -70,15 +79,17 @@ export const en: Dict = {
       },
     ],
   },
+  // Tiles: same ids/order as fr.ts.
   more: {
     title: 'And everything you expect from a complete client',
     items: [
-      { t: 'Tabs and panes', d: 'Split, detach a tab into its own window, switch to compact mode.' },
-      { t: 'Reconnect', d: 'After a drop, the session comes back in the same tab, screen and scrollback intact.' },
-      { t: 'Monitoring', d: 'Server CPU, memory, load, disk and throughput under the terminal. Nothing is left on the server.' },
-      { t: 'Macros', d: 'Record a keystroke sequence, replay it with ⌃⌥1 to 9, on one pane or all of them.' },
-      { t: 'Quick connect', d: '⇧⌘K, user@host:port, and the host joins your library.' },
-      { t: 'Import', d: 'Bring your MobaXterm, PuTTY or Termius sessions, or your ~/.ssh/config.' },
+      { id: 'monitoring', wide: true, t: 'Monitoring', d: 'Server CPU, memory, load, disk and throughput under the terminal. Nothing is left on the server.', alt: 'Monitoring bar under the terminal: server CPU, memory, load, disk, network throughput, users and uptime.' },
+      { id: 'reconnect', wide: false, t: 'Reconnect', d: 'After a drop, the session comes back in the same tab, screen and scrollback intact.', alt: 'Tab reconnecting after a drop, terminal scrollback kept.' },
+      { id: 'macros', wide: false, t: 'Macros', d: 'Record a keystroke sequence, replay it with ⌃⌥1 to 9, on one pane or all of them.', alt: 'Macros pane: “Déployer l’app” on ⌃⌥1, “Espace disque” on ⌃⌥2, and a host-specific macro.' },
+      { id: 'quickconnect', wide: false, t: 'Quick connect', d: '⇧⌘K, user@host:port, and the host joins your library.', alt: 'Quick-connect field above the host library, sorted into folders: Infra, Préprod, Production.' },
+      { id: 'import', wide: false, t: 'Import', d: 'Bring your MobaXterm, PuTTY or Termius sessions, or your ~/.ssh/config.', alt: 'Tools pane: import sessions from ~/.ssh/config, MobaXterm, PuTTY, Termius or a CSV.' },
+      { id: 'colors', wide: true, t: 'Themes and highlighting', d: 'Seven terminal themes (Solarized, Dracula, Tango…) and output highlighting: errors in red, warnings in yellow, IP addresses and URLs in colour.', alt: 'Terminal in the Dracula theme: in the log, ERROR in red, WARNING in yellow, successes in green.' },
+      { id: 'panes', wide: false, t: 'Tabs and panes', d: 'Split, detach a tab into its own window, switch to compact mode.', alt: 'The web-01 tab split into two panes, each with its own monitoring bar, beside the db-primary and bastion tabs.' },
     ],
   },
   protocols: {
@@ -169,10 +180,10 @@ export const en: Dict = {
     download: 'Download',
   },
   shots: {
-    sftp: 'Files pane open beside a terminal: the web project’s files with size, date and permissions.',
-    tunnels: 'Bastion tunnel manager: a local forward to the PostgreSQL database and a SOCKS proxy, both active.',
-    multiexec: 'Group run on the web tag: two servers reply “active” with exit code 0, the third, unreachable, is flagged as failed.',
+    sftp: 'Files pane beside the terminal: it follows the shell’s /var/www/app folder and lists files with size, date and permissions.',
+    tunnels: 'Tunnel manager: four bastion forwards active (PostgreSQL, Redis, Grafana, SOCKS proxy); on web-01, a tunnel refused by the server is flagged as failed with its error message.',
+    multiexec: 'Group run on the web tag: web-01 and web-02 reply with exit code 0, staging-web, unreachable, is flagged as failed.',
     x11: 'Remote graphical app shown in a macOS window.',
-    placeholder: 'Screenshot coming',
   },
+  zoom: { open: 'Enlarge screenshot', close: 'Close preview' },
 };

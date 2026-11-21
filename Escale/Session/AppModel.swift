@@ -153,6 +153,7 @@ final class AppModel {
             ("selftest-tabs", { await TabsSelfTest(directory: $0, model: self).run() }),
             ("selftest-colors", { await TerminalColorsSelfTest(directory: $0, model: self).run() }),
             ("selftest-mcp", { await MCPSelfTest(directory: $0, model: self).run() }),
+            ("selftest-showcase", { await ShowcaseSelfTest(directory: $0, model: self).run() }),
         ]
     }
 

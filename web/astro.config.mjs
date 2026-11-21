@@ -3,10 +3,9 @@ import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import sitemap from '@astrojs/sitemap';
 
-// Domaine à renseigner après achat (SITE_URL) ; en local la canonique pointe vers localhost.
-const site =
-  process.env.SITE_URL ??
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:4321');
+// Domaine public ; SITE_URL le surcharge (préproduction, essais). VERCEL_PROJECT_PRODUCTION_URL est ignoré :
+// il vaut l'alias *.vercel.app, pas le domaine canonique.
+const site = process.env.SITE_URL ?? 'https://www.escalecompany.com';
 
 export default defineConfig({
   site,
