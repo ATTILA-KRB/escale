@@ -12,7 +12,7 @@
 
 [Website](https://www.escalecompany.com) · [Download](https://github.com/ATTILA-KRB/escale/releases/latest) · [Discussions](https://github.com/ATTILA-KRB/escale/discussions) · [Français](README.fr.md)
 
-<img src="web/src/assets/shots/hero.png" width="860" alt="Escale window: sessions by folder on the left, a terminal open on a web server, status bar at the bottom">
+<a href="docs/images/readme-hero.png"><img src="docs/images/readme-hero.png" width="882" alt="Escale window: the Files pane follows the terminal folder on web-01, the tab is split into two terminals (nginx status, highlighted application log) with server monitoring under each pane"></a>
 
 </div>
 
@@ -24,32 +24,62 @@ No account, no subscription, no telemetry: apart from your own connections, Esca
 
 ## Features
 
-- **Terminal** with tabs, split panes, detachable tabs, compact mode, and automatic reconnection that keeps the screen and
-  scrollback. Engine: [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm). Optional output highlighting
-  (errors, warnings, IPs) that never alters the bytes the program sent.
-- **Files (SFTP) beside the shell**: a sidebar pane that opens the server over the connection you already have (no second
-  login) and follows the terminal's current folder. Drag and drop from/to Finder, transfer queue, server-to-server copy,
-  remote file editing (a locally edited file is sent back when you save it), shell fallback when the server has no SFTP.
-- **Tunnels**: local, remote and dynamic (SOCKS) forwards opened on the live connection, IPv6, server-assigned ports,
-  editable while running. Escale probes the port before showing "active": a forward the server refused never passes for open.
-- **Multi-execution**: broadcast your typing to every pane of a tab, all tabs or a selection (under a red border), or run
-  one command on a group of hosts in parallel and read output, exit code and duration per host. Host values are
-  shell-escaped before insertion.
+### Files beside the shell
+
+<img src="web/src/assets/shots/sftp.png" width="882" alt="Files pane next to the terminal: it follows the shell's /var/www/app folder and lists files with size, date and permissions">
+
+A sidebar pane opens the server over the connection you already have (no second login) and follows the terminal's
+current folder. Drag and drop from/to Finder, transfer queue, server-to-server copy, remote file editing (a locally
+edited file is sent back when you save it), shell fallback when the server has no SFTP.
+
+### Tunnels that tell the truth
+
+<img src="web/src/assets/shots/tunnels.png" width="882" alt="Tunnel manager: four bastion forwards active (PostgreSQL, Redis, Grafana, SOCKS proxy); on web-01 a forward refused by the server is flagged as failed with its error">
+
+Local, remote and dynamic (SOCKS) forwards opened on the live connection, IPv6, server-assigned ports, editable while
+running. Escale probes the port before showing "active": a forward the server refused never passes for open.
+
+### One keystroke, ten servers
+
+<img src="web/src/assets/shots/multiexec.png" width="882" alt="Group run on the web tag: web-01 and web-02 return exit code 0, staging-web is unreachable and flagged as failed">
+
+Broadcast your typing to every pane of a tab, all tabs or a selection (under a red border), or run one command on a
+group of hosts in parallel and read output, exit code and duration per host. Host values are shell-escaped before insertion.
+
+### Terminal
+
+<img src="web/src/assets/shots/tile-colors.png" width="882" alt="Terminal in the Dracula theme: in the log, ERROR in red, WARNING in yellow, successes in green">
+
+Tabs, split panes, detachable tabs, compact mode, and automatic reconnection that keeps the screen and scrollback.
+Engine: [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm). Seven themes and optional output highlighting (errors,
+warnings, IPs) that never alters the bytes the program sent.
+
+<img src="web/src/assets/shots/tile-monitoring.png" width="882" alt="Monitoring bar under the terminal: server CPU, memory, load, disk, network throughput, users and uptime">
+
+**Monitoring**: CPU, memory, load, disk and throughput under the terminal, with nothing installed on the server.
+
+### And everything else
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="web/src/assets/shots/tile-macros.png" width="400" alt="Macros pane: Déployer l'app on ⌃⌥1, Espace disque on ⌃⌥2 and a host-specific macro"><br><b>Macros</b>: record a keystroke sequence and replay it with <code>⌃⌥1</code> to <code>⌃⌥9</code>, on one pane or all.</td>
+    <td width="50%" valign="top"><img src="web/src/assets/shots/tile-quickconnect.png" width="400" alt="Quick-connect field above the host library, sorted into folders"><br><b>Quick connect</b> (<code>⇧⌘K</code>, <code>user@host:port</code>): the host joins your library, sorted into folders.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="web/src/assets/shots/tile-import.png" width="400" alt="Tools pane: import sessions from ~/.ssh/config, MobaXterm, PuTTY, Termius or a CSV"><br><b>Import</b> from MobaXterm, PuTTY, Termius, CSV or <code>~/.ssh/config</code>.</td>
+    <td width="50%" valign="top"><img src="web/src/assets/shots/tile-panes.png" width="400" alt="The web-01 tab split into two panes, each with its own monitoring bar"><br><b>Tabs and panes</b>: split, detach a tab into its own window, switch to compact mode.</td>
+  </tr>
+</table>
+
 - **Built-in X11 server**: run remote graphical apps without installing XQuartz or typing an admin password. Starts on
   demand, listens on no network port, untrusted mode by default.
 - **Other protocols**: Telnet (optional SSH tunnel), serial ports (speed, parity, BREAK, DTR/RTS), VNC (native RFB client,
   optionally through SSH), RDP (generates a `.rdp` file for Windows App, optionally through an SSH tunnel).
-- **Macros**: record a keystroke sequence and replay it with `⌃⌥1` to `⌃⌥9`, on one pane or all.
-- **Monitoring**: CPU, memory, load, disk and throughput under the terminal, with nothing installed on the server.
 - **AI agent access (MCP)**: let Claude Code, Cursor or any MCP client run commands, type into terminals, read and
   write files and drive tunnels on the hosts you choose, over the connections you already opened. Off by default, per-host
   level (read only, confirm each action, or free), local socket only, every call logged. See [docs/MCP.md](docs/MCP.md).
-- **Quick connect** (`⇧⌘K`, `user@host:port`) and **import** from MobaXterm, PuTTY, CSV or `~/.ssh/config`.
 
-<p align="center">
-  <img src="web/src/assets/shots/tunnels.png" width="420" alt="Tunnels dialog with a PostgreSQL forward and a SOCKS proxy through a bastion">
-  <img src="web/src/assets/shots/multiexec.png" width="420" alt="Multi-execution results for several hosts, with one failure">
-</p>
+All screenshots come from a lab with fictitious servers.
 
 ### Security model
 

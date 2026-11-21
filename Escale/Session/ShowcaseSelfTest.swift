@@ -89,7 +89,12 @@ final class ShowcaseSelfTest {
         // héros du site, en 1280×800 (2560 px affichés à 1280 px CSS, soit 50 %) : passage séparé, car redimensionner la
         // fenêtre en cours de scénario rend ensuite la feuille des tunnels impossible à capturer.
         let heroOnly = ProcessInfo.processInfo.environment["ESCALE_SHOWCASE_HERO"] == "1"
-        win.setContentSize(heroOnly ? NSSize(width: 1280, height: 800) : NSSize(width: 1440, height: 900))
+        // ESCALE_SHOWCASE_SIZE=LxH (points) : autre cadre du héros, ex. 900x640 pour le README (1800 px affichés à ~900).
+        let size = ProcessInfo.processInfo.environment["ESCALE_SHOWCASE_SIZE"].flatMap { v -> NSSize? in
+            let p = v.split(separator: "x").compactMap { Double($0) }
+            return p.count == 2 && p[0] >= 700 && p[1] >= 500 ? NSSize(width: p[0], height: p[1]) : nil
+        }
+        win.setContentSize(heroOnly ? (size ?? NSSize(width: 1280, height: 800)) : NSSize(width: 1440, height: 900))
         win.center()
         win.orderFrontRegardless()
         // Fenêtre active (feux tricolores en couleur) : seulement sur demande explicite, car l'app prend alors le focus.
@@ -120,8 +125,14 @@ final class ShowcaseSelfTest {
         await sleep(0.8)
         for p in [left, right] { type(p, "cd /var/www/app\r") }
         await sleep(0.5)
-        await run(right, "journalctl -u app -n 30 --no-pager", until: "app[")
-        await run(left, "systemctl status nginx --no-pager", until: "Started nginx")
+        if size == nil {
+            await run(right, "journalctl -u app -n 30 --no-pager", until: "app[")
+            await run(left, "systemctl status nginx --no-pager", until: "Started nginx")
+        } else {
+            // Cadre étroit (README) : lignes courtes, pour qu'aucune ne se replie au milieu d'un mot.
+            await run(right, "journalctl -u app -n 30 --no-pager -o cat", until: "INFO")
+            await run(left, "systemctl status nginx --no-pager -n 0", until: "└─")
+        }
         tWeb.setActive(left.id)   // le volet Fichiers suit le panneau actif (OSC 7)
         model.workspace.select(tWeb.id)
         model.sidebarTab = .files

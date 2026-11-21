@@ -13,6 +13,7 @@ import os
 import random
 import shutil
 import stat
+import re
 import sys
 import time
 
@@ -211,7 +212,7 @@ UNITS = {
 
 
 def systemctl_main(args):
-    rest = [a for a in args if not a.startswith("-")]
+    rest = [a for i, a in enumerate(args) if not a.startswith("-") and not (i and args[i - 1] in ("-n", "--lines"))]
     if not rest:
         return
     verb, units = rest[0], [u.replace(".service", "") for u in rest[1:]]
@@ -249,10 +250,20 @@ def systemctl_main(args):
     print("     CGroup: /system.slice/%s" % unit)
     for i, (p, c) in enumerate(procs):
         print("             %s%d %s" % ("└─" if i == len(procs) - 1 else "├─", p, '"%s"' % c if c.startswith("nginx") else c))
+    # -n N / --lines=N : nombre de lignes de journal (0 = aucune), comme systemctl.
+    nlog = 2
+    for i, a in enumerate(args):
+        if a in ("-n", "--lines") and i + 1 < len(args) and args[i + 1].isdigit():
+            nlog = int(args[i + 1])
+        elif a.startswith("--lines=") and a[8:].isdigit():
+            nlog = int(a[8:])
+    if nlog == 0:
+        return
     print()
     t0 = time.strftime("%b %d %H:%M:%S", time.gmtime(since))
-    print("%s %s systemd[1]: Starting %s - %s..." % (t0, NAME, unit, desc))
-    print("%s %s systemd[1]: Started %s - %s." % (t0, NAME, unit, desc))
+    log = ["%s %s systemd[1]: Starting %s - %s..." % (t0, NAME, unit, desc), "%s %s systemd[1]: Started %s - %s." % (t0, NAME, unit, desc)]
+    for ln in log[-nlog:]:
+        print(ln)
 
 
 # --- docker --------------------------------------------------------------------------------------
@@ -333,8 +344,10 @@ def journalctl_main(args):
     for u in [args[i + 1] for i, a in enumerate(args) if a == "-u" and i + 1 < len(args)]:
         sel = [ln for ln in lines if " %s[" % u.replace(".service", "") in ln]
         lines = sel or lines[:3]
+    # -o cat : message seul, sans date, hôte ni identifiant (comme journalctl).
+    cat = any(a == "cat" and i and args[i - 1] == "-o" for i, a in enumerate(args)) or "--output=cat" in args
     for ln in lines:
-        print(ln)
+        print(re.sub(r"^\w{3} [ \d]\d \d\d:\d\d:\d\d \S+ [^:]+: ", "", ln) if cat else ln)
 
 
 def who_main(args):
