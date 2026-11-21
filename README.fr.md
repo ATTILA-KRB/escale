@@ -12,7 +12,7 @@
 
 [Site](https://www.escalecompany.com) · [Télécharger](https://github.com/ATTILA-KRB/escale/releases/latest) · [Discussions](https://github.com/ATTILA-KRB/escale/discussions) · [English](README.md)
 
-<img src="web/src/assets/shots/hero.png" width="860" alt="Fenêtre d'Escale : sessions par dossier à gauche, terminal ouvert sur un serveur web, barre d'état en bas">
+<a href="docs/images/readme-hero.png"><img src="docs/images/readme-hero.png" width="882" alt="Fenêtre d'Escale : le volet Fichiers suit le dossier du terminal sur web-01, l'onglet est scindé en deux terminaux (état de nginx, journal coloré) avec le monitoring du serveur sous chaque panneau"></a>
 
 </div>
 
@@ -24,35 +24,65 @@ contacte que son flux de mises à jour.
 
 ## Fonctionnalités
 
-- **Terminal** à onglets, panneaux scindés, onglets détachables, mode compact, reconnexion automatique qui conserve
-  l'écran et l'historique. Moteur : [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm). Coloration optionnelle de la
-  sortie (erreurs, avertissements, IP) sans jamais modifier les octets envoyés par le programme.
-- **Fichiers (SFTP) à côté du shell** : un volet latéral qui ouvre le serveur sur la connexion déjà établie (pas de seconde
-  authentification) et suit le dossier courant du terminal. Glisser-déposer depuis/vers le Finder, file de transferts, copie
-  de serveur à serveur, édition de fichier distant (le fichier modifié en local est renvoyé à l'enregistrement), repli
-  par le shell si le serveur n'a pas de SFTP.
-- **Tunnels** : redirections locales, distantes et dynamiques (SOCKS) ouvertes sur la connexion active, IPv6, port attribué
-  par le serveur, modification à chaud. Escale sonde le port avant d'afficher « actif » : une redirection refusée par le
-  serveur ne passe jamais pour ouverte.
-- **Multi-exécution** : diffusez votre saisie vers tous les panneaux d'un onglet, tous les onglets ou une sélection (sous un
-  cadre rouge), ou lancez une commande sur un groupe d'hôtes en parallèle et lisez sortie, code de retour et durée par hôte.
-  Les valeurs d'hôte sont échappées avant insertion.
+### Les fichiers du serveur, à côté du shell
+
+<img src="web/src/assets/shots/sftp.png" width="882" alt="Volet Fichiers ouvert à côté du terminal : il suit le dossier /var/www/app du shell et liste les fichiers avec taille, date et droits">
+
+Un volet latéral ouvre le serveur sur la connexion déjà établie (pas de seconde authentification) et suit le dossier
+courant du terminal. Glisser-déposer depuis/vers le Finder, file de transferts, copie de serveur à serveur, édition de
+fichier distant (le fichier modifié en local est renvoyé à l'enregistrement), repli par le shell si le serveur n'a pas de SFTP.
+
+### Des tunnels qui disent la vérité
+
+<img src="web/src/assets/shots/tunnels.png" width="882" alt="Gestionnaire de tunnels : quatre redirections du bastion actives (PostgreSQL, Redis, Grafana, proxy SOCKS) ; sur web-01, un tunnel refusé par le serveur est signalé en échec avec son message d'erreur">
+
+Redirections locales, distantes et dynamiques (SOCKS) ouvertes sur la connexion active, IPv6, port attribué par le
+serveur, modification à chaud. Escale sonde le port avant d'afficher « actif » : une redirection refusée par le serveur
+ne passe jamais pour ouverte.
+
+### Une frappe, dix serveurs
+
+<img src="web/src/assets/shots/multiexec.png" width="882" alt="Exécution groupée sur l'étiquette web : web-01 et web-02 répondent avec le code 0, staging-web, injoignable, est signalé en échec">
+
+Diffusez votre saisie vers tous les panneaux d'un onglet, tous les onglets ou une sélection (sous un cadre rouge), ou
+lancez une commande sur un groupe d'hôtes en parallèle et lisez sortie, code de retour et durée par hôte. Les valeurs
+d'hôte sont échappées avant insertion.
+
+### Terminal
+
+<img src="web/src/assets/shots/tile-colors.png" width="882" alt="Terminal en thème Dracula : dans le journal, ERROR en rouge, WARNING en jaune, réussites en vert">
+
+Onglets, panneaux scindés, onglets détachables, mode compact, reconnexion automatique qui conserve l'écran et
+l'historique. Moteur : [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm). Sept thèmes et coloration optionnelle de
+la sortie (erreurs, avertissements, IP) sans jamais modifier les octets envoyés par le programme.
+
+<img src="web/src/assets/shots/tile-monitoring.png" width="882" alt="Barre de monitoring sous le terminal : CPU, mémoire, charge, disque, débit réseau, utilisateurs et durée de fonctionnement du serveur">
+
+**Supervision** : CPU, mémoire, charge, disque et débit sous le terminal, sans rien installer sur le serveur.
+
+### Et tout le reste
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="web/src/assets/shots/tile-macros.png" width="400" alt="Volet Macros : Déployer l'app sur ⌃⌥1, Espace disque sur ⌃⌥2 et une macro propre à l'hôte"><br><b>Macros</b> : enregistrez une suite de frappes et rejouez-la avec <code>⌃⌥1</code> à <code>⌃⌥9</code>, sur un panneau ou tous.</td>
+    <td width="50%" valign="top"><img src="web/src/assets/shots/tile-quickconnect.png" width="400" alt="Champ de connexion rapide au-dessus de la bibliothèque d'hôtes classés par dossier"><br><b>Connexion rapide</b> (<code>⇧⌘K</code>, <code>utilisateur@hôte:port</code>) : l'hôte rejoint votre bibliothèque, classée par dossier.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="web/src/assets/shots/tile-import.png" width="400" alt="Volet Outils : import des sessions depuis ~/.ssh/config, MobaXterm, PuTTY, Termius ou un CSV"><br><b>Import</b> depuis MobaXterm, PuTTY, Termius, CSV ou <code>~/.ssh/config</code>.</td>
+    <td width="50%" valign="top"><img src="web/src/assets/shots/tile-panes.png" width="400" alt="Onglet web-01 scindé en deux panneaux, chacun avec sa barre de monitoring"><br><b>Onglets et panneaux</b> : scindez, détachez un onglet dans sa propre fenêtre, passez en mode compact.</td>
+  </tr>
+</table>
+
 - **Serveur X11 intégré** : lancez des applications graphiques distantes sans installer XQuartz ni saisir de mot de passe
   administrateur. Démarré à la demande, sans port réseau, mode non fiable par défaut.
 - **Autres protocoles** : Telnet (tunnel SSH optionnel), port série (vitesse, parité, BREAK, DTR/RTS), VNC (client RFB natif,
   éventuellement via SSH), RDP (génère un fichier `.rdp` pour Windows App, éventuellement via tunnel SSH).
-- **Macros** : enregistrez une suite de frappes et rejouez-la avec `⌃⌥1` à `⌃⌥9`, sur un panneau ou tous.
 - **Accès des agents IA (MCP)** : Claude Code, Cursor ou tout client MCP exécutent des commandes, saisissent dans les
   terminaux, lisent et écrivent des fichiers et pilotent les tunnels des hôtes que vous choisissez, sur les connexions déjà
   ouvertes. Désactivé par défaut, niveau par hôte (lecture, confirmation de chaque action, libre), socket local uniquement,
   chaque appel journalisé. Voir [docs/MCP.md](docs/MCP.md).
-- **Supervision** : CPU, mémoire, charge, disque et débit sous le terminal, sans rien installer sur le serveur.
-- **Connexion rapide** (`⇧⌘K`, `utilisateur@hôte:port`) et **import** depuis MobaXterm, PuTTY, CSV ou `~/.ssh/config`.
 
-<p align="center">
-  <img src="web/src/assets/shots/tunnels.png" width="420" alt="Fenêtre des tunnels : une redirection PostgreSQL et un proxy SOCKS via un bastion">
-  <img src="web/src/assets/shots/multiexec.png" width="420" alt="Résultats de multi-exécution sur plusieurs hôtes, dont un échec">
-</p>
+Toutes les captures proviennent d'un labo aux serveurs fictifs.
 
 ### Sécurité
 

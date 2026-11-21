@@ -2,6 +2,9 @@
 """Recadre les captures brutes de `--selftest-showcase` (2880×1800, Retina) en images du site.
 
 Usage : crops.py <dossier raw> <web/>
+README : si <raw>/00-readme.png existe (héros 1000×670 points, ESCALE_SHOWCASE_SIZE=1000x670), il est copié en
+docs/images/readme-hero.png, ramené à 1764 px : la colonne d'un README GitHub fait 882 px, l'image y est donc
+affichée à 50 %. Une fenêtre plus étroite que 1000 points replie les lignes de systemctl au milieu d'un mot. Les autres images du README sont celles du site.
 Chaque recadrage est dimensionné pour être affiché à ≥ 50 % de sa taille (texte d'UI ≥ 11 px CSS) :
 largeur ≈ 2 × largeur d'affichage prévue dans Landing.astro (800 px fonctions, 380/760 px tuiles, 350 px mobile).
 """
@@ -49,3 +52,13 @@ for name, (src, box) in CROPS.items():
 im = Image.open(raw / "00-hero.png").convert("RGB").crop((0, 0, 2560, 1344)).resize((1200, 630), Image.Resampling.LANCZOS)
 im.save(web / "public/og.png", optimize=True)
 print("og.png             1200×630")
+
+# Héros du README (fenêtre entière, 1764 px pour 882 px affichés sur GitHub).
+readme = raw / "00-readme.png"
+if readme.exists():
+    dest = web.parent / "docs/images"
+    dest.mkdir(parents=True, exist_ok=True)
+    im = Image.open(readme).convert("RGBA")   # coins arrondis de la fenêtre transparents (sinon noirs sur GitHub)
+    im = im.resize((1764, round(im.height * 1764 / im.width)), Image.Resampling.LANCZOS)
+    im.save(dest / "readme-hero.png", optimize=True)
+    print(f"readme-hero        {im.width}×{im.height}")
